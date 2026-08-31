@@ -29,7 +29,12 @@
             <tr v-if="loading"><td colspan="8" class="state-cell"><span class="spinner"></span> جارٍ تحميل الخطط...</td></tr>
             <tr v-else-if="plans.length === 0"><td colspan="8" class="state-cell">لا توجد خطط مسجلة حاليًا</td></tr>
             <tr v-for="plan in plans" v-else :key="plan.id">
-              <td><div class="plan-cell"><div class="plan-avatar">{{ getInitials(plan.client_name) }}</div><div><strong>{{ plan.client_name }}</strong><span>{{ plan.plan_type }}</span></div></div></td>
+              <td>
+                <div class="plan-cell">
+                  <div class="plan-avatar">{{ getInitials(plan.client?.name || '؟') }}</div>
+                  <div><strong>{{ plan.client?.name || 'عميل محذوف' }}</strong><span>{{ plan.plan_type }}</span></div>
+                </div>
+              </td>
               <td><span class="people-cell">{{ getRoleNames(plan.users, 'responsible') }}</span></td>
               <td><div class="milestone"><span class="date">{{ formatDate(plan.planned_delivery_date) }}</span><div v-if="plan.actual_delivery_date" :class="['status-badge', getDeliveryStatus(plan.planned_delivery_date, plan.actual_delivery_date).class]"><i></i>{{ getDeliveryStatus(plan.planned_delivery_date, plan.actual_delivery_date).text }}<small>{{ formatDate(plan.actual_delivery_date) }}</small></div><button v-else class="confirm-btn" type="button" :disabled="actionLoading === `delivery-${plan.id}`" @click="markFinalDelivery(plan.id)">{{ actionLoading === `delivery-${plan.id}` ? 'جارٍ...' : 'تأكيد التسليم' }}</button></div></td>
               <td><div class="milestone"><span class="date">{{ formatDate(plan.planned_review_date) }}</span><div v-if="plan.actual_review_date" :class="['status-badge', getDeliveryStatus(plan.planned_review_date, plan.actual_review_date).class]"><i></i>{{ getDeliveryStatus(plan.planned_review_date, plan.actual_review_date).text }}<small>{{ formatDate(plan.actual_review_date) }}</small></div><button v-else class="confirm-btn review" type="button" :disabled="actionLoading === `review-${plan.id}`" @click="markReviewComplete(plan.id)">{{ actionLoading === `review-${plan.id}` ? 'جارٍ...' : 'إنهاء المراجعة' }}</button></div></td>
@@ -48,7 +53,27 @@
         <button class="modal-close" type="button" aria-label="إغلاق" @click="closeModal">×</button>
         <div class="modal-icon">◈</div><span class="eyebrow">مساحة التخطيط</span><h3 id="modal-title">{{ isEditing ? 'تعديل الخطة' : 'إنشاء خطة جديدة' }}</h3><p>أدخل تفاصيل الخطة ووزّع المهام على أعضاء الفريق.</p>
         <form class="plan-form" @submit.prevent="savePlan">
-          <div class="form-grid"><div class="form-group"><label>اسم العميل</label><input v-model="form.client_name" type="text" placeholder="مثال: شركة أفق" required /></div><div class="form-group"><label>نوع الخطة</label><input v-model="form.plan_type" type="text" placeholder="استراتيجية محتوى" required /></div></div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>العميل المستهدف</label>
+              <select v-model="form.client_id" required>
+                <option value="" disabled>اختر العميل...</option>
+                <option v-for="client in allClients" :key="client.id" :value="client.id">{{ client.name }}</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>نوع الخطة</label>
+              <select v-model="form.plan_type" required>
+                <option value="" disabled>اختر نوع الخطة...</option>
+                <option value="استراتيجية (Strategic)">استراتيجية (Strategic)</option>
+                <option value="محتوى (Content)">محتوى (Content)</option>
+                <option value="تسويق عبر السوشيال ميديا">تسويق عبر السوشيال ميديا</option>
+                <option value="إعلانات ممولة (Media Buying)">إعلانات ممولة (Media Buying)</option>
+                <option value="تحسين محركات البحث (SEO)">تحسين محركات البحث (SEO)</option>
+                <option value="خطة شاملة">خطة شاملة</option>
+              </select>
+            </div>
+          </div>
           <div class="form-grid"><div class="form-group"><label>موعد التسليم النهائي</label><input v-model="form.planned_delivery_date" type="datetime-local" required /></div><div class="form-group"><label>موعد إنهاء المراجعة</label><input v-model="form.planned_review_date" type="datetime-local" required /></div></div>
           <div class="form-grid"><div class="form-group"><label>رابط البلان <small>اختياري</small></label><input v-model="form.final_link" type="url" placeholder="https://..." /></div><div class="form-group"><label>ملاحظات <small>اختياري</small></label><input v-model="form.notes" type="text" placeholder="أي ملاحظات إضافية..." /></div></div>
           <div class="separator"></div><div class="section-title"><span>⌁</span> توزيع المهام</div><p class="helper-text">يمكن اختيار أكثر من موظف باستخدام Ctrl أو Command.</p>
@@ -65,8 +90,20 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import api from '../axios';
 
-const plans = ref([]); const allUsers = ref([]); const loading = ref(true); const saving = ref(false); const showModal = ref(false); const isEditing = ref(false); const editId = ref(null); const actionLoading = ref(''); const toastMessage = ref('');
-const form = reactive({ client_name: '', plan_type: '', planned_delivery_date: '', planned_review_date: '', final_link: '', notes: '', responsible_ids: [], specialist_ids: [], executor_ids: [] });
+const plans = ref([]); 
+const allUsers = ref([]); 
+const allClients = ref([]); // متغير جديد لتخزين العملاء
+const loading = ref(true); 
+const saving = ref(false); 
+const showModal = ref(false); 
+const isEditing = ref(false); 
+const editId = ref(null); 
+const actionLoading = ref(''); 
+const toastMessage = ref('');
+
+// تم تغيير client_name إلى client_id
+const form = reactive({ client_id: '', plan_type: '', planned_delivery_date: '', planned_review_date: '', final_link: '', notes: '', responsible_ids: [], specialist_ids: [], executor_ids: [] });
+
 const getInitials = (name = '') => name.trim().split(' ').slice(0, 2).map(word => word[0]).join('').toUpperCase();
 const getRoleNames = (users = [], role) => { const matches = users.filter(user => user.pivot?.task_role === role); return matches.length ? matches.map(user => user.name).join('، ') : '—'; };
 const getDeliveryStatus = (planned, actual) => { if (actual) return new Date(actual) <= new Date(planned) ? { text: 'في الموعد', class: 'status-green' } : { text: 'بتأخير', class: 'status-orange' }; return new Date() > new Date(planned) ? { text: 'متأخر', class: 'status-red' } : { text: 'قيد التنفيذ', class: 'status-gray' }; };
@@ -75,16 +112,41 @@ const delayedCount = computed(() => plans.value.filter(plan => getDeliveryStatus
 const showToast = (message) => { toastMessage.value = message; setTimeout(() => { toastMessage.value = ''; }, 3200); };
 const formatDate = (value) => value ? new Date(value).toLocaleString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
 const toDatetimeLocal = (value) => { if (!value) return ''; const date = new Date(value); return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16); };
+
 const fetchPlans = async () => { loading.value = true; try { const response = await api.get('/content-plans'); plans.value = response.data.data || response.data || []; } catch (error) { console.error('Error fetching plans:', error); showToast(error.response?.data?.message || 'تعذر تحميل الخطط'); } finally { loading.value = false; } };
 const fetchUsers = async () => { try { const response = await api.get('/users?per_page=100'); allUsers.value = response.data.data || []; } catch (error) { console.error('Error fetching users:', error); showToast('تعذر تحميل أعضاء الفريق'); } };
-const resetForm = () => Object.assign(form, { client_name: '', plan_type: '', planned_delivery_date: '', planned_review_date: '', final_link: '', notes: '', responsible_ids: [], specialist_ids: [], executor_ids: [] });
-const openModal = (plan = null) => { isEditing.value = Boolean(plan); editId.value = plan?.id || null; if (plan) Object.assign(form, { client_name: plan.client_name, plan_type: plan.plan_type, planned_delivery_date: toDatetimeLocal(plan.planned_delivery_date), planned_review_date: toDatetimeLocal(plan.planned_review_date), final_link: plan.final_link || '', notes: plan.notes || '', responsible_ids: (plan.users || []).filter(user => user.pivot?.task_role === 'responsible').map(user => user.id), specialist_ids: (plan.users || []).filter(user => user.pivot?.task_role === 'specialist').map(user => user.id), executor_ids: (plan.users || []).filter(user => user.pivot?.task_role === 'executor').map(user => user.id) }); else resetForm(); showModal.value = true; };
+
+// دالة جديدة لجلب العملاء
+const fetchClients = async () => { try { const response = await api.get('/clients?per_page=100'); allClients.value = response.data.data || []; } catch (error) { console.error('Error fetching clients:', error); showToast('تعذر تحميل قائمة العملاء'); } };
+
+const resetForm = () => Object.assign(form, { client_id: '', plan_type: '', planned_delivery_date: '', planned_review_date: '', final_link: '', notes: '', responsible_ids: [], specialist_ids: [], executor_ids: [] });
+
+const openModal = (plan = null) => { 
+  isEditing.value = Boolean(plan); 
+  editId.value = plan?.id || null; 
+  if (plan) Object.assign(form, { 
+    client_id: plan.client_id, // تم التحديث هنا
+    plan_type: plan.plan_type, 
+    planned_delivery_date: toDatetimeLocal(plan.planned_delivery_date), 
+    planned_review_date: toDatetimeLocal(plan.planned_review_date), 
+    final_link: plan.final_link || '', 
+    notes: plan.notes || '', 
+    responsible_ids: (plan.users || []).filter(user => user.pivot?.task_role === 'responsible').map(user => user.id), 
+    specialist_ids: (plan.users || []).filter(user => user.pivot?.task_role === 'specialist').map(user => user.id), 
+    executor_ids: (plan.users || []).filter(user => user.pivot?.task_role === 'executor').map(user => user.id) 
+  }); 
+  else resetForm(); 
+  showModal.value = true; 
+};
+
 const closeModal = () => { showModal.value = false; };
 const savePlan = async () => { saving.value = true; try { if (isEditing.value) await api.put(`/content-plans/${editId.value}`, form); else await api.post('/content-plans', form); closeModal(); showToast(isEditing.value ? 'تم تحديث الخطة بنجاح' : 'تم إنشاء الخطة بنجاح'); await fetchPlans(); } catch (error) { showToast(error.response?.data?.message || 'حدث خطأ أثناء الحفظ'); } finally { saving.value = false; } };
 const markReviewComplete = async (id) => { if (!window.confirm('هل أنت متأكد من تسجيل إنهاء المراجعة؟')) return; actionLoading.value = `review-${id}`; try { await api.post(`/content-plans/${id}/review-complete`); showToast('تم تسجيل إنهاء المراجعة'); await fetchPlans(); } catch (error) { showToast(error.response?.data?.message || 'حدث خطأ أثناء تسجيل المراجعة'); } finally { actionLoading.value = ''; } };
 const markFinalDelivery = async (id) => { if (!window.confirm('هل أنت متأكد من تأكيد التسليم النهائي؟')) return; actionLoading.value = `delivery-${id}`; try { await api.post(`/content-plans/${id}/final-delivery`); showToast('تم تسجيل التسليم النهائي'); await fetchPlans(); } catch (error) { showToast(error.response?.data?.message || 'حدث خطأ أثناء تسجيل التسليم'); } finally { actionLoading.value = ''; } };
 const deletePlan = async (id) => { if (!window.confirm('هل أنت متأكد من حذف هذه الخطة؟')) return; try { await api.delete(`/content-plans/${id}`); showToast('تم حذف الخطة بنجاح'); await fetchPlans(); } catch (error) { showToast(error.response?.data?.message || 'حدث خطأ أثناء الحذف'); } };
-onMounted(() => { fetchPlans(); fetchUsers(); });
+
+// إضافة جلب العملاء عند فتح الصفحة
+onMounted(() => { fetchPlans(); fetchUsers(); fetchClients(); });
 </script>
 
 <style scoped>

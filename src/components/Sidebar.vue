@@ -49,6 +49,17 @@
         <span>الرئيسية</span><em>⌘</em>
       </router-link>
 
+      <router-link v-if="role === 'manager'" class="nav-item" to="/manager/departments">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="16" y="3" width="6" height="6" rx="1"></rect>
+          <rect x="2" y="15" width="6" height="6" rx="1"></rect>
+          <rect x="16" y="15" width="6" height="6" rx="1"></rect>
+          <polyline points="5 15 5 6 16 6"></polyline>
+          <line x1="5" y1="9" x2="16" y2="9"></line>
+        </svg>
+        <span>إدارة الأقسام</span><em>D</em>
+      </router-link>
+
       <router-link v-if="role === 'manager'" class="nav-item" to="/manager/users">
         <svg
           viewBox="0 0 24 24"
@@ -65,6 +76,14 @@
           <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
         </svg>
         <span>إدارة المستخدمين</span><em>U</em>
+      </router-link>
+
+      <router-link v-if="role === 'manager'" class="nav-item" to="/manager/clients">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+        </svg>
+        <span>العملاء والشركات</span><em>C</em>
       </router-link>
 
       <router-link v-if="role === 'manager'" class="nav-item" to="/manager/content-plans">

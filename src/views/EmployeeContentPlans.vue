@@ -6,7 +6,14 @@
     <div class="plans-card"><div class="card-heading"><div><h3>خططي الحالية <span>{{ plans.length }}</span></h3><p>التسليم النهائي والمراجعة والتفاصيل المرتبطة</p></div><div class="legend"><span><i class="green-dot"></i> مكتمل</span><span><i class="orange-dot"></i> متأخر</span></div></div>
       <div class="table-responsive"><table class="plans-table"><thead><tr><th>العميل والخطة</th><th>المسؤول</th><th>التسليم النهائي</th><th>المراجعة</th><th>المختص</th><th>القائم بالخطة</th><th>الرابط والملاحظات</th></tr></thead><tbody>
         <tr v-if="loading"><td colspan="7" class="state-cell"><span class="spinner"></span> جارٍ تحميل الخطط...</td></tr><tr v-else-if="plans.length === 0"><td colspan="7" class="state-cell">لا توجد خطط مسندة إليك حاليًا</td></tr>
-        <tr v-for="plan in plans" v-else :key="plan.id"><td><div class="plan-cell"><div class="plan-avatar">{{ getInitials(plan.client_name) }}</div><div><strong>{{ plan.client_name }}</strong><span>{{ plan.plan_type }}</span></div></div></td><td><span class="people-cell">{{ getRoleNames(plan.users, 'responsible') }}</span></td>
+        <tr v-for="plan in plans" v-else :key="plan.id">
+          <td>
+            <div class="plan-cell">
+              <div class="plan-avatar">{{ getInitials(plan.client?.name || '؟') }}</div>
+              <div><strong>{{ plan.client?.name || 'عميل محذوف' }}</strong><span>{{ plan.plan_type }}</span></div>
+            </div>
+          </td>
+          <td><span class="people-cell">{{ getRoleNames(plan.users, 'responsible') }}</span></td>
           <td><div class="milestone"><span class="date">{{ formatDate(plan.planned_delivery_date) }}</span><div v-if="plan.actual_delivery_date" :class="['status-badge', getDeliveryStatus(plan.planned_delivery_date, plan.actual_delivery_date).class]"><i></i>{{ getDeliveryStatus(plan.planned_delivery_date, plan.actual_delivery_date).text }}<small>{{ formatDate(plan.actual_delivery_date) }}</small></div><button v-else class="confirm-btn" type="button" :disabled="actionLoading === `delivery-${plan.id}`" @click="markFinalDelivery(plan.id)">{{ actionLoading === `delivery-${plan.id}` ? 'جارٍ...' : 'تأكيد التسليم' }}</button></div></td>
           <td><div class="milestone"><span class="date">{{ formatDate(plan.planned_review_date) }}</span><div v-if="plan.actual_review_date" :class="['status-badge', getDeliveryStatus(plan.planned_review_date, plan.actual_review_date).class]"><i></i>{{ getDeliveryStatus(plan.planned_review_date, plan.actual_review_date).text }}<small>{{ formatDate(plan.actual_review_date) }}</small></div><button v-else class="confirm-btn review" type="button" :disabled="actionLoading === `review-${plan.id}`" @click="markReviewComplete(plan.id)">{{ actionLoading === `review-${plan.id}` ? 'جارٍ...' : 'إنهاء المراجعة' }}</button></div></td>
           <td><span class="people-cell">{{ getRoleNames(plan.users, 'specialist') }}</span></td><td><span class="people-cell">{{ getRoleNames(plan.users, 'executor') }}</span></td><td class="details-cell"><a v-if="plan.final_link" :href="plan.final_link" target="_blank" rel="noopener" class="link-btn">فتح البلان ↗</a><span v-else class="muted">لا يوجد لينك</span><p :title="plan.notes">{{ plan.notes || 'لا توجد ملاحظات' }}</p><button class="details-btn" type="button" @click="openDetailsModal(plan)">تحديث التفاصيل</button></td>
@@ -21,9 +28,16 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
 import api from '../axios';
+
 const plans = ref([]); const loading = ref(true); const saving = ref(false); const showModal = ref(false); const editId = ref(null); const actionLoading = ref(''); const toastMessage = ref('');
 const form = reactive({ final_link: '', notes: '' });
-const getInitials = (name = '') => name.trim().split(' ').slice(0, 2).map(word => word[0]).join('').toUpperCase();
+
+// تم تعديل الدالة لتقبل القيم غير الموجودة لتفادي أخطاء السكربت إذا تم حذف العميل
+const getInitials = (name = '') => {
+  if (!name || name === '؟') return '؟';
+  return name.trim().split(' ').slice(0, 2).map(word => word[0]).join('').toUpperCase();
+};
+
 const getRoleNames = (users = [], role) => { const matches = users.filter(user => user.pivot?.task_role === role); return matches.length ? matches.map(user => user.name).join('، ') : '—'; };
 const getDeliveryStatus = (planned, actual) => { if (actual) return new Date(actual) <= new Date(planned) ? { text: 'في الموعد', class: 'status-green' } : { text: 'بتأخير', class: 'status-orange' }; return new Date() > new Date(planned) ? { text: 'متأخر', class: 'status-red' } : { text: 'قيد التنفيذ', class: 'status-gray' }; };
 const pendingCount = computed(() => plans.value.filter(plan => !plan.actual_delivery_date || !plan.actual_review_date).length); const delayedCount = computed(() => plans.value.filter(plan => ['status-red'].includes(getDeliveryStatus(plan.planned_delivery_date, plan.actual_delivery_date).class) || (!plan.actual_review_date && new Date() > new Date(plan.planned_review_date))).length);

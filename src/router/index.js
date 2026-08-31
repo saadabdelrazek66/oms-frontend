@@ -6,6 +6,8 @@ import EmployeeDashboard from '../views/EmployeeDashboard.vue'
 import UsersManagement from '../views/UsersManagement.vue'
 import ContentPlansManager from '../views/ContentPlansManager.vue'
 import EmployeeContentPlans from '../views/EmployeeContentPlans.vue'
+import ClientsManager from '../views/ClientsManager.vue'
+import DepartmentsManager from '../views/DepartmentsManager.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -27,6 +29,12 @@ const router = createRouter({
           meta: { role: 'manager' },
         },
         {
+          path: '/manager/departments',
+          name: 'manager-departments',
+          component: DepartmentsManager,
+          meta: { role: 'manager' },
+        },
+        {
           path: '/manager/users',
           name: 'manager-users',
           component: UsersManagement,
@@ -37,6 +45,12 @@ const router = createRouter({
           name: 'employee-dashboard',
           component: EmployeeDashboard,
           meta: { role: 'employee' },
+        },
+        {
+          path: '/manager/clients',
+          name: 'manager-clients',
+          component: ClientsManager,
+          meta: { role: 'manager' },
         },
         {
           path: '/manager/content-plans',

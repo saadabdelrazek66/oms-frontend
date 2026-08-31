@@ -27,9 +27,10 @@ jobs:
       - name: Deploy to Hostinger via SCP
         uses: appleboy/scp-action@master
         with:
-          server: ${{ secrets.FTP_SERVER }}
+          host: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           port: 65002
-          local-dir: "dist/*"
-          server-dir: "/home/u578673289/domains/octomedia.digital/public_html/management/"
+          source: 'dist/*'
+          target: '/home/u578673289/domains/octomedia.digital/public_html/management/'
+          strip_components: 1

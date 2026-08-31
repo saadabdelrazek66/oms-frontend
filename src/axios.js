@@ -8,7 +8,6 @@ const api = axios.create({
   },
 })
 
-// 1. Request Interceptor: إرسال التوكن مع كل طلب
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token')

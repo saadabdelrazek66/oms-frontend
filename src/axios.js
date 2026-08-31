@@ -1,0 +1,41 @@
+import axios from 'axios'
+
+const api = axios.create({
+  baseURL: 'http://127.0.0.1:8000/api',
+  headers: {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  },
+})
+
+// 1. Request Interceptor: إرسال التوكن مع كل طلب
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  },
+  (error) => {
+    return Promise.reject(error)
+  },
+)
+
+// 2. Response Interceptor: اصطياد خطأ 401 والطرد التلقائي
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      // مسح التوكن التالف أو المنتهي
+      localStorage.removeItem('token')
+      localStorage.removeItem('role')
+
+      // إعادة التوجيه الإجباري لصفحة تسجيل الدخول
+      window.location.href = '/'
+    }
+    return Promise.reject(error)
+  },
+)
+
+export default api

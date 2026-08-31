@@ -58,7 +58,7 @@
             <div class="field-group">
               <div class="label-row">
                 <label for="password">كلمة المرور</label>
-                <a href="#" class="forgot-link" @click.prevent>نسيت كلمة المرور؟</a>
+                <!-- <a href="#" class="forgot-link" @click.prevent>نسيت كلمة المرور؟</a> -->
               </div>
               <div class="input-wrap" :class="{ focused: focusedField === 'password' }">
                 <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3" /></svg>
@@ -70,7 +70,7 @@
               </div>
             </div>
 
-            <label class="remember-row"><input type="checkbox" v-model="rememberMe" /><span class="custom-check"></span><span>تذكرني على هذا الجهاز</span></label>
+            <!-- <label class="remember-row"><input type="checkbox" v-model="rememberMe" /><span class="custom-check"></span><span>تذكرني على هذا الجهاز</span></label> -->
 
             <button class="submit-btn" type="submit" :disabled="isLoading">
               <span v-if="!isLoading">دخول إلى المساحة <span class="arrow">←</span></span>

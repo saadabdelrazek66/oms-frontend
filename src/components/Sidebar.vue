@@ -86,7 +86,7 @@
         <span>العملاء والشركات</span><em>C</em>
       </router-link>
 
-      <router-link v-if="role === 'manager'" class="nav-item" to="/manager/content-plans">
+      <router-link v-if="role === 'manager'" class="nav-item" to="/content-plans">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
           <polyline points="14 2 14 8 20 8"></polyline>
@@ -99,7 +99,7 @@
 
       <!-- Test Update -->
 
-      <router-link v-if="role === 'employee'" class="nav-item" to="/employee/content-plans">
+      <router-link v-if="role === 'employee'" class="nav-item" to="/content-plans">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
           <polyline points="14 2 14 8 20 8"></polyline>
@@ -108,6 +108,14 @@
           <polyline points="10 9 9 9 8 9"></polyline>
         </svg>
         <span>الخطط</span><em>P</em>
+      </router-link>
+
+      <router-link v-if="role === 'manager'" class="nav-item" to="/app/client-vault">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+        </svg>
+        <span> خزنة العملاء</span><em>C</em>
       </router-link>
     </nav>
 

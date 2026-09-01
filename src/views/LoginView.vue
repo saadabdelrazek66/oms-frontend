@@ -111,9 +111,13 @@ const handleLogin = async () => {
   try {
     const response = await api.post('/login', form.value);
     const data = response.data.data;
-    // الحفاظ على نفس آلية المصادقة المستخدمة في إعدادات Axios الحالية.
+    
+    // الحفاظ على نفس آلية المصادقة الحالية
     localStorage.setItem('token', data.token);
     localStorage.setItem('role', data.user.role);
+    
+    localStorage.setItem('user_id', data.user.id);
+    localStorage.setItem('user', JSON.stringify(data.user));
 
     if (data.user.role === 'manager') {
       router.push('/manager/dashboard');

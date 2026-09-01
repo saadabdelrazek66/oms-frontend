@@ -1,8 +1,8 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: 'http://127.0.0.1:8000/api',
-  // baseURL: 'https://api-management.octomedia.digital/api',
+  // baseURL: 'http://127.0.0.1:8000/api',
+  baseURL: 'https://api-management.octomedia.digital/api',
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',
@@ -27,11 +27,9 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      // مسح التوكن التالف أو المنتهي
       localStorage.removeItem('token')
       localStorage.removeItem('role')
 
-      // إعادة التوجيه الإجباري لصفحة تسجيل الدخول
       window.location.href = '/'
     }
     return Promise.reject(error)

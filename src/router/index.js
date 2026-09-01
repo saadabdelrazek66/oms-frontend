@@ -8,6 +8,8 @@ import ContentPlansManager from '../views/ContentPlansManager.vue'
 import EmployeeContentPlans from '../views/EmployeeContentPlans.vue'
 import ClientsManager from '../views/ClientsManager.vue'
 import DepartmentsManager from '../views/DepartmentsManager.vue'
+import ContentPlans from '../views/ContentPlans.vue'
+import ClientVault from '../views/ClientVault.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -53,16 +55,15 @@ const router = createRouter({
           meta: { role: 'manager' },
         },
         {
-          path: '/manager/content-plans',
-          name: 'manager-content-plans',
-          component: ContentPlansManager,
-          meta: { role: 'manager' },
+          path: '/content-plans',
+          name: 'content-plans',
+          component: ContentPlans,
         },
         {
-          path: '/employee/content-plans',
-          name: 'employee-content-plans',
-          component: EmployeeContentPlans,
-          meta: { role: 'employee' },
+          path: '/app/client-vault',
+          name: 'ClientVault',
+          component: ClientVault,
+          meta: { requiresAuth: true, role: 'manager' },
         },
       ],
     },

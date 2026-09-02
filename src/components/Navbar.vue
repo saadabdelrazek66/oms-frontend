@@ -23,7 +23,7 @@
       <div class="user-info">
         <div class="user-avatar">{{ role === 'manager' ? 'م' : 'و' }}</div>
         <div class="user-copy">
-          <strong>{{ role === 'manager' ? 'أيها المدير' : 'أيها الموظف' }}</strong>
+          <strong>{{ role === 'manager' ? ' المدير' : ' الموظف' }}</strong>
           <span><i></i> متصل الآن</span>
         </div>
       </div>

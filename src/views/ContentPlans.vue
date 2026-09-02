@@ -36,10 +36,10 @@
             <tr>
               <th>العميل والخطة</th>
               <th>المسؤول</th>
+              <th>المراجع الداخلي</th>
+              <th>القائم بالخطة (المنفذ)</th>
               <th>التسليم النهائي</th>
               <th>المراجعة وحالة الخطة</th>
-              <th>المراجع الداخلي</th>
-              <th>القائم بالخطة</th>
               <th>الروابط والمتابعة</th>
               <th v-if="isManager">إدارة</th>
             </tr>
@@ -55,8 +55,9 @@
                 </div>
               </td>
               <td><span class="people-cell">{{ getRoleNames(plan.users, 'responsible') }}</span></td>
+              <td><span v-if="plan.requires_review" class="people-cell">{{ getRoleNames(plan.users, 'reviewer') }}</span><span v-else class="muted">—</span></td>
+              <td><span class="people-cell">{{ getRoleNames(plan.users, 'executor') }}</span></td>
               
-              <!-- التسليم النهائي -->
               <td>
                 <div class="milestone">
                   <span class="date">{{ formatDate(plan.planned_delivery_date) }}</span>
@@ -70,7 +71,6 @@
                 </div>
               </td>
               
-              <!-- المراجعة وحالة الخطة -->
               <td>
                 <div class="milestone" style="min-width: 175px;">
                   <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -104,13 +104,21 @@
                 </div>
               </td>
               
-              <td><span v-if="plan.requires_review" class="people-cell">{{ getRoleNames(plan.users, 'reviewer') }}</span><span v-else class="muted">—</span></td>
-              <td><span class="people-cell">{{ getRoleNames(plan.users, 'executor') }}</span></td>
-              
               <td class="details-cell">
                 <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-start;">
-                  <button class="followup-btn" type="button" @click="openFollowUpsModal(plan)">متابعة العميل 💬 ({{ getFollowUps(plan).length }})</button>
+                  <button class="followup-btn" type="button" 
+                          :disabled="plan.requires_review && !['reviewed', 'completed'].includes(plan.status)"
+                          :title="plan.requires_review && !['reviewed', 'completed'].includes(plan.status) ? 'غير متاح قبل انتهاء المراجعة الداخلية' : ''"
+                          @click="openFollowUpsModal(plan)">
+                    متابعة العميل 💬 ({{ getFollowUps(plan).length }})
+                  </button>
                   <a v-if="plan.final_link" :href="plan.final_link" target="_blank" rel="noopener" class="link-btn">فتح البلان ↗</a>
+                  
+                  <!-- زر الروابط المرجعية الجديد -->
+                  <button v-if="plan.reference_links && plan.reference_links.length > 0" class="ref-links-btn" type="button" @click="openReferencesModal(plan)">
+                    المراجع المساعدة 🔗 ({{ plan.reference_links.length }})
+                  </button>
+
                   <button v-if="getReviewHistories(plan).length > 0" @click="openHistoryModal(plan)" class="history-btn">سجل الحركات 📋</button>
                   <button class="details-btn" type="button" @click="openDetailsModal(plan)">تحديث الرابط/الملاحظات</button>
                 </div>
@@ -128,7 +136,60 @@
       </div>
     </div>
 
-    <!-- 1. نافذة الإجراء السريع للواتساب (تمنع حظر الروابط - UX ممتازة) -->
+    <!-- النوافذ -->
+    
+    <!-- نافذة الروابط المرجعية الجديدة -->
+    <div v-if="showReferencesModal" class="modal-overlay" @click.self="closeReferencesModal">
+      <div class="modal-content references-modal" role="dialog" style="width: min(450px, 100%) !important;">
+        <button class="modal-close" type="button" @click="closeReferencesModal">×</button>
+        <div class="modal-icon" style="background: linear-gradient(145deg, #76e8de, #4facfe); color: #12183f;">🔗</div>
+        <span class="eyebrow" style="color: #4facfe;">مراجع العمل</span>
+        <h3>الروابط المساعدة للإنجاز</h3>
+        <p>الروابط المرفقة كمرجع ومصدر لإعداد هذه الخطة.</p>
+        
+        <div class="ref-links-list mt-3">
+          <a v-for="(link, index) in selectedReferencesPlan?.reference_links" :key="index" :href="link" target="_blank" rel="noopener" class="ref-link-item">
+            <span class="link-number">{{ index + 1 }}</span>
+            <span class="link-url">{{ link }}</span>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
+          </a>
+        </div>
+        
+        <div class="modal-actions" style="justify-content:center; margin-top:20px;">
+          <button type="button" class="secondary-btn" @click="closeReferencesModal">إغلاق</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- نافذة إشعار ما بعد الإنشاء -->
+    <div v-if="showCreationSuccessModal" class="modal-overlay" @click.self="closeCreationModal">
+      <div class="modal-content delivery-modal" role="dialog" style="width: min(500px, 100%) !important; text-align: center;">
+        <button class="modal-close" type="button" @click="closeCreationModal">×</button>
+        <div class="modal-icon" style="background: linear-gradient(145deg, #7de8dc, #b28aff); color: #12183f; margin: 0 auto 15px;">🚀</div>
+        <h3 style="color:#78e4d8;">تم إنشاء الخطة بنجاح!</h3>
+        <p style="margin-bottom: 20px;">الآن يمكنك إبلاغ المسؤولين ببدء العمل على هذه الخطة.</p>
+        
+        <div class="wa-actions-container" v-if="createdPlan">
+          <div v-if="getResponsibles(createdPlan).length > 0" class="executors-list">
+            <h4 style="font-size:11px; color:#aeb6d7; text-align:right; margin-bottom:10px;">إبلاغ المسؤولين للإنجاز:</h4>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <a v-for="resp in getResponsibles(createdPlan)" :key="resp.id" 
+                 :href="generateWaLink('plan_assigned', createdPlan, resp)" target="_blank" 
+                 class="wa-btn-large" style="text-decoration:none; display:flex; align-items:center; justify-content:center;">
+                <span>إرسال تنبيه للمسؤول: {{ resp.name }}</span> 
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="margin-right: 8px;"><path d="M17.472...Z"/></svg>
+              </a>
+            </div>
+          </div>
+          <div v-else class="muted mt-3" style="font-size:10px;">لا يوجد مسؤولين مسجلين في هذه الخطة.</div>
+        </div>
+
+        <div class="modal-actions" style="justify-content:center; margin-top:25px;">
+          <button type="button" class="secondary-btn" @click="closeCreationModal">تخطي</button>
+        </div>
+      </div>
+    </div>
+
     <div v-if="showWaPromptModal" class="modal-overlay" @click.self="closeWaPrompt">
       <div class="modal-content delivery-modal" style="width: min(400px, 100%) !important; text-align: center;">
         <button class="modal-close" type="button" @click="closeWaPrompt">×</button>
@@ -136,7 +197,6 @@
         <h3 style="color:#25D366;">{{ waPromptTitle }}</h3>
         <p style="margin-bottom: 20px;">{{ waPromptDesc }}</p>
         
-        <!-- استخدام <a> حقيقي لتجاوز Pop-up Blockers -->
         <a :href="waPromptLink" target="_blank" class="wa-btn-large" style="text-decoration: none;" @click="closeWaPrompt">
           <span>إرسال التنبيه عبر واتساب</span> 
           <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
@@ -147,7 +207,6 @@
       </div>
     </div>
 
-    <!-- 2. نافذة ما بعد التسليم النهائي -->
     <div v-if="showDeliverySuccessModal" class="modal-overlay" @click.self="closeDeliveryModal">
       <div class="modal-content delivery-modal" role="dialog" style="width: min(500px, 100%) !important; text-align: center;">
         <button class="modal-close" type="button" @click="closeDeliveryModal">×</button>
@@ -179,8 +238,122 @@
       </div>
     </div>
 
-    <!-- باقي النوافذ كما هي تماماً -->
-    <div v-if="showManagerModal && isManager" class="modal-overlay" @click.self="closeManagerModal"><div class="modal-content" role="dialog"><button class="modal-close" type="button" @click="closeManagerModal">×</button><div class="modal-icon">◈</div><span class="eyebrow">مساحة التخطيط</span><h3>{{ isEditing ? 'تعديل الخطة' : 'إنشاء خطة جديدة' }}</h3><form class="plan-form" @submit.prevent="saveManagerPlan"><div class="form-grid"><div class="form-group"><label>العميل المستهدف</label><select v-model="form.client_id" required><option value="" disabled>اختر العميل...</option><option v-for="client in allClients" :key="client.id" :value="client.id">{{ client.name }}</option></select></div><div class="form-group"><label>نوع الخطة</label><select v-model="form.plan_type" required><option value="" disabled>اختر...</option><option value="استراتيجية (Strategic)">استراتيجية</option><option value="محتوى (Content)">محتوى</option><option value="تسويق عبر السوشيال ميديا">سوشيال ميديا</option><option value="إعلانات ممولة (Media Buying)">إعلانات ممولة</option><option value="تحسين محركات البحث (SEO)">SEO</option><option value="خطة شاملة">خطة شاملة</option></select></div></div><div class="form-grid"><div class="form-group"><label>التسليم النهائي</label><input v-model="form.planned_delivery_date" type="datetime-local" required /></div><div class="form-group toggle-group"><label>مراجعة داخلية؟</label><label class="toggle-switch"><input type="checkbox" v-model="form.requires_review"><span class="slider"></span></label><span class="toggle-label">{{ form.requires_review ? 'نعم' : 'لا' }}</span></div></div><div class="form-grid" v-if="form.requires_review"><div class="form-group"><label>موعد إنهاء المراجعة</label><input v-model="form.planned_review_date" type="datetime-local" required /></div></div><div class="form-grid"><div class="form-group"><label>رابط البلان</label><input v-model="form.final_link" type="url" placeholder="https://..." /></div><div class="form-group"><label>ملاحظات</label><input v-model="form.notes" type="text" placeholder="..." /></div></div><div class="separator"></div><div class="section-title"><span>⌁</span> توزيع المهام</div><div class="form-grid-3 users-grid"><div class="form-group"><label>المسؤول</label><div class="checkbox-list"><label v-for="user in allUsers" :key="'resp_'+user.id" class="custom-cb"><input type="checkbox" :value="user.id" v-model="form.responsible_ids" /><span class="cb-text">{{ user.name }}</span></label></div></div><div class="form-group" v-if="form.requires_review"><label>المراجع</label><div class="checkbox-list"><label v-for="user in allUsers" :key="'rev_'+user.id" class="custom-cb"><input type="checkbox" :value="user.id" v-model="form.reviewer_ids" /><span class="cb-text">{{ user.name }}</span></label></div></div><div class="form-group" :style="form.requires_review ? '' : 'grid-column: span 2;'"><label>المنفذ</label><div class="checkbox-list" :style="form.requires_review ? '' : 'display:grid; grid-template-columns:1fr 1fr;'"><label v-for="user in allUsers" :key="'exec_'+user.id" class="custom-cb"><input type="checkbox" :value="user.id" v-model="form.executor_ids" /><span class="cb-text">{{ user.name }}</span></label></div></div></div><div class="modal-actions"><button type="button" class="secondary-btn" @click="closeManagerModal">إلغاء</button><button type="submit" class="primary-btn" :disabled="saving">{{ saving ? 'جارٍ الحفظ...' : 'حفظ الخطة' }}</button></div></form></div></div>
+    <!-- نافذة إضافة/تعديل خطة -->
+    <div v-if="showManagerModal && isManager" class="modal-overlay" @click.self="closeManagerModal">
+      <div class="modal-content" role="dialog">
+        <button class="modal-close" type="button" @click="closeManagerModal">×</button>
+        <div class="modal-icon">◈</div>
+        <span class="eyebrow">مساحة التخطيط</span>
+        <h3>{{ isEditing ? 'تعديل الخطة' : 'إنشاء خطة جديدة' }}</h3>
+        
+        <form class="plan-form" @submit.prevent="saveManagerPlan">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>العميل المستهدف</label>
+              <select v-model="form.client_id" required>
+                <option value="" disabled>اختر العميل...</option>
+                <option v-for="client in allClients" :key="client.id" :value="client.id">{{ client.name }}</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>نوع الخطة</label>
+              <select v-model="form.plan_type" required>
+                <option value="" disabled>اختر...</option>
+                <option value="استراتيجية (Strategic)">استراتيجية</option>
+                <option value="محتوى (Content)">محتوى</option>
+                <option value="تسويق عبر السوشيال ميديا">سوشيال ميديا</option>
+                <option value="إعلانات ممولة (Media Buying)">إعلانات ممولة</option>
+                <option value="تحسين محركات البحث (SEO)">SEO</option>
+                <option value="خطة شاملة">خطة شاملة</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="form-grid">
+            <div class="form-group">
+              <label>التسليم النهائي</label>
+              <input v-model="form.planned_delivery_date" type="datetime-local" required />
+            </div>
+            <div class="form-group toggle-group">
+              <label>مراجعة داخلية؟</label>
+              <label class="toggle-switch"><input type="checkbox" v-model="form.requires_review"><span class="slider"></span></label>
+              <span class="toggle-label">{{ form.requires_review ? 'نعم' : 'لا' }}</span>
+            </div>
+          </div>
+          
+          <div class="form-grid" v-if="form.requires_review">
+            <div class="form-group">
+              <label>موعد إنهاء المراجعة</label>
+              <input v-model="form.planned_review_date" type="datetime-local" required />
+            </div>
+          </div>
+          
+          <div class="form-grid">
+            <div class="form-group">
+              <label>رابط البلان (النهائي)</label>
+              <input v-model="form.final_link" type="url" placeholder="https://..." />
+            </div>
+            <div class="form-group">
+              <label>ملاحظات عامة</label>
+              <input v-model="form.notes" type="text" placeholder="..." />
+            </div>
+          </div>
+
+          <div class="separator"></div>
+          <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
+            <div><span>🔗</span> الروابط المرجعية (Reference Links)</div>
+            <button type="button" class="add-link-btn" @click="addReferenceLink">＋ إضافة رابط</button>
+          </div>
+          <div class="reference-links-container">
+            <div v-for="(link, index) in form.reference_links" :key="index" class="link-input-group">
+              <input v-model="form.reference_links[index]" type="url" placeholder="أدخل رابط المرجع (مثال: Google Drive, Notion, etc...)" required />
+              <button type="button" class="remove-link-btn" @click="removeReferenceLink(index)" title="حذف الرابط">⌫</button>
+            </div>
+            <p v-if="form.reference_links.length === 0" class="muted text-center" style="font-size:10px; margin-top:10px;">لا توجد روابط مرجعية (اختياري)</p>
+          </div>
+
+          <div class="separator"></div>
+          <div class="section-title"><span>⌁</span> توزيع المهام</div>
+          
+          <div class="form-grid-3 users-grid">
+            <div class="form-group">
+              <label>المسؤول</label>
+              <div class="checkbox-list">
+                <label v-for="user in allUsers" :key="'resp_'+user.id" class="custom-cb">
+                  <input type="checkbox" :value="user.id" v-model="form.responsible_ids" />
+                  <span class="cb-text">{{ user.name }}</span>
+                </label>
+              </div>
+            </div>
+            <div class="form-group" v-if="form.requires_review">
+              <label>المراجع</label>
+              <div class="checkbox-list">
+                <label v-for="user in allUsers" :key="'rev_'+user.id" class="custom-cb">
+                  <input type="checkbox" :value="user.id" v-model="form.reviewer_ids" />
+                  <span class="cb-text">{{ user.name }}</span>
+                </label>
+              </div>
+            </div>
+            <div class="form-group" :style="form.requires_review ? '' : 'grid-column: span 2;'">
+              <label>المنفذ</label>
+              <div class="checkbox-list" :style="form.requires_review ? '' : 'display:grid; grid-template-columns:1fr 1fr;'">
+                <label v-for="user in allUsers" :key="'exec_'+user.id" class="custom-cb">
+                  <input type="checkbox" :value="user.id" v-model="form.executor_ids" />
+                  <span class="cb-text">{{ user.name }}</span>
+                </label>
+              </div>
+            </div>
+          </div>
+          
+          <div class="modal-actions">
+            <button type="button" class="secondary-btn" @click="closeManagerModal">إلغاء</button>
+            <button type="submit" class="primary-btn" :disabled="saving">{{ saving ? 'جارٍ الحفظ...' : 'حفظ الخطة' }}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- باقي النوافذ المعتادة -->
     <div v-if="showDetailsModal" class="modal-overlay" @click.self="closeDetailsModal"><div class="modal-content" role="dialog" style="width: min(500px, 100%) !important;"><button class="modal-close" type="button" @click="closeDetailsModal">×</button><div class="modal-icon">✎</div><span class="eyebrow">تحديث سريع</span><h3>تحديث تفاصيل الخطة</h3><form class="plan-form" @submit.prevent="saveDetails"><div class="form-group"><label>لينك البلان النهائي</label><input v-model="detailsForm.final_link" type="url" placeholder="https://..." /></div><div class="form-group"><label>ملاحظات عامة</label><textarea v-model="detailsForm.notes" rows="4"></textarea></div><div class="modal-actions"><button type="button" class="secondary-btn" @click="closeDetailsModal">إلغاء</button><button type="submit" class="primary-btn" :disabled="saving">حفظ التفاصيل</button></div></form></div></div>
     <div v-if="showRejectModal" class="modal-overlay" @click.self="closeRejectModal"><div class="modal-content reject-modal" role="dialog" style="width: min(500px, 100%) !important;"><button class="modal-close" type="button" @click="closeRejectModal">×</button><div class="modal-icon" style="background: linear-gradient(145deg, #ff8fa4, #ff678b);">❌</div><span class="eyebrow" style="color: #ff9bad;">إجراء مراجعة</span><h3 style="color: #ff9bad;">رفض الخطة وطلب تعديل</h3><form class="plan-form" @submit.prevent="submitRejectPlan"><div class="form-group"><label>ملاحظات الرفض (إجبارية)</label><textarea v-model="rejectNotes" rows="5" required></textarea></div><div class="modal-actions"><button type="button" class="secondary-btn" @click="closeRejectModal">إلغاء</button><button type="submit" class="primary-btn" style="background: linear-gradient(110deg, #ff8fa4, #ff678b);" :disabled="actionLoading.startsWith('reject-')">تأكيد الرفض</button></div></form></div></div>
     <div v-if="showRejectionsModal" class="modal-overlay" @click.self="closeRejectionsModal"><div class="modal-content history-modal" style="width: min(500px, 100%) !important;"><button class="modal-close" type="button" @click="closeRejectionsModal">×</button><div class="modal-icon" style="background: linear-gradient(145deg, #ff8fa4, #ff678b);">❌</div><h3>سجل أسباب الرفض</h3><div class="history-timeline"><div v-for="(rejection, index) in selectedRejections" :key="index" class="timeline-item"><div class="tl-dot tl-red"></div><div class="tl-content"><div class="tl-header"><strong>المراجع: {{ rejection.reviewer?.name || 'مجهول' }}</strong><span class="tl-date" dir="ltr">{{ formatDate(rejection.created_at) }}</span></div><div class="tl-action text-red">الرفض رقم {{ selectedRejections.length - index }}</div><div class="tl-notes">{{ rejection.notes }}</div></div></div></div></div></div>
@@ -205,6 +378,7 @@ const isManager = computed(() => userRole.value === 'manager');
 const isUserResponsible = (plan) => { if (isManager.value) return true; return plan.users?.some(u => u.id === currentUserId.value && u.pivot.task_role === 'responsible'); };
 const isUserReviewer = (plan) => { if (isManager.value) return true; return plan.users?.some(u => u.id === currentUserId.value && u.pivot.task_role === 'reviewer'); };
 const getExecutors = (plan) => { if (!plan || !plan.users) return []; return plan.users.filter(u => u.pivot?.task_role === 'executor'); };
+const getResponsibles = (plan) => { if (!plan || !plan.users) return []; return plan.users.filter(u => u.pivot?.task_role === 'responsible'); }; 
 
 const plans = ref([]); 
 const allUsers = ref([]); 
@@ -222,7 +396,12 @@ const showHistoryModal = ref(false);
 const showRejectionsModal = ref(false);
 const showFollowUpsModal = ref(false);
 const showDeliverySuccessModal = ref(false);
+const showCreationSuccessModal = ref(false); 
+const showReferencesModal = ref(false); // المتغير الخاص بنافذة الروابط المرجعية
+
 const deliveredPlan = ref(null);
+const createdPlan = ref(null); 
+const selectedReferencesPlan = ref(null); // تخزين الخطة المراد عرض روابطها المرجعية
 
 const showWaPromptModal = ref(false);
 const waPromptTitle = ref('');
@@ -237,7 +416,13 @@ const selectedFollowUpPlan = ref(null);
 const editingFollowUpId = ref(null);
 const followUpForm = reactive({ content: '' });
 
-const form = reactive({ client_id: '', plan_type: '', requires_review: true, planned_delivery_date: '', planned_review_date: '', final_link: '', notes: '', responsible_ids: [], reviewer_ids: [], executor_ids: [] });
+const form = reactive({ 
+  client_id: '', plan_type: '', requires_review: true, 
+  planned_delivery_date: '', planned_review_date: '', 
+  final_link: '', notes: '', 
+  reference_links: [], 
+  responsible_ids: [], reviewer_ids: [], executor_ids: [] 
+});
 const detailsForm = reactive({ final_link: '', notes: '' });
 
 const getReviewHistories = (plan) => { if (!plan) return []; return plan.review_histories || plan.reviewHistories || []; };
@@ -265,11 +450,9 @@ const delayedCount = computed(() => plans.value.filter(plan => plan.status === '
 const fetchPlans = async () => { loading.value = true; try { const response = await api.get('/content-plans'); plans.value = response.data.data || response.data || []; } catch (error) { showToast('تعذر تحميل الخطط'); } finally { loading.value = false; } };
 const fetchResources = async () => { if (isManager.value) { try { const [resUsers, resClients] = await Promise.all([api.get('/users?per_page=100'), api.get('/clients?per_page=100')]); allUsers.value = resUsers.data.data || []; allClients.value = resClients.data.data || []; } catch (error) {} } };
 
-// --- منظومة الواتساب الذكية (محمية ضد Pop-up Blockers ومصححة للأرقام) ---
 const formatPhone = (phone) => {
   if (!phone) return null;
   let cleaned = phone.replace(/[^0-9]/g, '');
-  // إذا كان الرقم مصرياً ويبدأ بصفر (مثل 010)، نضيف 20
   if (cleaned.startsWith('0') && cleaned.length === 11) {
     cleaned = '20' + cleaned.substring(1);
   } else if (cleaned.startsWith('00')) {
@@ -286,6 +469,10 @@ const generateWaLink = (type, plan, specificUser = null) => {
   let targetUser = specificUser;
 
   switch (type) {
+    case 'plan_assigned':
+      targetUser = targetUser || plan.users?.find(u => u.pivot?.task_role === 'responsible');
+      message = `${systemPrefix}مرحباً ${targetUser?.name || ''}،\nتم إسناد خطة جديدة لك لعميل (*${plan.client?.name || ''}*).\nيرجى الدخول للنظام والبدء في الإنجاز.`;
+      break;
     case 'review_needed':
       targetUser = targetUser || plan.users?.find(u => u.pivot?.task_role === 'reviewer');
       message = `${systemPrefix}مرحباً ${targetUser?.name || ''}،\nيوجد خطة لعميل (*${plan.client?.name || ''}*) بانتظار مراجعتك الداخلية الآن.\nيرجى الدخول للنظام.`;
@@ -342,7 +529,6 @@ const smartNotify = (plan) => {
   else { showToast('الخطة مكتملة.'); }
 };
 
-// --- Actions (With UX friendly Auto-prompts) ---
 const submitForReview = async (plan) => {
   if (!window.confirm('إرسال الخطة للمراجعة الداخلية؟')) return;
   actionLoading.value = `submit-review-${plan.id}`;
@@ -390,11 +576,80 @@ const submitFinalDelivery = async (plan) => {
 };
 const closeDeliveryModal = () => { showDeliverySuccessModal.value = false; deliveredPlan.value = null; };
 
-// --- Modals & CRUD Logic (Same as before) ---
-const resetForm = () => Object.assign(form, { client_id: '', plan_type: '', requires_review: true, planned_delivery_date: '', planned_review_date: '', final_link: '', notes: '', responsible_ids: [], reviewer_ids: [], executor_ids: [] });
-const openManagerModal = (plan = null) => { isEditing.value = Boolean(plan); editId.value = plan?.id || null; if (plan) { Object.assign(form, { client_id: plan.client_id, plan_type: plan.plan_type, requires_review: Boolean(plan.requires_review), planned_delivery_date: toDatetimeLocal(plan.planned_delivery_date), planned_review_date: toDatetimeLocal(plan.planned_review_date), final_link: plan.final_link || '', notes: plan.notes || '', responsible_ids: (plan.users || []).filter(user => user.pivot?.task_role === 'responsible').map(user => user.id), reviewer_ids: (plan.users || []).filter(user => user.pivot?.task_role === 'reviewer').map(user => user.id), executor_ids: (plan.users || []).filter(user => user.pivot?.task_role === 'executor').map(user => user.id) }); } else { resetForm(); } showManagerModal.value = true; };
+// دوال التحكم في الروابط المرجعية
+const addReferenceLink = () => {
+  if (form.reference_links.length >= 15) { showToast('الحد الأقصى هو 15 رابط.'); return; }
+  form.reference_links.push('');
+};
+const removeReferenceLink = (index) => {
+  form.reference_links.splice(index, 1);
+};
+const openReferencesModal = (plan) => {
+  selectedReferencesPlan.value = plan;
+  showReferencesModal.value = true;
+};
+const closeReferencesModal = () => {
+  showReferencesModal.value = false;
+  selectedReferencesPlan.value = null;
+};
+
+const resetForm = () => Object.assign(form, { 
+  client_id: '', plan_type: '', requires_review: true, 
+  planned_delivery_date: '', planned_review_date: '', 
+  final_link: '', notes: '', reference_links: [],
+  responsible_ids: [], reviewer_ids: [], executor_ids: [] 
+});
+
+const openManagerModal = (plan = null) => { 
+  isEditing.value = Boolean(plan); 
+  editId.value = plan?.id || null; 
+  if (plan) { 
+    Object.assign(form, { 
+      client_id: plan.client_id, 
+      plan_type: plan.plan_type, 
+      requires_review: Boolean(plan.requires_review), 
+      planned_delivery_date: toDatetimeLocal(plan.planned_delivery_date), 
+      planned_review_date: toDatetimeLocal(plan.planned_review_date), 
+      final_link: plan.final_link || '', 
+      notes: plan.notes || '', 
+      reference_links: Array.isArray(plan.reference_links) ? [...plan.reference_links] : [],
+      responsible_ids: (plan.users || []).filter(user => user.pivot?.task_role === 'responsible').map(user => user.id), 
+      reviewer_ids: (plan.users || []).filter(user => user.pivot?.task_role === 'reviewer').map(user => user.id), 
+      executor_ids: (plan.users || []).filter(user => user.pivot?.task_role === 'executor').map(user => user.id) 
+    }); 
+  } else { 
+    resetForm(); 
+  } 
+  showManagerModal.value = true; 
+};
 const closeManagerModal = () => { showManagerModal.value = false; };
-const saveManagerPlan = async () => { saving.value = true; if (!form.requires_review) { form.planned_review_date = ''; form.reviewer_ids = []; } try { if (isEditing.value) await api.put(`/content-plans/${editId.value}`, form); else await api.post('/content-plans', form); closeManagerModal(); showToast(isEditing.value ? 'تم التحديث بنجاح' : 'تم الإنشاء بنجاح'); await fetchPlans(); } catch (error) {} finally { saving.value = false; } };
+const closeCreationModal = () => { showCreationSuccessModal.value = false; createdPlan.value = null; };
+
+const saveManagerPlan = async () => { 
+  saving.value = true; 
+  if (!form.requires_review) { form.planned_review_date = ''; form.reviewer_ids = []; } 
+  form.reference_links = form.reference_links.filter(link => link.trim() !== '');
+  
+  try { 
+    if (isEditing.value) {
+      await api.put(`/content-plans/${editId.value}`, form);
+      closeManagerModal(); 
+      showToast('تم التحديث بنجاح'); 
+      await fetchPlans(); 
+    } else {
+      const response = await api.post('/content-plans', form);
+      closeManagerModal(); 
+      showToast('تم الإنشاء بنجاح'); 
+      await fetchPlans(); 
+      const newPlanId = response.data?.data?.id;
+      if(newPlanId) {
+        createdPlan.value = plans.value.find(p => p.id === newPlanId);
+        showCreationSuccessModal.value = true;
+      }
+    }
+  } catch (error) {} finally { saving.value = false; } 
+};
+
 const deletePlan = async (id) => { if (!window.confirm('تأكيد الحذف؟')) return; try { await api.delete(`/content-plans/${id}`); showToast('تم الحذف'); await fetchPlans(); } catch (error) {} };
 
 const openDetailsModal = (plan) => { editId.value = plan.id; detailsForm.final_link = plan.final_link || ''; detailsForm.notes = plan.notes || ''; showDetailsModal.value = true; };
@@ -445,26 +700,42 @@ onMounted(() => { fetchPlans(); fetchResources(); });
 .details-cell { min-width:165px; }
 .notes-preview { max-width:145px; margin:5px 0; color:#66729f; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:8px; }
 .link-btn, .history-btn, .details-btn, .followup-btn { display:inline-block; padding:4px 8px; border-radius:6px; text-decoration:none; font-size:9px; cursor:pointer; text-align:center; border:none; font-family:inherit; }
-.link-btn { color:#78e5da; background:rgba(90,220,207,.08); } .link-btn:hover { background:rgba(90,220,207,.15); }
+.link-btn { color:#78e5da; background:rgba(90,220,207,.08); margin-bottom: 6px; } .link-btn:hover { background:rgba(90,220,207,.15); }
 .history-btn { color:#c491ff; background:rgba(180,112,255,.08); } .history-btn:hover { background:rgba(180,112,255,.15); }
-.details-btn { border:1px solid rgba(180,112,255,.2); color:#c491ff; background:rgba(180,112,255,.08); } .details-btn:hover { filter:brightness(1.25); }
-.followup-btn { color:#8fc9ff; border: 1px solid rgba(101,181,255,.2); background:rgba(101,181,255,.08); font-weight:600; padding:6px 8px; } .followup-btn:hover { background:rgba(101,181,255,.15); }
+.details-btn { border:1px solid rgba(180,112,255,.2); color:#c491ff; background:rgba(180,112,255,.08); margin-top: 6px; } .details-btn:hover { filter:brightness(1.25); }
+
+.followup-btn { color:#8fc9ff; border: 1px solid rgba(101,181,255,.2); background:rgba(101,181,255,.08); font-weight:600; padding:6px 8px; transition: 0.2s; margin-bottom: 6px; } 
+.followup-btn:hover:not(:disabled) { background:rgba(101,181,255,.15); }
+.followup-btn:disabled { opacity: 0.4; cursor: not-allowed; filter: grayscale(1); }
+
+/* ستايل زر الروابط المرجعية وقائمتها */
+.ref-links-btn { color:#4facfe; background:rgba(79,172,254,.08); border:1px solid rgba(79,172,254,.2); padding:4px 8px; border-radius:6px; font-size:9px; font-weight:bold; cursor:pointer; text-align:center; transition:.2s; margin-bottom: 6px; font-family: inherit; }
+.ref-links-btn:hover { background:rgba(79,172,254,.15); }
+.ref-links-list { display:flex; flex-direction:column; gap:10px; max-height: 300px; overflow-y: auto; padding-right: 5px; }
+.ref-link-item { display:flex; align-items:center; gap:10px; padding:12px; background:rgba(6,11,37,.4); border:1px solid rgba(79,172,254,.2); border-radius:10px; text-decoration:none; color:#d9ddf5; transition:.2s; }
+.ref-link-item:hover { background:rgba(79,172,254,.1); border-color:#4facfe; transform:translateY(-2px); }
+.link-number { width:24px; height:24px; display:grid; place-items:center; background:#4facfe; color:#12183f; border-radius:6px; font-size:11px; font-weight:800; }
+.link-url { flex-grow:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:11px; direction:ltr; text-align:left; color: #aeb6d7; }
 
 .review-actions { display:flex; gap:6px; } 
 .accept-btn { color:#78e4d8 !important; border-color:rgba(120,228,216,.3) !important; background:rgba(90,220,207,.08) !important; } 
 .reject-btn { color:#ff9bad !important; border-color:rgba(255,155,173,.3) !important; background:rgba(255,103,139,.08) !important; }
 
 .actions-cell { display:flex; gap:6px; }.action { width:28px; height:28px; display:grid; place-items:center; border:0; border-radius:8px; background:transparent; cursor:pointer; font-size:14px; }.action.edit { color:#78e4da; background:rgba(92,220,208,.08); }.action.delete { color:#ff94ab; background:rgba(255,103,139,.08); }.action:hover { filter:brightness(1.3); transform:translateY(-1px); }.state-cell { height:145px; color:#7d89b6 !important; text-align:center !important; }.spinner { display:inline-block; width:15px; height:15px; margin-left:7px; vertical-align:middle; border:2px solid rgba(125,232,220,.25); border-top-color:#7de8dc; border-radius:50%; animation:spin .7s linear infinite; }
-.modal-overlay { position:fixed; inset:82px 0 0; z-index:100; display:grid; place-items:start center; padding:18px; overflow-y:auto; background:rgba(4,7,27,.78); backdrop-filter:blur(7px); }.modal-content { width:min(780px,100%); max-height:calc(100vh - 118px); overflow-y:auto; position:relative; padding:28px; border:1px solid rgba(146,160,233,.2); border-radius:20px; background:linear-gradient(145deg,#171d52,#0d143a); box-shadow:0 25px 70px rgba(0,0,0,.4); }.modal-close { position:absolute; top:12px; left:16px; border:0; color:#8994c2; background:transparent; font-size:25px; cursor:pointer; }.modal-icon { width:42px; height:42px; display:grid; place-items:center; margin-bottom:12px; border-radius:12px; color:#202057; background:linear-gradient(145deg,#80e8df,#b486fb); font-size:21px; }.modal-content h3 { margin:7px 0 2px; font-size:21px; }.modal-content > p { margin:0; color:#818cb9; font-size:11px; }.plan-form { margin-top:23px; }.form-grid,.form-grid-3 { display:grid; gap:13px; margin-bottom:14px; }.form-grid { grid-template-columns:1fr 1fr; }.form-grid-3 { grid-template-columns:repeat(3,1fr); }.form-group { min-width:0; margin-bottom:13px; }.form-group label { display:block; margin-bottom:6px; color:#b8c0e2; font-size:10px; }.form-group label small { color:#6975a7; font-size:8px; }.form-group input,.form-group select, .form-group textarea { width:100%; min-height:42px; padding:0 11px; border:1px solid rgba(145,160,230,.2); border-radius:9px; outline:0; color:#eef0ff; background:rgba(6,11,37,.46); font:inherit; font-size:10px; }.form-group textarea { padding-top: 10px; resize: vertical; }.form-group input:focus,.form-group select:focus, .form-group textarea:focus { border-color:#76e8de; box-shadow:0 0 0 3px rgba(118,232,222,.08); }.form-group input::placeholder, .form-group textarea::placeholder { color:#626e9e; }.separator { height:1px; margin:20px 0 15px; border:0; background:rgba(143,157,226,.14); }.section-title { color:#b986ff; font-size:11px; font-weight:700; }.section-title span { color:#76e8de; margin-left:4px; }.helper-text { margin:3px 0 13px; color:#6f7baa; font-size:9px; }.modal-actions { display:flex; justify-content:flex-start; gap:9px; margin-top:18px; }.secondary-btn { min-height:43px; padding:0 18px; border:1px solid rgba(143,157,226,.2); border-radius:10px; color:#aab4dc; background:transparent; font:inherit; font-size:11px; cursor:pointer; }
+.modal-overlay { position:fixed; inset:82px 0 0; z-index:100; display:grid; place-items:start center; padding:18px; overflow-y:auto; background:rgba(4,7,27,.78); backdrop-filter:blur(7px); }.modal-content { width:min(780px,100%); max-height:calc(100vh - 118px); overflow-y:auto; position:relative; padding:28px; border:1px solid rgba(146,160,233,.2); border-radius:20px; background:linear-gradient(145deg,#171d52,#0d143a); box-shadow:0 25px 70px rgba(0,0,0,.4); }.modal-close { position:absolute; top:12px; left:16px; border:0; color:#8994c2; background:transparent; font-size:25px; cursor:pointer; }.modal-icon { width:42px; height:42px; display:grid; place-items:center; margin-bottom:12px; border-radius:12px; color:#202057; background:linear-gradient(145deg,#80e8df,#b486fb); font-size:21px; }.modal-content h3 { margin:7px 0 2px; font-size:21px; }.modal-content > p { margin:0; color:#818cb9; font-size:11px; }.plan-form { margin-top:23px; }.form-grid,.form-grid-3 { display:grid; gap:13px; margin-bottom:14px; }.form-grid { grid-template-columns:1fr 1fr; }.form-grid-3 { grid-template-columns:repeat(3,1fr); }.form-group { min-width:0; margin-bottom:13px; }.form-group label { display:block; margin-bottom:6px; color:#b8c0e2; font-size:10px; }.form-group label small { color:#6975a7; font-size:8px; }.form-group input,.form-group select, .form-group textarea { width:100%; min-height:42px; padding:0 11px; border:1px solid rgba(145,160,230,.2); border-radius:9px; outline:0; color:#eef0ff; background:rgba(6,11,37,.46); font:inherit; font-size:10px; direction: rtl; }.form-group input[type="url"] { direction: ltr; text-align: left; }.form-group textarea { padding-top: 10px; resize: vertical; }.form-group input:focus,.form-group select:focus, .form-group textarea:focus { border-color:#76e8de; box-shadow:0 0 0 3px rgba(118,232,222,.08); }.form-group input::placeholder, .form-group textarea::placeholder { color:#626e9e; }.separator { height:1px; margin:20px 0 15px; border:0; background:rgba(143,157,226,.14); }.section-title { color:#b986ff; font-size:11px; font-weight:700; }.section-title span { color:#76e8de; margin-left:4px; }.helper-text { margin:3px 0 13px; color:#6f7baa; font-size:9px; }.modal-actions { display:flex; justify-content:flex-start; gap:9px; margin-top:18px; }.secondary-btn { min-height:43px; padding:0 18px; border:1px solid rgba(143,157,226,.2); border-radius:10px; color:#aab4dc; background:transparent; font:inherit; font-size:11px; cursor:pointer; }
 .confirm-btn { margin-top:5px; padding:5px 7px; border:1px solid rgba(117,231,218,.2); border-radius:6px; color:#78e4d8; background:rgba(90,220,207,.08); font-size:8px; cursor:pointer; }.confirm-btn:hover:not(:disabled) { filter:brightness(1.3); }.confirm-btn:disabled { opacity:.5; cursor:wait; }
 .toggle-group { display:flex; align-items:center; gap:10px; flex-direction:row !important; margin-top:15px; } .toggle-group label:first-child { margin-bottom:0; flex-grow:1; } .toggle-switch { position:relative; display:inline-block; width:44px; height:24px; } .toggle-switch input { opacity:0; width:0; height:0; } .slider { position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:rgba(145,160,230,.2); transition:.4s; border-radius:34px; } .slider:before { position:absolute; content:""; height:18px; width:18px; left:3px; bottom:3px; background-color:#7d89b6; transition:.4s; border-radius:50%; } input:checked + .slider { background-color:rgba(125,232,220,.25); } input:checked + .slider:before { transform:translateX(20px); background-color:#7de8dc; } .toggle-label { font-size:10px; color:#aeb6d7; min-width:55px; }
 .checkbox-list { display:flex; flex-direction:column; gap:8px; padding:10px; border:1px solid rgba(145,160,230,.15); border-radius:9px; background:rgba(6,11,37,.25); max-height:150px; overflow-y:auto; } .custom-cb { display:flex; align-items:center; gap:8px; cursor:pointer; margin-bottom:0 !important; } .custom-cb input[type="checkbox"] { width:14px !important; min-height:14px !important; margin:0; accent-color:#76e8de; } .custom-cb .cb-text { color:#d9ddf5; font-size:11px; }
-
+.add-link-btn { background: transparent; border: 1px dashed rgba(118,232,222,.4); color: #76e8de; border-radius: 6px; padding: 4px 8px; font-size: 9px; cursor: pointer; transition: 0.2s; }
+.add-link-btn:hover { background: rgba(118,232,222,.1); }
+.reference-links-container { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; max-height: 150px; overflow-y: auto; padding-right: 5px; }
+.link-input-group { display: flex; gap: 8px; align-items: center; }
+.link-input-group input { flex-grow: 1; }
+.remove-link-btn { background: rgba(255,103,139,.1); color: #ff9bad; border: 1px solid rgba(255,155,173,.3); border-radius: 8px; width: 42px; height: 42px; display: grid; place-items: center; cursor: pointer; transition: 0.2s; font-size: 14px; }
+.remove-link-btn:hover { background: rgba(255,103,139,.2); }
 .history-timeline { margin-top:20px; padding-right:10px; border-right:2px solid rgba(145,160,230,.15); display:flex; flex-direction:column; gap:20px; } .timeline-item { position:relative; } .tl-dot { position:absolute; right:-15px; top:3px; width:10px; height:10px; border-radius:50%; border:2px solid #171d52; } .tl-green { background:#78e4d8; } .tl-red { background:#ff9bad; } .tl-content { background:rgba(6,11,37,.4); padding:12px; border-radius:8px; border:1px solid rgba(145,160,230,.1); } .tl-header { display:flex; justify-content:space-between; margin-bottom:5px; font-size:11px; color:#d9ddf5; } .tl-date { color:#7782b0; font-size:9px; } .tl-action { font-size:10px; font-weight:700; margin-bottom:5px; } .text-green { color:#78e4d8; } .text-red { color:#ff9bad; } .tl-notes { background:rgba(0,0,0,.2); padding:8px; border-radius:6px; font-size:10px; color:#aab5da; font-style:italic; }
-
 .mb-0 { margin-bottom:0 !important; } .mt-2 { margin-top:15px !important; } .mt-3 { margin-top:20px !important; }
 .fu-content { background: rgba(101,181,255,.05); border-color: rgba(101,181,255,.15); } .fu-text { font-size: 11px; color: #d9ddf5; line-height: 1.6; white-space: pre-wrap; margin-bottom: 8px; } .fu-actions { display:flex; gap: 8px; justify-content: flex-end; } .fu-btn { background: transparent; border: 1px solid; border-radius: 4px; padding: 3px 8px; font-size: 9px; cursor: pointer; } .edit-fu { color: #8fc9ff; border-color: rgba(143,201,255,.3); } .edit-fu:hover { background: rgba(143,201,255,.1); } .delete-fu { color: #ff9bad; border-color: rgba(255,155,173,.3); } .delete-fu:hover { background: rgba(255,103,139,.1); }
-
 .toast-message { position:fixed; left:25px; bottom:25px; z-index:200; padding:12px 17px; border:1px solid rgba(116,232,220,.22); border-radius:10px; color:#bdf7f0; background:#182552; box-shadow:0 12px 30px rgba(0,0,0,.25); font-size:11px; }.toast-enter-active,.toast-leave-active { transition:.25s; }.toast-enter-from,.toast-leave-to { opacity:0; transform:translateY(10px); } @keyframes spin { to { transform:rotate(360deg); } }
 @media (max-width:720px) { .page-topline { align-items:flex-start; flex-direction:column; }.page-topline h2 { font-size:24px; }.primary-btn { width:100%; }.summary-strip { grid-template-columns:1fr 1fr; }.sync-status { grid-column:1 / -1; }.card-heading { padding-right:15px; padding-left:15px; }.legend { display:none; }.plans-table th,.plans-table td { padding-right:14px; padding-left:14px; }.modal-overlay { inset:70px 0 0; padding:12px; }.modal-content { max-height:calc(100vh - 82px); padding:23px 18px; }.form-grid,.form-grid-3 { grid-template-columns:1fr; gap:0; }.form-group.toggle-group { flex-direction:column !important; align-items:flex-start; margin-top:0; margin-bottom:15px; } .modal-actions { margin-top:5px; } }
 </style>

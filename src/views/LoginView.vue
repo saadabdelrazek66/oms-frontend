@@ -70,7 +70,12 @@
               </div>
             </div>
 
-            <!-- <label class="remember-row"><input type="checkbox" v-model="rememberMe" /><span class="custom-check"></span><span>تذكرني على هذا الجهاز</span></label> -->
+            <!-- تم تفعيل خيار "تذكرني" -->
+            <label class="remember-row">
+              <input type="checkbox" v-model="rememberMe" />
+              <span class="custom-check"></span>
+              <span>تذكرني على هذا الجهاز</span>
+            </label>
 
             <button class="submit-btn" type="submit" :disabled="isLoading">
               <span v-if="!isLoading">دخول إلى المساحة <span class="arrow">←</span></span>
@@ -109,10 +114,16 @@ const handleLogin = async () => {
 
   isLoading.value = true;
   try {
-    const response = await api.post('/login', form.value);
+    // تم إضافة `remember` إلى الطلب المرسل للـ API
+    const loginPayload = {
+      email: form.value.email,
+      password: form.value.password,
+      remember: rememberMe.value
+    };
+
+    const response = await api.post('/login', loginPayload);
     const data = response.data.data;
     
-    // الحفاظ على نفس آلية المصادقة الحالية
     localStorage.setItem('token', data.token);
     localStorage.setItem('role', data.user.role);
     

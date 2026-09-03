@@ -1,13 +1,27 @@
 <template>
   <div class="layout-wrapper" dir="rtl">
-    <div v-if="isSidebarOpen" class="sidebar-overlay" aria-hidden="true" @click="isSidebarOpen = false"></div>
+    <div
+      v-if="isSidebarOpen && isMobile"
+      class="sidebar-overlay"
+      aria-hidden="true"
+      @click="closeSidebar"
+    ></div>
 
-    <aside class="sidebar-container" :class="{ open: isSidebarOpen }">
-      <Sidebar @close="isSidebarOpen = false" />
+    <aside
+      id="app-sidebar"
+      class="sidebar-container"
+      :class="{ open: isSidebarOpen }"
+      :aria-hidden="isSidebarHidden"
+      :inert="isSidebarHidden"
+    >
+      <Sidebar @close="closeSidebar" />
     </aside>
 
     <div class="main-content">
-      <Navbar @toggle-sidebar="isSidebarOpen = !isSidebarOpen" />
+      <Navbar
+        :sidebar-open="isSidebarOpen"
+        @toggle-sidebar="toggleSidebar"
+      />
       <main class="page-content">
         <div class="content-glow content-glow-one" aria-hidden="true"></div>
         <div class="content-glow content-glow-two" aria-hidden="true"></div>
@@ -20,18 +34,59 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
-import Sidebar from '../components/Sidebar.vue';
-import Navbar from '../components/Navbar.vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import Sidebar from '../components/Sidebar.vue'
+import Navbar from '../components/Navbar.vue'
 
-const isSidebarOpen = ref(false);
-const route = useRoute();
+const MOBILE_QUERY = '(max-width: 760px)'
+const isSidebarOpen = ref(false)
+const isMobile = ref(false)
+const route = useRoute()
+let mediaQuery
 
-// إغلاق القائمة تلقائيًا بعد الانتقال إلى صفحة جديدة على الهاتف.
-watch(() => route.fullPath, () => {
-  isSidebarOpen.value = false;
-});
+const isSidebarHidden = computed(() => isMobile.value && !isSidebarOpen.value)
+
+const updateViewportState = (event) => {
+  isMobile.value = event.matches
+
+  // Desktop uses the sidebar as part of the normal layout.
+  // Do not leave a mobile drawer state active after a viewport resize.
+  if (!event.matches) isSidebarOpen.value = false
+}
+
+const toggleSidebar = () => {
+  if (isMobile.value) isSidebarOpen.value = !isSidebarOpen.value
+}
+
+const closeSidebar = () => {
+  isSidebarOpen.value = false
+}
+
+const handleKeydown = (event) => {
+  if (event.key === 'Escape' && isSidebarOpen.value && isMobile.value) {
+    closeSidebar()
+  }
+}
+
+watch(() => route.fullPath, closeSidebar)
+watch(isSidebarOpen, (open) => {
+  if (!isMobile.value) return
+  document.body.classList.toggle('sidebar-is-open', open)
+})
+
+onMounted(() => {
+  mediaQuery = window.matchMedia(MOBILE_QUERY)
+  isMobile.value = mediaQuery.matches
+  mediaQuery.addEventListener('change', updateViewportState)
+  window.addEventListener('keydown', handleKeydown)
+})
+
+onBeforeUnmount(() => {
+  mediaQuery?.removeEventListener('change', updateViewportState)
+  window.removeEventListener('keydown', handleKeydown)
+  document.body.classList.remove('sidebar-is-open')
+})
 </script>
 
 <style>
@@ -43,27 +98,153 @@ watch(() => route.fullPath, () => {
   background: #080d29;
 }
 
-* { box-sizing: border-box; }
-html, body, #app { min-height: 100%; }
-body { margin: 0; background: #080d29; }
-button, input { font-family: inherit; }
+* {
+  box-sizing: border-box;
+}
 
-.layout-wrapper { min-height: 100vh; display: flex; background: #080d29; }
-.sidebar-container { flex: 0 0 286px; position: sticky; top: 0; z-index: 30; height: 100vh; }
-.sidebar-container > .sidebar { height: 100%; min-height: 100vh; }
-.main-content { min-width: 0; min-height: 100vh; flex: 1; display: flex; flex-direction: column; background: radial-gradient(circle at 86% 0%, rgba(91, 61, 180, .12), transparent 32%), #0a1030; }
-.main-content > .navbar { position: sticky; top: 0; z-index: 20; }
-.page-content { position: relative; flex: 1; min-height: calc(100vh - 82px); padding: clamp(20px, 3vw, 38px); overflow: hidden; background: linear-gradient(145deg, rgba(15, 22, 62, .74), rgba(8, 13, 41, .94)); }
-.page-inner { position: relative; z-index: 1; width: 100%; max-width: 1500px; margin: 0 auto; }
-.content-glow { position: absolute; border-radius: 50%; pointer-events: none; filter: blur(20px); opacity: .12; }.content-glow-one { width: 380px; height: 380px; top: -230px; left: 8%; background: #8a57e8; }.content-glow-two { width: 270px; height: 270px; right: -180px; bottom: -150px; background: #42dace; }
-.sidebar-overlay { display: none; }
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #080d29;
+}
+
+body.sidebar-is-open {
+  overflow: hidden;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.layout-wrapper {
+  min-height: 100vh;
+  display: flex;
+  background: #080d29;
+}
+
+.sidebar-container {
+  flex: 0 0 286px;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  width: 286px;
+  height: 100vh;
+}
+
+.sidebar-container > .sidebar {
+  height: 100%;
+  min-height: 100vh;
+}
+
+.main-content {
+  min-width: 0;
+  min-height: 100vh;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(circle at 86% 0%, rgba(91, 61, 180, .12), transparent 32%),
+    #0a1030;
+}
+
+.main-content > .navbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.page-content {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: calc(100vh - 82px);
+  padding: clamp(20px, 3vw, 38px);
+  overflow-x: clip;
+  background: linear-gradient(145deg, rgba(15, 22, 62, .74), rgba(8, 13, 41, .94));
+}
+
+.page-inner {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 1500px;
+  margin: 0 auto;
+}
+
+.content-glow {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(20px);
+  opacity: .12;
+}
+
+.content-glow-one {
+  width: 380px;
+  height: 380px;
+  top: -230px;
+  left: 8%;
+  background: #8a57e8;
+}
+
+.content-glow-two {
+  width: 270px;
+  height: 270px;
+  right: -180px;
+  bottom: -150px;
+  background: #42dace;
+}
+
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(3, 6, 24, .68);
+  backdrop-filter: blur(3px);
+}
 
 @media (max-width: 760px) {
-  .layout-wrapper { display: block; }
-  .sidebar-container { position: fixed; inset: 0 0 0 auto; z-index: 50; width: min(286px, 88vw); height: 100vh; transform: translateX(105%); transition: transform .28s ease; box-shadow: -18px 0 50px rgba(0,0,0,.35); }
-  .sidebar-container.open { transform: translateX(0); }
-  .sidebar-container > .sidebar { min-height: 100%; }
-  .sidebar-overlay { display: block; position: fixed; inset: 0; z-index: 40; background: rgba(3, 6, 24, .68); backdrop-filter: blur(3px); }
-  .page-content { min-height: calc(100vh - 70px); padding: 20px 15px 28px; }
+  .layout-wrapper {
+    display: block;
+  }
+
+  .sidebar-container {
+    position: fixed;
+    inset: 0 0 0 auto;
+    z-index: 50;
+    width: min(286px, 88vw);
+    height: 100dvh;
+    transform: translate3d(105%, 0, 0);
+    transition: transform .28s ease;
+    box-shadow: -18px 0 50px rgba(0, 0, 0, .35);
+    will-change: transform;
+  }
+
+  .sidebar-container.open {
+    transform: translate3d(0, 0, 0);
+  }
+
+  .sidebar-container > .sidebar {
+    min-height: 100%;
+    height: 100%;
+  }
+
+  .page-content {
+    min-height: calc(100dvh - 70px);
+    padding: clamp(18px, 5vw, 24px) clamp(14px, 4vw, 20px) 28px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-container {
+    transition: none;
+  }
 }
 </style>

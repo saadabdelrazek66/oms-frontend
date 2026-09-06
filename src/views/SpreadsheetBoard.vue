@@ -14,8 +14,7 @@
         <span v-if="saving" class="saving-indicator">
           <i class="spinner"></i> جارٍ الحفظ...
         </span>
-        <!-- إضافة منشور جديد متاحة للجميع ما عدا المراجع -->
-        <button class="primary-btn" type="button" @click="showAddRowModal = true" :disabled="!canAddRow">
+        <button class="primary-btn" type="button" @click="showAddRowModal = true" :disabled="isReviewerCheck">
           <span>＋</span> منشور إضافي
         </button>
       </div>
@@ -39,7 +38,7 @@
           <tr>
             <th class="sub-th admin-th">المنفذ</th>
             <th class="sub-th admin-th">الديدلاين</th>
-            <th class="sub-th admin-th">المراجع</th>
+            <th class="sub-th admin-th">المراجعين (متعدد)</th>
             <th class="sub-th admin-th">مراجعة القسم</th>
             <th class="sub-th admin-th" style="background: #cfd8dc;">اعتماد المدير</th>
 
@@ -72,55 +71,87 @@
             
             <!-- 1. الإدارة والتكليف -->
             <td>
-              <select v-model="post.designer_id" @change="autoSave(post, 'designer_id')" :disabled="!canEditField(post, 'designer_id')">
+              <select v-model="post.designer_id" @change="autoSave(post, 'designer_id')" :disabled="isReviewerOnly(post)">
                 <option :value="null">لم يحدد</option>
                 <option v-for="user in allUsers" :key="user.id" :value="user.id">{{ user.name }}</option>
               </select>
             </td>
             <td>
-              <input type="datetime-local" v-model="post.deadline" @blur="autoSave(post, 'deadline')" :disabled="!canEditField(post, 'deadline')" />
-            </td>
-            <td>
-              <select v-model="post.reviewer_id" @change="autoSave(post, 'reviewer_id')" :disabled="!canEditField(post, 'reviewer_id')">
-                <option :value="null">لم يحدد</option>
-                <option v-for="user in allUsers" :key="user.id" :value="user.id">{{ user.name }}</option>
-              </select>
+              <input type="datetime-local" v-model="post.deadline" @blur="autoSave(post, 'deadline')" :disabled="isReviewerOnly(post)" />
             </td>
             
-            <!-- مراجعة القسم -->
+            <!-- حقل المراجعين (Multi-Select) -->
+            <td>
+              <select multiple v-model="post.reviewer_ids" @change="autoSave(post, 'reviewer_ids')" class="multi-select" title="اضغط Ctrl أو Cmd لاختيار أكثر من مراجع" :disabled="isReviewerOnly(post)">
+                <option v-for="user in allUsers" :key="user.id" :value="user.id">{{ user.name }}</option>
+              </select>
+            </td>
+
+ <!-- مراجعة القسم (إجماع المراجعين) -->
             <td class="review-cell">
+              <!-- 1. معتمد كلياً -->
               <span v-if="post.review_status === 'معتمد'" class="badge approved">🟢 معتمد</span>
               
-              <div v-else-if="currentUser?.id === post.reviewer_id || isManager" class="review-actions">
-                <button class="approve-btn" @click="approvePost(post, 'reviewer')" title="موافقة">✅ موافقة</button>
-                <button class="reject-btn" @click="openRejectModal(post, 'reviewer')" title="رفض">❌ رفض</button>
-              </div>
-              
-              <span v-else class="badge pending">
-                {{ post.review_status === 'مرفوض' ? '🔴 مرفوض' : '⏳ قيد الانتظار' }}
-              </span>
+              <!-- 2. مرفوض -->
+              <template v-else-if="post.review_status === 'مرفوض'">
+                <span class="badge pending" style="color: #d32f2f;">🔴 مرفوض</span>
+                <!-- زر تراجع وإعادة فتح المراجعة (يظهر للمدير والمراجعين فقط) -->
+                <button v-if="isManager || (post.reviewer_ids && post.reviewer_ids.includes(currentUser?.id))" 
+                        class="reset-btn" @click="resetReview(post, 'reviewer')" title="إعادة فتح المراجعة بعد التعديل">
+                  🔄 تراجع
+                </button>
+              </template>
 
+              <!-- 3. قيد الانتظار -->
+              <template v-else>
+                <!-- إذا كان المراجع الحالي قد وافق بالفعل (لكن ينتظر الباقين) تختفي الأزرار وتظهر هذه الشارة -->
+                <span v-if="post.reviewers_statuses && post.reviewers_statuses[currentUser?.id] === 'معتمد' && !isManager" class="badge" style="background: #e3f2fd; color: #1976d2;">
+                  ✅ تمت موافقتك
+                </span>
+                
+                <!-- الأزرار تظهر فقط لمن لم يوافق بعد أو للمدير -->
+                <div v-else-if="(post.reviewer_ids && post.reviewer_ids.includes(currentUser?.id)) || isManager" class="review-actions">
+                  <button class="approve-btn" @click="approvePost(post, 'reviewer')" title="موافقة">✅ موافقة</button>
+                  <button class="reject-btn" @click="openRejectModal(post, 'reviewer')" title="رفض">❌ رفض</button>
+                </div>
+                
+                <!-- المنفذ أو أي شخص آخر -->
+                <span v-else class="badge pending">⏳ قيد الانتظار</span>
+              </template>
+
+              <!-- سجل الرفض -->
               <button v-if="post.rejection_history && post.rejection_history.length > 0" 
-                      class="history-btn" @click="openHistoryModal(post.rejection_history, 'القسم')">
+                      class="history-btn mt-1" @click="openHistoryModal(post.rejection_history, 'القسم')">
                 📜 سجل الرفض
               </button>
             </td>
 
             <!-- مراجعة المدير -->
             <td class="review-cell" style="background: #eceff1;">
+              <!-- 1. معتمد -->
               <span v-if="post.manager_review_status === 'معتمد'" class="badge approved">🟢 معتمد</span>
               
-              <div v-else-if="isManager" class="review-actions">
-                <button class="approve-btn" @click="approvePost(post, 'manager')" title="اعتماد نهائي">✅ اعتماد</button>
-                <button class="reject-btn" @click="openRejectModal(post, 'manager')" title="رفض">❌ رفض</button>
-              </div>
+              <!-- 2. مرفوض -->
+              <template v-else-if="post.manager_review_status === 'مرفوض'">
+                <span class="badge pending" style="color: #d32f2f;">🔴 مرفوض</span>
+                <button v-if="isManager" 
+                        class="reset-btn" @click="resetReview(post, 'manager')" title="إعادة فتح المراجعة">
+                  🔄 تراجع
+                </button>
+              </template>
               
-              <span v-else class="badge pending">
-                {{ post.manager_review_status === 'مرفوض' ? '🔴 مرفوض' : '⏳ قيد الانتظار' }}
-              </span>
+              <!-- 3. قيد الانتظار -->
+              <template v-else>
+                <div v-if="isManager" class="review-actions">
+                  <button class="approve-btn" @click="approvePost(post, 'manager')" title="اعتماد نهائي">✅ اعتماد</button>
+                  <button class="reject-btn" @click="openRejectModal(post, 'manager')" title="رفض">❌ رفض</button>
+                </div>
+                
+                <span v-else class="badge pending">⏳ قيد الانتظار</span>
+              </template>
 
               <button v-if="post.manager_rejection_history && post.manager_rejection_history.length > 0" 
-                      class="history-btn" @click="openHistoryModal(post.manager_rejection_history, 'المدير')">
+                      class="history-btn mt-1" @click="openHistoryModal(post.manager_rejection_history, 'المدير')">
                 📜 سجل الرفض
               </button>
             </td>
@@ -131,14 +162,14 @@
               <small>{{ formatDate(post.target_date) }}</small>
             </td>
             <td>
-              <select v-model="post.actual_publish_status" @change="handlePublishStatusChange(post)" :class="post.actual_publish_status === 'لم يتم' ? 'text-red' : 'text-green'" :disabled="!canEditField(post, 'actual_publish_status')">
+              <select v-model="post.actual_publish_status" @change="handlePublishStatusChange(post)" :class="post.actual_publish_status === 'لم يتم' ? 'text-red' : 'text-green'" :disabled="isReviewerOnly(post)">
                 <option value="لم يتم">لم يتم</option>
                 <option value="تم النشر">تم النشر</option>
               </select>
             </td>
-            <td><input type="text" v-model="post.publishing_time" @blur="autoSave(post, 'publishing_time')" placeholder="--:--" dir="ltr" :disabled="!canEditField(post, 'publishing_time')" /></td>
+            <td><input type="text" v-model="post.publishing_time" @blur="autoSave(post, 'publishing_time')" placeholder="--:--" dir="ltr" :disabled="isReviewerOnly(post)" /></td>
             <td>
-              <select v-model="post.publishing_platform" @change="autoSave(post, 'publishing_platform')" :disabled="!canEditField(post, 'publishing_platform')">
+              <select v-model="post.publishing_platform" @change="autoSave(post, 'publishing_platform')" :disabled="isReviewerOnly(post)">
                 <option value="">اختيار...</option>
                 <option value="Facebook">Facebook</option>
                 <option value="Instagram">Instagram</option>
@@ -151,7 +182,7 @@
 
             <!-- 3. التمويل -->
             <td>
-               <select multiple v-model="post.ad_platform" @change="autoSave(post, 'ad_platform')" class="multi-select" title="اضغط Ctrl أو Cmd لاختيار أكثر من منصة" :disabled="!canEditField(post, 'ad_platform')">
+               <select multiple v-model="post.ad_platform" @change="autoSave(post, 'ad_platform')" class="multi-select" title="اضغط Ctrl أو Cmd لاختيار أكثر من منصة" :disabled="isReviewerOnly(post)">
                 <option value="Facebook Ads">Facebook Ads</option>
                 <option value="Google Ads">Google Ads</option>
                 <option value="Snapchat Ads">Snapchat Ads</option>
@@ -159,7 +190,7 @@
               </select>
             </td>
             <td>
-              <select v-model="post.finance_status" @change="autoSave(post, 'finance_status')" :disabled="!canEditField(post, 'finance_status')">
+              <select v-model="post.finance_status" @change="autoSave(post, 'finance_status')" :disabled="isReviewerOnly(post)">
                 <option value="غير ممول">غير ممول</option>
                 <option value="ممول">ممول</option>
               </select>
@@ -167,7 +198,7 @@
 
             <!-- 4. محتوى المنشور -->
             <td>
-              <select v-model="post.post_type" @change="autoSave(post, 'post_type')" :disabled="!canEditField(post, 'post_type')">
+              <select v-model="post.post_type" @change="autoSave(post, 'post_type')" :disabled="isReviewerOnly(post)">
                 <option value="">اختيار...</option>
                 <option value="Infograph">Infograph</option>
                 <option value="Video">Video</option>
@@ -176,17 +207,17 @@
                 <option value="Carousel">Carousel</option>
               </select>
             </td>
-            <td><input type="text" v-model="post.objective" @blur="autoSave(post, 'objective')" placeholder="..." :disabled="!canEditField(post, 'objective')" /></td>
-            <td><textarea v-model="post.detailed_idea" @blur="autoSave(post, 'detailed_idea')" rows="1" :disabled="!canEditField(post, 'detailed_idea')"></textarea></td>
-            <td><textarea v-model="post.caption" @blur="autoSave(post, 'caption')" rows="1" :disabled="!canEditField(post, 'caption')"></textarea></td>
-            <td><input type="text" v-model="post.tov" @blur="autoSave(post, 'tov')" placeholder="..." :disabled="!canEditField(post, 'tov')" /></td>
-            <td><input type="text" v-model="post.call_to_action" @blur="autoSave(post, 'call_to_action')" placeholder="..." :disabled="!canEditField(post, 'call_to_action')" /></td>
-            <td><input type="text" v-model="post.hashtags" @blur="autoSave(post, 'hashtags')" placeholder="#..." :disabled="!canEditField(post, 'hashtags')" /></td>
-            <td><input type="url" v-model="post.reference_link" @blur="autoSave(post, 'reference_link')" placeholder="Link..." dir="ltr" :disabled="!canEditField(post, 'reference_link')" /></td>
+            <td><input type="text" v-model="post.objective" @blur="autoSave(post, 'objective')" placeholder="..." :disabled="isReviewerOnly(post)" /></td>
+            <td><textarea v-model="post.detailed_idea" @blur="autoSave(post, 'detailed_idea')" rows="1" :disabled="isReviewerOnly(post)"></textarea></td>
+            <td><textarea v-model="post.caption" @blur="autoSave(post, 'caption')" rows="1" :disabled="isReviewerOnly(post)"></textarea></td>
+            <td><input type="text" v-model="post.tov" @blur="autoSave(post, 'tov')" placeholder="..." :disabled="isReviewerOnly(post)" /></td>
+            <td><input type="text" v-model="post.call_to_action" @blur="autoSave(post, 'call_to_action')" placeholder="..." :disabled="isReviewerOnly(post)" /></td>
+            <td><input type="text" v-model="post.hashtags" @blur="autoSave(post, 'hashtags')" placeholder="#..." :disabled="isReviewerOnly(post)" /></td>
+            <td><input type="url" v-model="post.reference_link" @blur="autoSave(post, 'reference_link')" placeholder="Link..." dir="ltr" :disabled="isReviewerOnly(post)" /></td>
 
             <!-- 5. الروابط النهائية والملاحظات -->
-            <td><input type="text" v-model="post.content_links" @blur="autoSave(post, 'content_links')" placeholder="Drive/Notion link..." dir="ltr" :disabled="!canEditField(post, 'content_links')" /></td>
-            <td><input type="text" v-model="post.notes" @blur="autoSave(post, 'notes')" placeholder="..." :disabled="!canEditField(post, 'notes')" /></td>
+            <td><input type="text" v-model="post.content_links" @blur="autoSave(post, 'content_links')" placeholder="Drive/Notion link..." dir="ltr" :disabled="isReviewerOnly(post)" /></td>
+            <td><input type="text" v-model="post.notes" @blur="autoSave(post, 'notes')" placeholder="..." :disabled="isReviewerOnly(post)" /></td>
           </tr>
         </tbody>
       </table>
@@ -262,7 +293,6 @@ const planId = route.params.id;
 const posts = ref([]);
 const allUsers = ref([]);
 const currentUser = ref(null);
-const planDetails = ref(null);
 
 const loading = ref(true);
 const saving = ref(false);
@@ -271,6 +301,8 @@ const toastMessage = ref('');
 const showAddRowModal = ref(false);
 const newRowDate = ref('');
 const addingRow = ref(false);
+
+const isPlanResponsible = ref(false);
 
 const rejectModalPost = ref(null);
 const rejectReason = ref('');
@@ -282,39 +314,31 @@ const activeHistoryTitle = ref('');
 
 const showToast = (message) => { toastMessage.value = message; setTimeout(() => { toastMessage.value = ''; }, 4000); };
 
-// تحديد ما إذا كان المستخدم الحالي مديراً أم لا
-// ⚠️ هام: تأكد أن قيمة 'manager' تطابق نوع دور المدير في جدول users الخاص بك
+// تحديد المدير
 const isManager = computed(() => {
   if (!currentUser.value) return false;
-  return currentUser.value.role === 'manager'; // عدلها إلى currentUser.value.type مثلاً إذا كان حقلك type
+  return currentUser.value.role === 'manager';
 });
 
-const isPlanExecutor = computed(() => {
-  if (!currentUser.value || !planDetails.value) return false;
-  const executors = planDetails.value.users?.filter(u => u.pivot?.task_role === 'executor') || [];
-  return executors.some(u => u.id === currentUser.value.id);
+const canEditFields = computed(() => {
+  if (!currentUser.value) return false;
+  if (isManager.value) return true; // المدير يمتلك الصلاحية الكاملة
+  if (isPlanResponsible.value) return true; // مسئول الخطة يمتلك صلاحية تعديل الحقول
+  
+  return false; 
 });
 
-const isRowExecutor = (post) => {
-  if (!currentUser.value) return false;
-  return currentUser.value.id === post.designer_id;
+// تحديد ما إذا كان المستخدم الحالي من ضمن المراجعين (لحظر تعديل الحقول)
+const isReviewerOnly = (post) => {
+  if (!currentUser.value) return true;
+  if (isManager.value) return false; 
+  return post.reviewer_ids && post.reviewer_ids.includes(currentUser.value.id);
 };
 
-const canEditField = (post, field) => {
-  if (!currentUser.value) return false;
-  if (isManager.value) return true;
-  if (isPlanExecutor.value) return true;
-  if (isRowExecutor(post)) {
-    return ['content_links', 'notes'].includes(field);
-  }
-  return false;
-};
-
-const canAddRow = computed(() => {
-  if (!currentUser.value) return false;
-  if (isManager.value) return true;
-  if (isPlanExecutor.value) return true;
-  return false;
+const isReviewerCheck = computed(() => {
+    if (!currentUser.value) return true;
+    if (isManager.value) return false;
+    return true; 
 });
 
 const formatDateTimeLocal = (val) => {
@@ -361,8 +385,12 @@ const fetchPosts = async () => {
     posts.value = res.data.data.map(p => ({
       ...p,
       ad_platform: Array.isArray(p.ad_platform) ? p.ad_platform : (p.ad_platform ? JSON.parse(p.ad_platform) : []),
+      reviewer_ids: Array.isArray(p.reviewer_ids) ? p.reviewer_ids : (p.reviewer_ids ? JSON.parse(p.reviewer_ids) : []),
       deadline: formatDateTimeLocal(p.deadline)
     }));
+    
+    isPlanResponsible.value = res.data.is_responsible || false;
+    
   } catch (error) {
     showToast('تعذر تحميل بيانات اللوحة.');
   } finally {
@@ -381,21 +409,46 @@ const autoSave = async (post, field) => {
   }
 };
 
-// --- لوجيك الاعتماد المزدوج ---
+// --- دوال الاعتماد المزدوج وتعدد المراجعين ---
 const approvePost = async (post, type) => {
   if (!window.confirm('هل أنت متأكد من الاعتماد؟')) return;
   try {
-    await api.post(`/plan-posts/${post.id}/review`, { 
+    const res = await api.post(`/plan-posts/${post.id}/review`, { 
       review_type: type,
       status: 'معتمد' 
     });
     
-    if (type === 'manager') post.manager_review_status = 'معتمد';
-    else post.review_status = 'معتمد';
+    // التحديث الفوري للواجهة
+    post.review_status = res.data.data.review_status;
+    post.manager_review_status = res.data.data.manager_review_status;
+    post.reviewers_statuses = res.data.data.reviewers_statuses; // تحديث حالة المراجعين الفردية
     
-    showToast('تم الاعتماد بنجاح 🟢');
+    showToast(res.data.data.review_status === 'معتمد' ? 'تم الاعتماد بنجاح 🟢' : 'تم تسجيل موافقتك، بانتظار باقي المراجعين ⏳');
   } catch (error) {
     showToast(error.response?.data?.message || 'غير مصرح لك أو حدث خطأ');
+  }
+};
+
+// --- دالة التراجع (إعادة فتح المراجعة بعد الرفض) ---
+const resetReview = async (post, type) => {
+  if (!window.confirm('هل أنت متأكد من التراجع وإعادة فتح المراجعة لهذا المنشور؟')) return;
+  
+  try {
+    if (type === 'manager') {
+      await api.put(`/plan-posts/${post.id}`, { manager_review_status: 'قيد الانتظار' });
+      post.manager_review_status = 'قيد الانتظار';
+    } else {
+      // إرجاع القسم لقيد الانتظار، وتفريغ حالات المراجعين ليبدأوا التصويت من جديد
+      await api.put(`/plan-posts/${post.id}`, { 
+        review_status: 'قيد الانتظار',
+        reviewers_statuses: {} 
+      });
+      post.review_status = 'قيد الانتظار';
+      post.reviewers_statuses = {};
+    }
+    showToast('تم التراجع، المنشور الآن قيد الانتظار 🔄');
+  } catch (error) {
+    showToast('حدث خطأ أثناء التراجع');
   }
 };
 
@@ -415,11 +468,12 @@ const submitReject = async () => {
       reason: rejectReason.value 
     });
     
+    rejectModalPost.value.review_status = res.data.data.review_status;
+    rejectModalPost.value.manager_review_status = res.data.data.manager_review_status;
+    
     if (activeReviewType.value === 'manager') {
-      rejectModalPost.value.manager_review_status = 'مرفوض';
       rejectModalPost.value.manager_rejection_history = res.data.data.manager_rejection_history;
     } else {
-      rejectModalPost.value.review_status = 'مرفوض';
       rejectModalPost.value.rejection_history = res.data.data.rejection_history;
     }
     
@@ -441,7 +495,7 @@ const handlePublishStatusChange = (post) => {
     
     // منع النشر قبل الموافقتين
     if (post.review_status !== 'معتمد' || post.manager_review_status !== 'معتمد') {
-      showToast('⚠️ لا يمكن النشر قبل الحصول على موافقة المراجع واعتماد المدير النهائي.');
+      showToast('⚠️ لا يمكن النشر قبل الحصول على موافقة جميع المراجعين واعتماد المدير النهائي.');
       post.actual_publish_status = 'لم يتم'; 
       return;
     }
@@ -468,6 +522,7 @@ const addNewRow = async () => {
     const res = await api.post(`/content-plans/${planId}/posts`, { target_date: newRowDate.value });
     const newPost = res.data.data;
     newPost.ad_platform = []; 
+    newPost.reviewer_ids = []; 
     posts.value.push(newPost);
     posts.value.sort((a, b) => new Date(a.target_date) - new Date(b.target_date));
     showAddRowModal.value = false;
@@ -480,17 +535,7 @@ const addNewRow = async () => {
   }
 };
 
-const fetchPlanDetails = async () => {
-  try {
-    const res = await api.get(`/content-plans/${planId}`);
-    planDetails.value = res.data.data || res.data;
-  } catch (error) {
-    console.error('تعذر جلب تفاصيل الخطة', error);
-  }
-};
-
 onMounted(() => {
-  fetchPlanDetails();
   fetchCurrentUser(); 
   fetchUsers();
   fetchPosts();
@@ -540,7 +585,6 @@ td { height: 35px; position: relative; min-width: 100px; }
 .readonly-cell strong { font-size: 11px; }
 .readonly-cell small { font-size: 10px; color: #555; }
 
-/* أزرار وشارات المراجعة */
 .review-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: #f9f9f9; padding: 5px !important; border:none; height: 100%; }
 .review-actions { display: flex; gap: 4px; }
 .review-actions button { border: none; padding: 4px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer; color: #fff; transition: 0.2s; }
@@ -552,7 +596,6 @@ td { height: 35px; position: relative; min-width: 100px; }
 .history-btn { background: #f1f3f4; border: 1px solid #ccc; font-size: 9px; padding: 3px 6px; border-radius: 4px; cursor: pointer; color: #555; transition: 0.2s; }
 .history-btn:hover { background: #e0e0e0; }
 
-/* تنسيق الحقول المقفلة للمراجع */
 input:disabled, select:disabled, textarea:disabled {
   background-color: #f1f3f4 !important;
   color: #9e9e9e !important;
@@ -580,12 +623,30 @@ input:focus, select:focus, textarea:focus { box-shadow: inset 0 0 0 2px #2196f3;
 .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
 .secondary-btn { padding: 8px 15px; border: 1px solid #ccc; border-radius: 6px; background: transparent; color: #555; cursor: pointer; font-size: 12px; font-weight: bold; }
 
-/* تنسيق سجل الرفض */
 .history-list { display: flex; flex-direction: column; gap: 10px; }
 .history-item { background: #fdf2f2; border-right: 3px solid #d32f2f; padding: 10px; border-radius: 4px; }
 .history-meta { display: flex; justify-content: space-between; font-size: 10px; color: #888; margin-bottom: 5px; }
 .history-meta strong { color: #d32f2f; }
 .history-reason { margin: 0; font-size: 12px; color: #333; line-height: 1.5; }
+
+.reset-btn {
+  background: transparent;
+  border: 1px solid #90caf9;
+  color: #1976d2;
+  font-size: 9px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: 0.2s;
+  margin-top: 4px;
+  display: inline-block;
+}
+.reset-btn:hover {
+  background: #e3f2fd;
+}
+.mt-1 {
+  margin-top: 4px;
+}
 
 .toast-message { position: fixed; bottom: 20px; left: 20px; background: #323232; color: #fff; padding: 12px 20px; border-radius: 8px; font-size: 12px; font-weight: bold; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
 .toast-enter-active, .toast-leave-active { transition: 0.3s; }

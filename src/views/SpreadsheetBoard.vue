@@ -354,7 +354,9 @@ const formatDateTimeLocal = (val) => {
 };
 const formatDate = (dateString) => {
   if (!dateString) return '';
-  return `${new Date(dateString).getDate()}`; 
+  const d = new Date(dateString);
+  if (isNaN(d)) return '';
+  return `${d.getDate()}/${d.getMonth() + 1}`;
 };
 const getDayName = (dateString) => {
   if (!dateString) return '';
@@ -581,11 +583,11 @@ th { color: #000; font-weight: 700; font-size: 12px; padding: 6px 10px; white-sp
 .sub-th { font-size: 10px; font-weight: 600; }
 
 td { height: 35px; position: relative; min-width: 100px; }
-.readonly-cell { background: #f1f3f4; padding: 0 10px; white-space: nowrap; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; border:none; }
-.readonly-cell strong { font-size: 11px; }
-.readonly-cell small { font-size: 10px; color: #555; }
+.readonly-cell { background: #f1f3f4; padding: 0 10px; white-space: nowrap; text-align: center; vertical-align: middle; }
+.readonly-cell strong { font-size: 11px; display: block; }
+.readonly-cell small { font-size: 10px; color: #555; display: block; }
 
-.review-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: #f9f9f9; padding: 5px !important; border:none; height: 100%; }
+.review-cell { text-align: center; vertical-align: middle; background: #f9f9f9; padding: 5px !important; }
 .review-actions { display: flex; gap: 4px; }
 .review-actions button { border: none; padding: 4px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer; color: #fff; transition: 0.2s; }
 .approve-btn { background: #388e3c; } .approve-btn:hover { background: #2e7d32; }

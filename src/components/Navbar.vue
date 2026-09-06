@@ -4,7 +4,8 @@
       <button
         class="menu-btn"
         type="button"
-        aria-label="فتح القائمة الجانبية"
+        :aria-label="sidebarOpen ? 'إغلاق القائمة الجانبية' : 'فتح القائمة الجانبية'"
+        :title="sidebarOpen ? 'إغلاق القائمة الجانبية' : 'فتح القائمة الجانبية'"
         :aria-expanded="sidebarOpen"
         aria-controls="app-sidebar"
         @click="$emit('toggle-sidebar')"
@@ -136,7 +137,7 @@ const logout = async () => {
 }
 
 .menu-btn {
-  display: none;
+  display: grid;
 }
 
 .menu-btn svg,
@@ -348,10 +349,6 @@ const logout = async () => {
   .navbar {
     min-height: 70px;
     padding: 11px max(16px, env(safe-area-inset-right)) 11px max(16px, env(safe-area-inset-left));
-  }
-
-  .menu-btn {
-    display: grid;
   }
 
   .wave-mark,

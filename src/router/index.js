@@ -8,6 +8,8 @@ import ClientsManager from '../views/ClientsManager.vue'
 import DepartmentsManager from '../views/DepartmentsManager.vue'
 import ContentPlans from '../views/ContentPlans.vue'
 import ClientVault from '../views/ClientVault.vue'
+import PlanBoardsList from '../views/PlanBoardsList.vue'
+import SpreadsheetBoard from '../views/SpreadsheetBoard.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -62,6 +64,16 @@ const router = createRouter({
           name: 'ClientVault',
           component: ClientVault,
           meta: { requiresAuth: true, role: 'manager' },
+        },
+        {
+          path: '/plan-contents',
+          name: 'PlanContents',
+          component: PlanBoardsList,
+        },
+        {
+          path: '/plan-board/:id',
+          name: 'PlanBoard',
+          component: SpreadsheetBoard,
         },
       ],
     },

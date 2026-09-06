@@ -14,7 +14,7 @@
       :aria-hidden="isSidebarHidden"
       :inert="isSidebarHidden"
     >
-      <Sidebar @close="closeSidebar" />
+      <Sidebar @close="closeSidebar" @navigate="handleNavigation" />
     </aside>
 
     <div class="main-content">
@@ -26,7 +26,9 @@
         <div class="content-glow content-glow-one" aria-hidden="true"></div>
         <div class="content-glow content-glow-two" aria-hidden="true"></div>
         <div class="page-inner">
-          <router-view />
+          <router-view v-slot="{ Component, route: viewRoute }">
+            <component :is="Component" :key="viewRoute.fullPath" />
+          </router-view>
         </div>
       </main>
     </div>
@@ -40,27 +42,31 @@ import Sidebar from '../components/Sidebar.vue'
 import Navbar from '../components/Navbar.vue'
 
 const MOBILE_QUERY = '(max-width: 760px)'
-const isSidebarOpen = ref(false)
+const isSidebarOpen = ref(true)
 const isMobile = ref(false)
 const route = useRoute()
 let mediaQuery
 
-const isSidebarHidden = computed(() => isMobile.value && !isSidebarOpen.value)
+const isSidebarHidden = computed(() => !isSidebarOpen.value)
 
 const updateViewportState = (event) => {
   isMobile.value = event.matches
 
-  // Desktop uses the sidebar as part of the normal layout.
-  // Do not leave a mobile drawer state active after a viewport resize.
-  if (!event.matches) isSidebarOpen.value = false
+  // Keep the Sidebar open by default on desktop and closed by default on mobile.
+  isSidebarOpen.value = !event.matches
 }
 
 const toggleSidebar = () => {
-  if (isMobile.value) isSidebarOpen.value = !isSidebarOpen.value
+  isSidebarOpen.value = !isSidebarOpen.value
 }
 
 const closeSidebar = () => {
   isSidebarOpen.value = false
+}
+
+const handleNavigation = () => {
+  // Keep the desktop Sidebar visible; close it only after a mobile link click.
+  if (isMobile.value) closeSidebar()
 }
 
 const handleKeydown = (event) => {
@@ -69,7 +75,13 @@ const handleKeydown = (event) => {
   }
 }
 
-watch(() => route.fullPath, closeSidebar)
+watch(
+  () => route.fullPath,
+  () => {
+    if (isMobile.value) closeSidebar()
+  },
+  { flush: 'post' },
+)
 watch(isSidebarOpen, (open) => {
   if (!isMobile.value) return
   document.body.classList.toggle('sidebar-is-open', open)
@@ -78,6 +90,7 @@ watch(isSidebarOpen, (open) => {
 onMounted(() => {
   mediaQuery = window.matchMedia(MOBILE_QUERY)
   isMobile.value = mediaQuery.matches
+  isSidebarOpen.value = !isMobile.value
   mediaQuery.addEventListener('change', updateViewportState)
   window.addEventListener('keydown', handleKeydown)
 })
@@ -134,9 +147,11 @@ select {
   flex: 0 0 286px;
   position: sticky;
   top: 0;
-  z-index: 30;
+  z-index: 50;
   width: 286px;
   height: 100vh;
+  overflow: hidden;
+  transition: width .28s ease, flex-basis .28s ease;
 }
 
 .sidebar-container > .sidebar {
@@ -218,7 +233,7 @@ select {
   .sidebar-container {
     position: fixed;
     inset: 0 0 0 auto;
-    z-index: 50;
+    z-index: 150;
     width: min(286px, 88vw);
     height: 100dvh;
     transform: translate3d(105%, 0, 0);
@@ -239,6 +254,29 @@ select {
   .page-content {
     min-height: calc(100dvh - 70px);
     padding: clamp(18px, 5vw, 24px) clamp(14px, 4vw, 20px) 28px;
+  }
+}
+
+.sidebar-container:not(.open) {
+  width: 0;
+  flex-basis: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Keep every page modal above both the Sidebar and its mobile overlay. */
+:global(.modal-overlay),
+:global(.details-overlay),
+:global(.image-viewer-overlay),
+:global(.toast-message) {
+  z-index: 1000 !important;
+}
+
+@media (max-width: 760px) {
+  .sidebar-container:not(.open) {
+    width: min(286px, 88vw);
+    flex-basis: auto;
+    transform: translate3d(105%, 0, 0);
   }
 }
 

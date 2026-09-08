@@ -24,12 +24,17 @@
       <span class="spinner large"></span> جارٍ تحميل اللوحة...
     </div>
 
-    <div v-else class="spreadsheet-container">
+    <div v-else class="spreadsheet-container"
+         ref="spreadsheetContainer"
+         @mousedown="onMouseDown"
+         @mouseleave="onMouseLeave"
+         @mouseup="onMouseUp"
+         @mousemove="onMouseMove">
       <table class="spreadsheet-table">
         <thead>
           <tr>
             <th colspan="6" class="group-header admin-group">الإدارة والتكليف والمراجعة</th>
-            <th colspan="4" class="group-header red-group">حالة المنشور</th>
+            <th colspan="5" class="group-header red-group">حالة المنشور</th>
             <th colspan="2" class="group-header dark-red-group">موقف التمويل</th>
             <th colspan="8" class="group-header blue-group">محتوى المنشور</th>
             <th colspan="1" class="group-header light-blue-group">التسليم</th>
@@ -47,6 +52,7 @@
             <th class="sub-th red-th">النشر الفعلي</th>
             <th class="sub-th red-th">توقيت النشر</th>
             <th class="sub-th red-th">منصة النشر</th>
+            <th class="sub-th red-th">روابط النشر</th>
 
             <th class="sub-th dark-red-th">منصة الإعلان</th>
             <th class="sub-th dark-red-th">حالة التمويل</th>
@@ -195,7 +201,7 @@
               <small>{{ formatDate(post.target_date) }}</small>
             </td>
             <td>
-              <select v-model="post.actual_publish_status" @change="handlePublishStatusChange(post)" :class="post.actual_publish_status === 'لم يتم' ? 'text-red' : 'text-green'" :disabled="!canEditPublishAndNotes(post)">
+              <select v-model="post.actual_publish_status" @change="handlePublishStatusChange(post, $event)" :class="post.actual_publish_status === 'لم يتم' ? 'text-red' : 'text-green'" :disabled="!canEditPublishAndNotes(post)">
                 <option value="لم يتم">لم يتم</option>
                 <option value="تم النشر">تم النشر</option>
               </select>
@@ -216,6 +222,19 @@
                 :disabled="!canEditFields(post)"
                 placeholder="اختر منصة..."
               />
+            </td>
+            <td class="text-center">
+              <div v-if="post.published_links && Object.keys(post.published_links).length > 0" class="published-links-preview">
+                <a v-for="(link, platform) in post.published_links" :key="platform" 
+                   v-show="link" :href="link" target="_blank" class="platform-link" :title="platform">
+                   🔗 {{ platform }}
+                </a>
+                <!-- إخفاء زر التعديل إذا كان المنفذ وليس مديراً -->
+                <button v-if="canEditLinks(post)" class="icon-btn edit-links" @click="openLinksModal(post, false)" title="تعديل الروابط">✏️</button>
+              </div>
+              <button v-else class="secondary-btn small-btn" @click="openLinksModal(post, false)">
+                + إضافة روابط
+              </button>
             </td>
 
             <!-- 3. التمويل -->
@@ -390,6 +409,27 @@
       </div>
     </div>
     
+    <!-- Modal روابط النشر -->
+    <div v-if="showLinksModal" class="modal-overlay" @click.self="showLinksModal = false">
+      <div class="modal-content">
+        <h3>🔗 روابط النشر الفعلية</h3>
+        <p v-if="pendingPublishStatus" style="color: #ef6c00; font-weight: bold; font-size: 13px;">
+          ⚠️ لا يمكن إتمام عملية النشر قبل إرفاق الروابط الفعلية للمنصات المطلوبة!
+        </p>
+        <p v-else>أدخل روابط المنشور بعد نشره على المنصات المحددة.</p>
+
+        <div class="form-group mt-3" v-for="(link, platform) in tempLinks" :key="platform">
+          <label>رابط منصة: <strong>{{ platform }}</strong> <span class="required" style="color: #d32f2f;">*</span></label>
+          <input type="url" v-model="tempLinks[platform]" placeholder="https://..." dir="ltr" required />
+        </div>
+
+        <div class="modal-actions mt-4">
+          <button type="button" class="secondary-btn" @click="showLinksModal = false">إلغاء</button>
+          <button type="button" class="primary-btn" @click="savePublishedLinks">حفظ الروابط</button>
+        </div>
+      </div>
+    </div>
+
     <transition name="toast"><div v-if="toastMessage" class="toast-message">{{ toastMessage }}</div></transition>
   </section>
 </template>
@@ -408,6 +448,46 @@ const planId = route.params.id;
 const posts = ref([]);
 const allUsers = ref([]);
 const currentUser = ref(null);
+
+// متغيرات السحب (Drag to Scroll)
+const spreadsheetContainer = ref(null);
+let isDown = false;
+let startX;
+let scrollLeft;
+
+const onMouseDown = (e) => {
+  if (!spreadsheetContainer.value) return;
+  // منع السحب إذا كان المستخدم يضغط على عناصر تفاعلية
+  const targetTag = e.target.tagName.toLowerCase();
+  if (['input', 'select', 'button', 'textarea', 'a', 'path', 'svg'].includes(targetTag) || e.target.closest('.icon-btn, .primary-btn, .secondary-btn, .custom-select')) return;
+
+  isDown = true;
+  spreadsheetContainer.value.classList.add('dragging');
+  startX = e.pageX - spreadsheetContainer.value.offsetLeft;
+  scrollLeft = spreadsheetContainer.value.scrollLeft;
+};
+
+const onMouseLeave = () => {
+  isDown = false;
+  if (spreadsheetContainer.value) {
+    spreadsheetContainer.value.classList.remove('dragging');
+  }
+};
+
+const onMouseUp = () => {
+  isDown = false;
+  if (spreadsheetContainer.value) {
+    spreadsheetContainer.value.classList.remove('dragging');
+  }
+};
+
+const onMouseMove = (e) => {
+  if (!isDown) return;
+  e.preventDefault();
+  const x = e.pageX - spreadsheetContainer.value.offsetLeft;
+  const walk = (x - startX) * 1.5; // سرعة السحب (مضاعف)
+  spreadsheetContainer.value.scrollLeft = scrollLeft - walk;
+};
 
 const loading = ref(true);
 const saving = ref(false);
@@ -431,6 +511,102 @@ const activeHistoryTitle = ref('');
 const showWaModal = ref(false);
 const waPayload = ref(null);
 const waMessage = ref('');
+
+const showLinksModal = ref(false);
+const currentPostForLinks = ref(null);
+const tempLinks = ref({}); // لتخزين الروابط المؤقتة داخل النافذة
+const pendingPublishStatus = ref(false); // لمعرفة ما إذا كان فتح النافذة بسبب محاولة النشر
+
+// دالة لفتح نافذة الروابط
+const openLinksModal = (post, fromPublishAction = false) => {
+  currentPostForLinks.value = post;
+  pendingPublishStatus.value = fromPublishAction;
+  tempLinks.value = {};
+  
+  let platforms = [];
+  if (post.publishing_platform) {
+    if (Array.isArray(post.publishing_platform)) {
+      platforms = post.publishing_platform;
+    } else if (typeof post.publishing_platform === 'string') {
+      try { platforms = JSON.parse(post.publishing_platform); } catch(e) {}
+    }
+  }
+
+  platforms.forEach(platform => {
+    tempLinks.value[platform] = post.published_links && post.published_links[platform] ? post.published_links[platform] : '';
+  });
+  
+  showLinksModal.value = true;
+};
+
+// دالة التحقق من التعديل
+const canEditLinks = (post) => {
+  const hasLinks = post.published_links && Object.values(post.published_links).some(link => link && String(link).trim() !== '');
+  // يمكن التعديل إذا لم تكن هناك روابط محفوظة بعد، أو إذا كان المستخدم مديراً
+  return !hasLinks || isManager.value; 
+};
+
+// دالة حفظ الروابط
+const savePublishedLinks = async () => {
+  const post = currentPostForLinks.value;
+  
+  let platforms = [];
+  if (post.publishing_platform) {
+    if (Array.isArray(post.publishing_platform)) {
+      platforms = post.publishing_platform;
+    } else if (typeof post.publishing_platform === 'string') {
+      try { platforms = JSON.parse(post.publishing_platform); } catch(e) {}
+    }
+  }
+
+  let missingPlatforms = [];
+  platforms.forEach(platform => {
+    if (!tempLinks.value[platform] || String(tempLinks.value[platform]).trim() === '') {
+      missingPlatforms.push(platform);
+    }
+  });
+
+  if (missingPlatforms.length > 0) {
+    const missingStr = missingPlatforms.join('، ');
+    if (typeof showToast === 'function') {
+      showToast(`عذراً، يجب إدخال روابط لجميع المنصات المحددة: ${missingStr}`);
+    }
+    return; // نوقف عملية الحفظ
+  }
+
+  const payload = { published_links: tempLinks.value };
+  
+  if (pendingPublishStatus.value) {
+    payload.actual_publish_status = 'تم النشر';
+  }
+
+  saving.value = true;
+  try {
+    const res = await api.put(`/plan-posts/${post.id}`, payload);
+    post.published_links = res.data.data ? res.data.data.published_links : tempLinks.value;
+    if (pendingPublishStatus.value) {
+      post.actual_publish_status = 'تم النشر';
+      // تحديث توقيت النشر كما في السلوك الطبيعي
+      const now = new Date();
+      const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      if (!post.publishing_time) {
+        post.publishing_time = currentTime;
+      } else if (!post.publishing_time.includes(currentTime)) {
+        post.publishing_time = `${post.publishing_time} - ${currentTime}`;
+      }
+      autoSave(post, 'publishing_time');
+    }
+    showLinksModal.value = false;
+    if (typeof showToast === 'function') showToast('تم حفظ روابط النشر بنجاح ✅');
+  } catch (error) {
+    if (typeof showToast === 'function') showToast(error.response?.data?.message || 'حدث خطأ أثناء حفظ الروابط');
+    if (pendingPublishStatus.value) {
+      post.actual_publish_status = 'لم يتم';
+    }
+  } finally {
+    saving.value = false;
+  }
+};
 
 // دالة فتح النافذة
 const openWaModal = (payload) => {
@@ -646,6 +822,7 @@ const fetchPosts = async () => {
       ...p,
       ad_platform: Array.isArray(p.ad_platform) ? p.ad_platform : (p.ad_platform ? JSON.parse(p.ad_platform) : []),
       reviewer_ids: Array.isArray(p.reviewer_ids) ? p.reviewer_ids : (p.reviewer_ids ? JSON.parse(p.reviewer_ids) : []),
+      published_links: typeof p.published_links === 'string' ? JSON.parse(p.published_links || '{}') : (p.published_links || {}),
       deadline: formatDateTimeLocal(p.deadline)
     }));
     
@@ -762,13 +939,34 @@ const openHistoryModal = (historyArray, title) => {
 };
 
 // حماية النشر من الفرونت إند
-const handlePublishStatusChange = (post) => {
-  if (post.actual_publish_status === 'تم النشر') {
-    
+const handlePublishStatusChange = (post, event) => {
+  const newStatus = post.actual_publish_status; // already updated by v-model
+  
+  if (newStatus === 'تم النشر') {
     // منع النشر قبل الموافقتين
     if (post.review_status !== 'معتمد' || post.manager_review_status !== 'معتمد') {
       showToast('⚠️ لا يمكن النشر قبل الحصول على موافقة جميع المراجعين واعتماد المدير النهائي.');
       post.actual_publish_status = 'لم يتم'; 
+      return;
+    }
+
+    let platforms = [];
+    if (post.publishing_platform) {
+      if (Array.isArray(post.publishing_platform)) platforms = post.publishing_platform;
+      else if (typeof post.publishing_platform === 'string') {
+        try { platforms = JSON.parse(post.publishing_platform); } catch(e) {}
+      }
+    }
+    
+    const hasAllLinks = platforms.length > 0 && platforms.every(platform => 
+      post.published_links && post.published_links[platform] && String(post.published_links[platform]).trim() !== ''
+    );
+
+    if (!hasAllLinks) {
+      // نمنع النشر ونعيد القيمة الافتراضية برمجياً
+      post.actual_publish_status = 'لم يتم'; 
+      // نفتح النافذة الإجبارية
+      openLinksModal(post, true);
       return;
     }
 
@@ -836,7 +1034,48 @@ onMounted(() => {
 .reject-submit-btn { background: #cc0000; }
 .reject-submit-btn:hover { background: #aa0000; }
 
-.spreadsheet-container { flex-grow: 1; overflow: auto; background: #f8f9fa; padding-bottom: 50px; }
+.spreadsheet-container { 
+  flex-grow: 1; 
+  overflow: auto; 
+  background: #f8f9fa; 
+  padding-bottom: 50px; 
+  cursor: grab;
+}
+
+.spreadsheet-container:active {
+  cursor: grabbing;
+}
+
+.spreadsheet-container.dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.spreadsheet-container.dragging table {
+  pointer-events: none; /* يمنع تحديد النص أو الضغط بالخطأ أثناء السحب */
+}
+
+/* تحسين شكل شريط التمرير (Scrollbar) للماوس */
+.spreadsheet-container::-webkit-scrollbar {
+  height: 12px;
+  width: 12px;
+}
+
+.spreadsheet-container::-webkit-scrollbar-track {
+  background: #e9ecef;
+  border-radius: 6px;
+  margin: 0 10px;
+}
+
+.spreadsheet-container::-webkit-scrollbar-thumb {
+  background: #adb5bd;
+  border-radius: 6px;
+  border: 3px solid #e9ecef;
+}
+
+.spreadsheet-container::-webkit-scrollbar-thumb:hover {
+  background: #6c757d;
+}
 .spreadsheet-table { border-collapse: collapse; min-width: max-content; background: #fff; }
 
 th, td { border: 1px solid #dcdcdc; padding: 0; text-align: center; vertical-align: middle; }
@@ -1066,4 +1305,8 @@ input:focus, select:focus, textarea:focus { box-shadow: inset 0 0 0 2px #2196f3;
 .wa-btn.secondary:hover {
   background: #e4e6e9;
 }
+.published-links-preview { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: center; }
+.platform-link { font-size: 11px; padding: 4px 8px; background: #e3f2fd; color: #1565c0; border-radius: 4px; text-decoration: none; font-weight: bold; }
+.platform-link:hover { background: #bbdefb; }
+.icon-btn { background: none; border: none; cursor: pointer; font-size: 14px; }
 </style>

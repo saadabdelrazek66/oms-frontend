@@ -75,6 +75,12 @@ const router = createRouter({
           name: 'PlanBoard',
           component: SpreadsheetBoard,
         },
+        {
+          path: '/my-tasks',
+          name: 'EmployeeTasks',
+          component: () => import('@/views/EmployeeTasks.vue'),
+          meta: { title: 'مهامي / مساحة العمل' },
+        },
       ],
     },
   ],

@@ -354,36 +354,38 @@
     
     <!-- Modal إشعارات الواتساب -->
     <div v-if="showWaModal" class="modal-overlay" @click.self="showWaModal = false">
-      <div class="modal-content" style="width: min(500px, 100%)">
-        <h3 style="color: #25D366; display: flex; align-items: center; gap: 8px;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#25D366"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.274.072.376-.043c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564c.173.087.289.129.332.202.043.073.043.423-.101.827z"/></svg>
-          إرسال إشعار واتساب
-        </h3>
-        <p>تم إعداد الرسالة تلقائياً. يمكنك تعديلها قبل الإرسال.</p>
+      <div class="modal-content wa-card" style="max-width: 450px; border-radius: 16px; overflow: hidden; padding: 0;">
+        <div style="background: #25D366; color: white; padding: 20px; text-align: center;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="white" style="margin-bottom: 10px;"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.274.072.376-.043c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564c.173.087.289.129.332.202.043.073.043.423-.101.827z"/></svg>
+          <h3 style="margin: 0; font-size: 20px;">إرسال إشعار واتساب</h3>
+          <p style="margin: 5px 0 0 0; font-size: 13px; opacity: 0.9;">تم إعداد الرسالة تلقائياً. راجعها قبل الإرسال.</p>
+        </div>
         
-        <div class="form-group mt-3">
-          <label>نص الرسالة</label>
-          <textarea v-model="waMessage" rows="6" dir="auto" style="border: 1px solid #25d366; font-size: 13px;"></textarea>
-        </div>
-
-        <div class="form-group mt-2" v-if="waPayload.manager_phone" style="display: flex; align-items: center; gap: 8px;">
-          <input type="checkbox" id="ccManagerCheck" v-model="ccManager" style="width: auto; height: auto;" />
-          <label for="ccManagerCheck" style="margin: 0; cursor: pointer; color: #555;">إرسال نسخة للمدير (CC) للعلم</label>
-        </div>
-
-        <div class="mt-4" style="border-top: 1px solid #eee; padding-top: 15px;">
-          <label style="font-size: 11px; font-weight: bold; color: #444;">المستلمون:</label>
-          <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
-            <button v-for="(rec, idx) in waPayload.recipients" :key="idx" 
-                    @click="sendWhatsApp(rec.phone)" 
-                    class="primary-btn" style="background: #25D366; color: white;">
-              إرسال لـ {{ rec.name }} ({{ rec.role }})
-            </button>
+        <div style="padding: 20px;">
+          <div class="form-group">
+            <textarea v-model="waMessage" rows="5" dir="auto" style="border: 1px solid #ddd; border-radius: 8px; font-size: 14px; padding: 12px; width: 100%; box-sizing: border-box; background: #f9f9f9; resize: vertical;"></textarea>
           </div>
-        </div>
 
-        <div class="modal-actions" style="margin-top: 20px;">
-          <button type="button" class="secondary-btn" @click="showWaModal = false">إغلاق / تجاهل</button>
+          <div class="mt-4">
+            <label style="font-size: 12px; font-weight: bold; color: #666; margin-bottom: 8px; display: block;">الخيارات المتاحة (اضغط للإرسال):</label>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <button v-for="(rec, idx) in waPayload.recipients" :key="idx" 
+                      @click="sendWhatsApp(rec.phone, waMessage)" 
+                      class="wa-btn primary">
+                <span style="font-size: 16px;">💬</span> إرسال لـ {{ rec.name }} ({{ rec.role }})
+              </button>
+              
+              <button v-if="waPayload.manager_phone && !isManager"
+                      @click="sendWhatsApp(waPayload.manager_phone, `*نسخة للمدير للعلم:*\n\n` + waMessage)" 
+                      class="wa-btn secondary">
+                <span style="font-size: 16px;">📋</span> إرسال نسخة للمدير
+              </button>
+            </div>
+          </div>
+
+          <div class="modal-actions" style="margin-top: 25px; display: flex; justify-content: center;">
+            <button type="button" class="secondary-btn" @click="showWaModal = false" style="width: 100%; padding: 10px; border-radius: 8px;">إغلاق / تجاهل</button>
+          </div>
         </div>
       </div>
     </div>
@@ -429,7 +431,6 @@ const activeHistoryTitle = ref('');
 const showWaModal = ref(false);
 const waPayload = ref(null);
 const waMessage = ref('');
-const ccManager = ref(true); // افتراضياً نعم
 
 // دالة فتح النافذة
 const openWaModal = (payload) => {
@@ -440,23 +441,21 @@ const openWaModal = (payload) => {
 };
 
 // دالة إرسال الواتساب وتوجيه المستخدم
-const sendWhatsApp = (phone) => {
+const sendWhatsApp = (phone, customMessage) => {
   if (!phone) {
     if (typeof showToast === 'function') showToast('رقم الهاتف غير متوفر');
     return;
   }
-  const text = encodeURIComponent(waMessage.value);
-  // تنظيف الرقم من أي رموز (يفترض أن يكون بالصيغة الدولية)
-  const cleanPhone = phone.replace(/[^0-9]/g, '');
-  window.open(`https://wa.me/${cleanPhone}?text=${text}`, '_blank');
+  const text = encodeURIComponent(customMessage || waMessage.value);
   
-  // إذا كان إرسال نسخة للمدير مفعلاً، نفتح نافذة أخرى للمدير
-  if (ccManager.value && waPayload.value.manager_phone && cleanPhone !== waPayload.value.manager_phone.replace(/[^0-9]/g, '')) {
-    setTimeout(() => {
-      const ccText = encodeURIComponent(`*نسخة للمدير للعلم:*\n\n` + waMessage.value);
-      window.open(`https://wa.me/${waPayload.value.manager_phone.replace(/[^0-9]/g, '')}?text=${ccText}`, '_blank');
-    }, 1000);
+  // تنظيف الرقم من أي رموز (يفترض أن يكون بالصيغة الدولية، وتعديله لمصر إن بدأ بـ 01)
+  let cleanPhone = phone.replace(/[^0-9]/g, '');
+  if (cleanPhone.startsWith('01') && cleanPhone.length === 11) {
+    cleanPhone = '2' + cleanPhone;
   }
+  
+  // استخدام api.whatsapp.com يضمن فتح التطبيق مباشرة على الكمبيوتر والموبايل بشكل أفضل
+  window.open(`https://api.whatsapp.com/send/?phone=${cleanPhone}&text=${text}`, '_blank');
 };
 
 const showToast = (message) => { toastMessage.value = message; setTimeout(() => { toastMessage.value = ''; }, 4000); };
@@ -687,7 +686,12 @@ const approvePost = async (post, type) => {
     post.department_approved_at = res.data.data.department_approved_at;
     post.manager_approved_at = res.data.data.manager_approved_at;
     
-    showToast(res.data.data.review_status === 'معتمد' ? 'تم الاعتماد بنجاح 🟢' : 'تم تسجيل موافقتك، بانتظار باقي المراجعين ⏳');
+    // --- التقاط إشعار التهنئة والموافقة وفتح الواتساب ---
+    if (res.data?.whatsapp_payload) {
+      openWaModal(res.data.whatsapp_payload);
+    }
+    
+    showToast(res.data.data.review_status === 'معتمد' ? 'تم الاعتماد بنجاح ✅' : 'تم تسجيل موافقتك، بانتظار باقي المراجعين ⏳');
   } catch (error) {
     showToast(error.response?.data?.message || 'غير مصرح لك أو حدث خطأ');
   }
@@ -1029,4 +1033,37 @@ input:focus, select:focus, textarea:focus { box-shadow: inset 0 0 0 2px #2196f3;
 .toast-enter-active, .toast-leave-active { transition: 0.3s; }
 .toast-enter-from, .toast-leave-to { opacity: 0; transform: translateY(20px); }
 @keyframes spin { to { transform: rotate(360deg); } }
-</style>
+
+/* أزرار وتصميم الواتساب */
+.wa-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: bold;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.wa-btn.primary {
+  background: #25D366;
+  color: white;
+  box-shadow: 0 4px 10px rgba(37, 211, 102, 0.3);
+}
+.wa-btn.primary:hover {
+  background: #1ebc59;
+  transform: translateY(-2px);
+}
+.wa-btn.secondary {
+  background: #f0f2f5;
+  color: #333;
+  border: 1px solid #ddd;
+}
+.wa-btn.secondary:hover {
+  background: #e4e6e9;
+}
+</style>

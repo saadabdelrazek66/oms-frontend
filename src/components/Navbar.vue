@@ -28,13 +28,19 @@
         <span class="notification-dot" aria-label="3 إشعارات جديدة">3</span>
       </button>
       <span class="divider" aria-hidden="true"></span>
+      
+      <!-- منطقة بيانات المستخدم المحدثة -->
       <div class="user-info">
-        <div class="user-avatar" aria-hidden="true">{{ role === 'manager' ? 'م' : 'و' }}</div>
+        <div class="user-avatar" aria-hidden="true">{{ userInitial }}</div>
         <div class="user-copy">
-          <strong>{{ role === 'manager' ? ' المدير' : ' الموظف' }}</strong>
-          <span><i aria-hidden="true"></i> متصل الآن</span>
+          <strong>{{ userName }}</strong>
+          <span>
+            <i aria-hidden="true"></i> 
+            {{ role === 'manager' ? 'مدير' : 'موظف' }} • متصل
+          </span>
         </div>
       </div>
+
       <button class="logout-btn" type="button" :disabled="isLoggingOut" @click="logout">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H5v14h5M14 8l4 4-4 4M8 12h10" /></svg>
         <span>{{ isLoggingOut ? 'جارٍ الخروج...' : 'تسجيل الخروج' }}</span>
@@ -44,7 +50,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../axios'
 
@@ -62,10 +68,43 @@ const route = useRoute()
 const role = localStorage.getItem('role') || 'employee'
 const isLoggingOut = ref(false)
 
+// متغيرات حالة المستخدم
+const userName = ref('جاري التحميل...')
+const userInitial = ref('')
+
 const pageTitle = computed(() => {
   if (route.path.includes('dashboard')) return 'نظرة عامة'
   return 'لوحة التحكم'
 })
+
+// استخراج بيانات المستخدم عند تحميل المكون
+onMounted(() => {
+  const storedUser = localStorage.getItem('user')
+  
+  if (storedUser) {
+    try {
+      const userObj = JSON.parse(storedUser)
+      if (userObj && userObj.name) {
+        // أخذ الاسم الأول فقط إذا كان الاسم طويلاً (اختياري)
+        const firstName = userObj.name.split(' ')[0]
+        userName.value = firstName
+        // أخذ أول حرف للأفاتار
+        userInitial.value = firstName.charAt(0).toUpperCase()
+      }
+    } catch (e) {
+      console.error('خطأ في قراءة بيانات المستخدم:', e)
+      setFallbackUser()
+    }
+  } else {
+    setFallbackUser()
+  }
+})
+
+// دالة مساعدة لتعيين القيم الافتراضية
+const setFallbackUser = () => {
+  userName.value = role === 'manager' ? 'المدير' : 'الموظف'
+  userInitial.value = role === 'manager' ? 'م' : 'و'
+}
 
 const logout = async () => {
   if (isLoggingOut.value) return
@@ -78,6 +117,7 @@ const logout = async () => {
   } finally {
     localStorage.removeItem('token')
     localStorage.removeItem('role')
+    localStorage.removeItem('user') // تأكد من مسح بيانات المستخدم أيضاً
     router.push('/')
   }
 }
@@ -248,7 +288,7 @@ const logout = async () => {
   border-radius: 50%;
   color: #201955;
   background: linear-gradient(145deg, #8aede1, #ab87ff);
-  font-size: 14px;
+  font-size: 16px; /* كبرنا الخط قليلاً ليناسب الحرف */
   font-weight: 800;
 }
 
@@ -260,7 +300,7 @@ const logout = async () => {
 .user-copy strong {
   display: block;
   overflow: hidden;
-  font-size: 11px;
+  font-size: 13px; /* كبرنا الخط قليلاً ليبرز الاسم */
   white-space: nowrap;
   text-overflow: ellipsis;
 }

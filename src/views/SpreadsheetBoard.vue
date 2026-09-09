@@ -33,26 +33,27 @@
       <table class="spreadsheet-table">
         <thead>
           <tr>
-            <th colspan="6" class="group-header admin-group">الإدارة والتكليف والمراجعة</th>
             <th colspan="5" class="group-header red-group">حالة المنشور</th>
+            <th colspan="6" class="group-header admin-group">الإدارة والتكليف والمراجعة</th>
             <th colspan="2" class="group-header dark-red-group">موقف التمويل</th>
             <th colspan="8" class="group-header blue-group">محتوى المنشور</th>
             <th colspan="1" class="group-header light-blue-group">التسليم</th>
             <th colspan="1" class="group-header pink-group">ملاحظات</th>
+            <th v-if="isManager" colspan="1" class="group-header admin-group">إجراءات</th>
           </tr>
           <tr>
+            <th class="sub-th red-th">تاريخ النشر المخطط</th>
+            <th class="sub-th red-th">النشر الفعلي</th>
+            <th class="sub-th red-th">توقيت النشر</th>
+            <th class="sub-th red-th">منصة النشر</th>
+            <th class="sub-th red-th">روابط النشر</th>
+
             <th class="sub-th admin-th">المنفذ</th>
             <th class="sub-th admin-th">بدء التنفيذ</th>
             <th class="sub-th admin-th">الديدلاين</th>
             <th class="sub-th admin-th">المراجعين (متعدد)</th>
             <th class="sub-th admin-th">مراجعة القسم</th>
             <th class="sub-th admin-th" style="background: #cfd8dc;">اعتماد المدير</th>
-
-            <th class="sub-th red-th">تاريخ النشر المخطط</th>
-            <th class="sub-th red-th">النشر الفعلي</th>
-            <th class="sub-th red-th">توقيت النشر</th>
-            <th class="sub-th red-th">منصة النشر</th>
-            <th class="sub-th red-th">روابط النشر</th>
 
             <th class="sub-th dark-red-th">منصة الإعلان</th>
             <th class="sub-th dark-red-th">حالة التمويل</th>
@@ -68,20 +69,77 @@
 
             <th class="sub-th light-blue-th">روابط ووقت التسليم</th>
             <th class="sub-th pink-th">Note</th>
+            <th v-if="isManager" class="sub-th admin-th">حذف</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="posts.length === 0">
             <td colspan="21" class="text-center py-4 muted">لا توجد منشورات. قم بإضافة منشور جديد.</td>
           </tr>
-          <tr v-for="post in posts" :key="post.id" class="post-row">
+          <tr v-for="(post, index) in posts" :key="post.id" class="post-row">
             
+            <!-- 2. حالة المنشور -->
+            <td class="readonly-cell">
+              <strong>{{ getDayName(post.target_date) }}</strong>
+              <small>{{ formatDate(post.target_date) }}</small>
+            </td>
+            <td>
+              <div class="lock-wrapper">
+                <select v-model="post.actual_publish_status" @change="handlePublishStatusChange(post, $event)" :class="post.actual_publish_status === 'لم يتم' ? 'text-red' : 'text-green'" :disabled="!canEditPublishAndNotes(post) || isFieldDisabled(post, 'actual_publish_status')">
+                  <option value="لم يتم">لم يتم</option>
+                  <option value="تم النشر">تم النشر</option>
+                </select>
+                <span v-if="hasLockIcon(post, 'actual_publish_status')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'actual_publish_status')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
+              </div>
+            </td>
+            <td>
+              <div class="lock-wrapper">
+                <input type="text" v-model="post.publishing_time" @blur="autoSave(post, 'publishing_time')" placeholder="--:--" dir="ltr" :disabled="!canEditFields(post) || isFieldDisabled(post, 'publishing_time')" />
+                <span v-if="hasLockIcon(post, 'publishing_time')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'publishing_time')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
+              </div>
+            </td>
+            <td>
+              <div class="lock-wrapper">
+                <CustomMultiSelect
+                  v-model="post.publishing_platform"
+                  :options="[
+                    { label: 'Facebook', value: 'Facebook' },
+                    { label: 'Instagram', value: 'Instagram' },
+                    { label: 'Twitter/X', value: 'Twitter/X' },
+                    { label: 'LinkedIn', value: 'LinkedIn' },
+                    { label: 'TikTok', value: 'TikTok' },
+                    { label: 'Snapchat', value: 'Snapchat' }
+                  ]"
+                  @change="autoSave(post, 'publishing_platform')"
+                  :disabled="!canEditFields(post) || isFieldDisabled(post, 'publishing_platform')"
+                  placeholder="اختر منصة..."
+                />
+                <span v-if="hasLockIcon(post, 'publishing_platform')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'publishing_platform')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
+              </div>
+            </td>
+            <td class="text-center">
+              <div v-if="post.published_links && Object.keys(post.published_links).length > 0" class="published-links-preview">
+                <a v-for="(link, platform) in post.published_links" :key="platform" 
+                   v-show="link" :href="link" target="_blank" class="platform-link" :title="platform">
+                   🔗 {{ platform }}
+                </a>
+                <!-- إخفاء زر التعديل إذا كان المنفذ وليس مديراً -->
+                <button v-if="canEditLinks(post)" class="icon-btn edit-links" @click="openLinksModal(post, false)" title="تعديل الروابط">✏️</button>
+              </div>
+              <button v-else class="secondary-btn small-btn" @click="openLinksModal(post, false)">
+                + إضافة روابط
+              </button>
+            </td>
+
             <!-- 1. الإدارة والتكليف -->
             <td>
-              <select v-model="post.designer_id" @change="autoSave(post, 'designer_id')" :disabled="!canEditFields(post)">
-                <option :value="null">لم يحدد</option>
-                <option v-for="user in allUsers" :key="user.id" :value="user.id">{{ user.name }}</option>
-              </select>
+              <div class="lock-wrapper">
+                <select v-model="post.designer_id" @change="autoSave(post, 'designer_id')" :disabled="!canEditFields(post) || isFieldDisabled(post, 'designer_id')">
+                  <option :value="null">لم يحدد</option>
+                  <option v-for="user in allUsers" :key="user.id" :value="user.id">{{ user.name }}</option>
+                </select>
+                <span v-if="hasLockIcon(post, 'designer_id')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'designer_id')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
+              </div>
             </td>
             <td style="min-width: 130px; padding: 4px;">
               <div class="execution-trigger" v-if="post.designer_id">
@@ -94,26 +152,32 @@
               </div>
             </td>
             <td>
-              <VueDatePicker 
-                v-model="post.deadline" 
-                :disabled="!canEditFields(post)"
-                auto-apply
-                @closed="autoSave(post, 'deadline')"
-                time-picker-inline
-                position="left"
-                placeholder="تاريخ ووقت"
-              ></VueDatePicker>
+              <div class="lock-wrapper">
+                <VueDatePicker 
+                  v-model="post.deadline" 
+                  :disabled="!canEditFields(post) || isFieldDisabled(post, 'deadline')"
+                  auto-apply
+                  @closed="autoSave(post, 'deadline')"
+                  time-picker-inline
+                  position="left"
+                  placeholder="تاريخ ووقت"
+                ></VueDatePicker>
+                <span v-if="hasLockIcon(post, 'deadline')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'deadline')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
+              </div>
             </td>
             
             <!-- حقل المراجعين (Multi-Select) -->
             <td>
-              <CustomMultiSelect
-                v-model="post.reviewer_ids"
-                :options="allUsers.map(u => ({ label: u.name, value: u.id }))"
-                @change="autoSave(post, 'reviewer_ids')"
-                :disabled="!canEditFields(post)"
-                placeholder="اختر مراجع..."
-              />
+              <div class="lock-wrapper">
+                <CustomMultiSelect
+                  v-model="post.reviewer_ids"
+                  :options="allUsers.map(u => ({ label: u.name, value: u.id }))"
+                  @change="autoSave(post, 'reviewer_ids')"
+                  :disabled="!canEditFields(post) || isFieldDisabled(post, 'reviewer_ids')"
+                  placeholder="اختر مراجع..."
+                />
+                <span v-if="hasLockIcon(post, 'reviewer_ids')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'reviewer_ids')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
+              </div>
             </td>
 
  <!-- مراجعة القسم (إجماع المراجعين) -->
@@ -195,99 +259,136 @@
               </button>
             </td>
 
-            <!-- 2. حالة المنشور -->
-            <td class="readonly-cell">
-              <strong>{{ getDayName(post.target_date) }}</strong>
-              <small>{{ formatDate(post.target_date) }}</small>
-            </td>
-            <td>
-              <select v-model="post.actual_publish_status" @change="handlePublishStatusChange(post, $event)" :class="post.actual_publish_status === 'لم يتم' ? 'text-red' : 'text-green'" :disabled="!canEditPublishAndNotes(post)">
-                <option value="لم يتم">لم يتم</option>
-                <option value="تم النشر">تم النشر</option>
-              </select>
-            </td>
-            <td><input type="text" v-model="post.publishing_time" @blur="autoSave(post, 'publishing_time')" placeholder="--:--" dir="ltr" :disabled="!canEditFields(post)" /></td>
-            <td>
-              <CustomMultiSelect
-                v-model="post.publishing_platform"
-                :options="[
-                  { label: 'Facebook', value: 'Facebook' },
-                  { label: 'Instagram', value: 'Instagram' },
-                  { label: 'Twitter/X', value: 'Twitter/X' },
-                  { label: 'LinkedIn', value: 'LinkedIn' },
-                  { label: 'TikTok', value: 'TikTok' },
-                  { label: 'Snapchat', value: 'Snapchat' }
-                ]"
-                @change="autoSave(post, 'publishing_platform')"
-                :disabled="!canEditFields(post)"
-                placeholder="اختر منصة..."
-              />
-            </td>
-            <td class="text-center">
-              <div v-if="post.published_links && Object.keys(post.published_links).length > 0" class="published-links-preview">
-                <a v-for="(link, platform) in post.published_links" :key="platform" 
-                   v-show="link" :href="link" target="_blank" class="platform-link" :title="platform">
-                   🔗 {{ platform }}
-                </a>
-                <!-- إخفاء زر التعديل إذا كان المنفذ وليس مديراً -->
-                <button v-if="canEditLinks(post)" class="icon-btn edit-links" @click="openLinksModal(post, false)" title="تعديل الروابط">✏️</button>
-              </div>
-              <button v-else class="secondary-btn small-btn" @click="openLinksModal(post, false)">
-                + إضافة روابط
-              </button>
-            </td>
-
             <!-- 3. التمويل -->
             <td>
-              <CustomMultiSelect
-                v-model="post.ad_platform"
-                :options="[
-                  { label: 'Facebook Ads', value: 'Facebook Ads' },
-                  { label: 'Google Ads', value: 'Google Ads' },
-                  { label: 'Snapchat Ads', value: 'Snapchat Ads' },
-                  { label: 'TikTok Ads', value: 'TikTok Ads' }
-                ]"
-                @change="autoSave(post, 'ad_platform')"
-                :disabled="!canEditFields(post)"
-                placeholder="اختر منصة..."
-              />
+              <div class="lock-wrapper">
+                <CustomMultiSelect
+                  v-model="post.ad_platform"
+                  :options="[
+                    { label: 'Facebook Ads', value: 'Facebook Ads' },
+                    { label: 'Google Ads', value: 'Google Ads' },
+                    { label: 'Snapchat Ads', value: 'Snapchat Ads' },
+                    { label: 'TikTok Ads', value: 'TikTok Ads' }
+                  ]"
+                  @change="autoSave(post, 'ad_platform')"
+                  :disabled="!canEditFields(post) || isFieldDisabled(post, 'ad_platform')"
+                  placeholder="اختر منصة..."
+                />
+                <span v-if="hasLockIcon(post, 'ad_platform')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'ad_platform')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
+              </div>
             </td>
             <td>
-              <select v-model="post.finance_status" @change="autoSave(post, 'finance_status')" :disabled="!canEditFields(post)">
-                <option value="غير ممول">غير ممول</option>
-                <option value="ممول">ممول</option>
-              </select>
+              <div class="lock-wrapper">
+                <select v-model="post.finance_status" @change="autoSave(post, 'finance_status')" :disabled="!canEditFields(post) || isFieldDisabled(post, 'finance_status')">
+                  <option value="غير ممول">غير ممول</option>
+                  <option value="ممول">ممول</option>
+                </select>
+                <span v-if="hasLockIcon(post, 'finance_status')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'finance_status')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
+              </div>
             </td>
 
             <!-- 4. محتوى المنشور -->
             <td>
-              <select v-model="post.post_type" @change="autoSave(post, 'post_type')" :disabled="!canEditFields(post)">
-                <option value="">اختيار...</option>
-                <option value="Infograph">Infograph</option>
-                <option value="Video">Video</option>
-                <option value="Reel/Shorts">Reel / Shorts</option>
-                <option value="Text Only">Text Only</option>
-                <option value="Carousel">Carousel</option>
-              </select>
+              <div class="lock-wrapper">
+                <select v-model="post.post_type" @change="autoSave(post, 'post_type')" :disabled="!canEditFields(post) || isFieldDisabled(post, 'post_type')">
+                  <option value="">اختيار...</option>
+                  <option value="Infograph">Infograph</option>
+                  <option value="Video">Video</option>
+                  <option value="Reel/Shorts">Reel / Shorts</option>
+                  <option value="Text Only">Text Only</option>
+                  <option value="Carousel">Carousel</option>
+                </select>
+                <span v-if="hasLockIcon(post, 'post_type')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'post_type')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
+              </div>
             </td>
-            <td><input type="text" v-model="post.objective" @blur="autoSave(post, 'objective')" placeholder="..." :disabled="!canEditFields(post)" /></td>
-            <td><textarea v-model="post.detailed_idea" @blur="autoSave(post, 'detailed_idea')" rows="1" :disabled="!canEditFields(post)"></textarea></td>
-            <td><textarea v-model="post.caption" @blur="autoSave(post, 'caption')" rows="1" :disabled="!canEditFields(post)"></textarea></td>
-            <td><input type="text" v-model="post.tov" @blur="autoSave(post, 'tov')" placeholder="..." :disabled="!canEditFields(post)" /></td>
-            <td><input type="text" v-model="post.call_to_action" @blur="autoSave(post, 'call_to_action')" placeholder="..." :disabled="!canEditFields(post)" /></td>
-            <td><input type="text" v-model="post.hashtags" @blur="autoSave(post, 'hashtags')" placeholder="#..." :disabled="!canEditFields(post)" /></td>
-            <td><input type="url" v-model="post.reference_link" @blur="autoSave(post, 'reference_link')" placeholder="Link..." dir="ltr" :disabled="!canEditFields(post)" /></td>
+            <td>
+              <div class="objective-wrapper" style="flex-direction: column; align-items: stretch; position: relative;">
+                <CustomMultiSelect 
+                  v-model="post.objective_array" 
+                  :options="objectiveOptions" 
+                  @change="handleObjectiveChange(post)"
+                  :disabled="!canEditFields(post) || isFieldDisabled(post, 'objective')"
+                >
+                  <template #selected-text="{ selectedOptions }">
+                    <div v-if="selectedOptions && selectedOptions.length" class="objective-tags">
+                      <span v-for="opt in selectedOptions" :key="opt.value" class="obj-tag" :class="getObjectiveClass(opt.value)">
+                        {{ opt.value === 'آخر' && post.custom_objective ? post.custom_objective : opt.label }}
+                      </span>
+                    </div>
+                    <span v-else style="color:#999;">اختيار...</span>
+                  </template>
+                </CustomMultiSelect>
+                
+                <input v-if="post.objective_array && post.objective_array.includes('آخر')" 
+                       type="text" 
+                       v-model="post.custom_objective" 
+                       @blur="handleObjectiveChange(post)" 
+                       placeholder="اكتب..." 
+                       :disabled="!canEditFields(post) || isFieldDisabled(post, 'objective')" 
+                       class="mt-1" style="font-size: 11px; padding: 4px;" />
+                <span v-if="hasLockIcon(post, 'objective')" class="lock-indicator" style="top: 15px;" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'objective')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
+              </div>
+            </td>
+            <td>
+              <div class="lock-wrapper">
+                <textarea v-model="post.detailed_idea" @blur="autoSave(post, 'detailed_idea')" rows="2" :disabled="!canEditFields(post) || isFieldDisabled(post, 'detailed_idea')"></textarea>
+                <span v-if="hasLockIcon(post, 'detailed_idea')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'detailed_idea')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
+              </div>
+            </td>
+            <td>
+              <div class="lock-wrapper">
+                <textarea v-model="post.caption" @blur="autoSave(post, 'caption')" rows="2" :disabled="!canEditFields(post) || isFieldDisabled(post, 'caption')"></textarea>
+                <span v-if="hasLockIcon(post, 'caption')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'caption')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
+              </div>
+            </td>
+            <td>
+              <div class="lock-wrapper">
+                <textarea v-model="post.tov" @blur="autoSave(post, 'tov')" rows="2" placeholder="..." :disabled="!canEditFields(post) || isFieldDisabled(post, 'tov')"></textarea>
+                <span v-if="hasLockIcon(post, 'tov')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'tov')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
+              </div>
+            </td>
+            <td>
+              <div class="lock-wrapper">
+                <textarea v-model="post.call_to_action" @blur="autoSave(post, 'call_to_action')" rows="2" placeholder="..." :disabled="!canEditFields(post) || isFieldDisabled(post, 'call_to_action')"></textarea>
+                <span v-if="hasLockIcon(post, 'call_to_action')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'call_to_action')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
+              </div>
+            </td>
+            <td>
+              <div class="lock-wrapper">
+                <textarea v-model="post.hashtags" @blur="autoSave(post, 'hashtags')" rows="2" placeholder="#..." dir="ltr" :disabled="!canEditFields(post) || isFieldDisabled(post, 'hashtags')"></textarea>
+                <span v-if="hasLockIcon(post, 'hashtags')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'hashtags')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
+              </div>
+            </td>
+            <td>
+              <div class="textarea-link-wrapper lock-wrapper">
+                <textarea v-model="post.reference_link" @blur="autoSave(post, 'reference_link')" rows="2" placeholder="Link..." dir="ltr" :disabled="!canEditFields(post) || isFieldDisabled(post, 'reference_link')"></textarea>
+                <span v-if="hasLockIcon(post, 'reference_link')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'reference_link')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
+                <div class="extracted-links" v-if="extractUrls(post.reference_link).length">
+                  <a v-for="(url, i) in extractUrls(post.reference_link)" :key="i" :href="url" target="_blank" class="extracted-link-btn" :title="url">
+                    {{ getUrlLabel(url, i) }}
+                  </a>
+                </div>
+              </div>
+            </td>
 
             <!-- 5. التسليم والملاحظات -->
             <td class="delivery-cell">
-              <textarea 
-                v-model="post.delivery_links" 
-                @blur="autoSave(post, 'delivery_links')" 
-                placeholder="روابط التسليم (Drive/Notion)..." 
-                dir="ltr" 
-                rows="2"
-                :disabled="!canEditDelivery(post)"
-              ></textarea>
+              <div class="textarea-link-wrapper lock-wrapper">
+                <textarea 
+                  v-model="post.delivery_links" 
+                  @blur="autoSave(post, 'delivery_links')" 
+                  placeholder="روابط التسليم (Drive/Notion)..." 
+                  dir="ltr" 
+                  rows="2"
+                  :disabled="!canEditDelivery(post) || isFieldDisabled(post, 'delivery_links')"
+                ></textarea>
+                <span v-if="hasLockIcon(post, 'delivery_links')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'delivery_links')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
+                <div class="extracted-links" v-if="extractUrls(post.delivery_links).length">
+                  <a v-for="(url, i) in extractUrls(post.delivery_links)" :key="i" :href="url" target="_blank" class="extracted-link-btn" :title="url">
+                    {{ getUrlLabel(url, i) }}
+                  </a>
+                </div>
+              </div>
               <div class="delivery-status">
                 <button 
                   v-if="(post.review_status === 'مرفوض' || post.manager_review_status === 'مرفوض') && canEditDelivery(post)"
@@ -310,7 +411,18 @@
                 >تسجيل التسليم</button>
               </div>
             </td>
-            <td><input type="text" v-model="post.notes" @blur="autoSave(post, 'notes')" placeholder="..." :disabled="!canEditPublishAndNotes(post)" /></td>
+            <td><textarea v-model="post.notes" @blur="autoSave(post, 'notes')" rows="2" placeholder="..." :disabled="!canEditPublishAndNotes(post)"></textarea></td>
+            <td v-if="isManager" class="text-center">
+              <button 
+                class="icon-btn delete-btn" 
+                @click="deletePost(post, index)" 
+                title="حذف الصف"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true" width="18" height="18">
+                  <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"></path>
+                </svg>
+              </button>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -324,11 +436,21 @@
         <form @submit.prevent="addNewRow">
           <div class="form-group mt-3">
             <label>تاريخ المنشور</label>
-            <input type="date" v-model="newRowDate" required />
+            <VueDatePicker 
+              v-model="newRowDate" 
+              :enable-time-picker="false"
+              auto-apply
+              model-type="yyyy-MM-dd"
+              format="yyyy-MM-dd"
+              :min-date="planStartDate"
+              :max-date="planEndDate"
+              placeholder="اختر تاريخ المنشور"
+              required
+            ></VueDatePicker>
           </div>
           <div class="modal-actions">
             <button type="button" class="secondary-btn" @click="showAddRowModal = false">إلغاء</button>
-            <button type="submit" class="primary-btn" :disabled="addingRow">إضافة الصف</button>
+            <button type="submit" class="primary-btn" :disabled="addingRow || !newRowDate">إضافة الصف</button>
           </div>
         </form>
       </div>
@@ -448,6 +570,17 @@ const planId = route.params.id;
 const posts = ref([]);
 const allUsers = ref([]);
 const currentUser = ref(null);
+const currentPlan = ref(null);
+
+const planStartDate = computed(() => {
+  if (!currentPlan.value || !currentPlan.value.start_date) return null;
+  return new Date(currentPlan.value.start_date);
+});
+
+const planEndDate = computed(() => {
+  if (!currentPlan.value || !currentPlan.value.end_date) return null;
+  return new Date(currentPlan.value.end_date);
+});
 
 // متغيرات السحب (Drag to Scroll)
 const spreadsheetContainer = ref(null);
@@ -459,7 +592,7 @@ const onMouseDown = (e) => {
   if (!spreadsheetContainer.value) return;
   // منع السحب إذا كان المستخدم يضغط على عناصر تفاعلية
   const targetTag = e.target.tagName.toLowerCase();
-  if (['input', 'select', 'button', 'textarea', 'a', 'path', 'svg'].includes(targetTag) || e.target.closest('.icon-btn, .primary-btn, .secondary-btn, .custom-select')) return;
+  if (['input', 'select', 'button', 'textarea', 'a', 'path', 'svg', 'label'].includes(targetTag) || e.target.closest('.icon-btn, .primary-btn, .secondary-btn, .custom-multiselect, .dropdown-menu, .multiselect-toggle')) return;
 
   isDown = true;
   spreadsheetContainer.value.classList.add('dragging');
@@ -761,6 +894,34 @@ const resubmitPost = async (post) => {
   }
 };
 
+// دالة التحقق من القفل
+const isFieldDisabled = (post, fieldName) => {
+  if (isManager.value) return false;
+  return post.locked_fields && Array.isArray(post.locked_fields) && post.locked_fields.includes(fieldName);
+};
+
+const hasLockIcon = (post, fieldName) => {
+  return post.locked_fields && Array.isArray(post.locked_fields) && post.locked_fields.includes(fieldName);
+};
+
+const unlockField = async (post, fieldName) => {
+  if (!isManager.value) return;
+  
+  try {
+    const response = await api.post(`/plan-posts/${post.id}/unlock-field`, { field_name: fieldName });
+    post.locked_fields = response.data.locked_fields || response.data.data?.locked_fields || [];
+    
+    if (typeof showToast === 'function') {
+      showToast('تم فك القفل بنجاح 🔓');
+    }
+  } catch (error) {
+    console.error('فشل فك القفل:', error);
+    if (typeof showToast === 'function') {
+      showToast('حدث خطأ أثناء فك القفل');
+    }
+  }
+};
+
 // تحديد ما إذا كان المستخدم الحالي من ضمن المراجعين (لحظر تعديل الحقول)
 const isReviewerOnly = (post) => {
   if (!currentUser.value) return true;
@@ -814,17 +975,77 @@ const fetchUsers = async () => {
   } catch (error) {}
 };
 
+// --- دوال الهدف (Objective) ---
+const predefinedObjectives = ['Awareness', 'Educational', 'Engagement', 'Storytelling', 'Conversion', 'Social Proof'];
+
+const objectiveOptions = [
+  { label: 'Awareness', value: 'Awareness' },
+  { label: 'Educational', value: 'Educational' },
+  { label: 'Engagement', value: 'Engagement' },
+  { label: 'Storytelling', value: 'Storytelling' },
+  { label: 'Conversion', value: 'Conversion' },
+  { label: 'Social Proof', value: 'Social Proof' },
+  { label: 'آخر (كتابة يدوية)', value: 'آخر' }
+];
+
+const getObjectiveClass = (obj) => {
+  const mapping = {
+    'Awareness': 'obj-awareness',
+    'Educational': 'obj-educational',
+    'Engagement': 'obj-engagement',
+    'Storytelling': 'obj-storytelling',
+    'Conversion': 'obj-conversion',
+    'Social Proof': 'obj-social-proof'
+  };
+  return mapping[obj] || '';
+};
+
+const handleObjectiveChange = (post) => {
+  let finalArray = (post.objective_array || []).filter(v => v !== 'آخر');
+  if (post.objective_array && post.objective_array.includes('آخر') && post.custom_objective) {
+    finalArray.push(post.custom_objective);
+  }
+  post.objective = finalArray.join(', ');
+  autoSave(post, 'objective');
+};
+
+const fetchCurrentPlan = async () => {
+  try {
+    const res = await api.get(`/content-plans/${planId}`);
+    currentPlan.value = res.data.data || res.data;
+  } catch (error) {
+    try {
+      const fallbackRes = await api.get('/content-plans');
+      const allPlans = fallbackRes.data.data || fallbackRes.data || [];
+      currentPlan.value = allPlans.find(p => p.id == planId) || null;
+    } catch(e) {
+      console.error('Error fetching plan details:', e);
+    }
+  }
+};
+
 const fetchPosts = async () => {
   loading.value = true;
   try {
     const res = await api.get(`/content-plans/${planId}/posts`);
-    posts.value = res.data.data.map(p => ({
-      ...p,
-      ad_platform: Array.isArray(p.ad_platform) ? p.ad_platform : (p.ad_platform ? JSON.parse(p.ad_platform) : []),
-      reviewer_ids: Array.isArray(p.reviewer_ids) ? p.reviewer_ids : (p.reviewer_ids ? JSON.parse(p.reviewer_ids) : []),
-      published_links: typeof p.published_links === 'string' ? JSON.parse(p.published_links || '{}') : (p.published_links || {}),
-      deadline: formatDateTimeLocal(p.deadline)
-    }));
+    posts.value = res.data.data.map(p => {
+      let objArr = p.objective ? p.objective.split(', ') : [];
+      let custom = objArr.filter(o => !predefinedObjectives.includes(o));
+      let predefined = objArr.filter(o => predefinedObjectives.includes(o));
+      
+      let finalObjArr = [...predefined];
+      if (custom.length > 0) finalObjArr.push('آخر');
+
+      return {
+        ...p,
+        objective_array: finalObjArr,
+        custom_objective: custom.join(', '),
+        ad_platform: Array.isArray(p.ad_platform) ? p.ad_platform : (p.ad_platform ? JSON.parse(p.ad_platform) : []),
+        reviewer_ids: Array.isArray(p.reviewer_ids) ? p.reviewer_ids : (p.reviewer_ids ? JSON.parse(p.reviewer_ids) : []),
+        published_links: typeof p.published_links === 'string' ? JSON.parse(p.published_links || '{}') : (p.published_links || {}),
+        deadline: formatDateTimeLocal(p.deadline)
+      };
+    });
     
     isPlanResponsible.value = res.data.is_responsible || false;
     
@@ -832,6 +1053,49 @@ const fetchPosts = async () => {
     showToast('تعذر تحميل بيانات اللوحة.');
   } finally {
     loading.value = false;
+  }
+};
+
+const extractUrls = (text) => {
+  if (!text) return [];
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  return text.match(urlRegex) || [];
+};
+
+const getUrlLabel = (url, index) => {
+  try {
+    const domain = new URL(url).hostname.replace('www.', '');
+    let name = domain.split('.')[0];
+    name = name.charAt(0).toUpperCase() + name.slice(1);
+    
+    if (name.toLowerCase() === 'drive') name = 'Google Drive';
+    if (name.toLowerCase() === 'docs') name = 'Google Docs';
+    if (name.toLowerCase() === 'trello') name = 'Trello';
+    
+    if (name.length > 12) name = name.substring(0, 10) + '...';
+    
+    return `🔗 ${name}`;
+  } catch (e) {
+    return `🔗 رابط ${index + 1}`;
+  }
+};
+
+const deletePost = async (post, index) => {
+  if (!confirm('هل أنت متأكد من حذف هذا الصف نهائياً؟ لا يمكن التراجع عن هذه الخطوة.')) {
+    return;
+  }
+
+  try {
+    await api.delete(`/plan-posts/${post.id}`);
+    posts.value.splice(index, 1);
+    if (typeof showToast === 'function') {
+      showToast('تم حذف الصف بنجاح 🗑️');
+    }
+  } catch (error) {
+    console.error('فشل الحذف:', error);
+    if (typeof showToast === 'function') {
+      showToast(error.response?.data?.message || 'حدث خطأ أثناء محاولة الحذف');
+    }
   }
 };
 
@@ -1008,6 +1272,7 @@ const addNewRow = async () => {
 onMounted(() => {
   fetchCurrentUser(); 
   fetchUsers();
+  fetchCurrentPlan();
   fetchPosts();
 });
 </script>
@@ -1077,6 +1342,42 @@ onMounted(() => {
   background: #6c757d;
 }
 .spreadsheet-table { border-collapse: collapse; min-width: max-content; background: #fff; }
+
+.extracted-links {
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  background: #fdfdfd;
+  border-top: 1px dashed #e0e0e0;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+.extracted-link-btn {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  font-size: 10px;
+  font-family: inherit;
+  color: #333;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  padding: 3px 8px;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+.extracted-link-btn:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+  color: #000;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* تحديد أقصى عرض لأعمدة الاختيار المتعدد حتى يلتف النص ولا يكبر الجدول */
+.spreadsheet-table td:has(.custom-multiselect) {
+  max-width: 180px;
+}
 
 th, td { border: 1px solid #dcdcdc; padding: 0; text-align: center; vertical-align: middle; }
 th { color: #000; font-weight: 700; font-size: 12px; padding: 6px 10px; white-space: nowrap; }
@@ -1225,6 +1526,26 @@ input:disabled, select:disabled, textarea:disabled {
 
 input, select, textarea { width: 100%; height: 100%; min-height: 33px; border: none; outline: none; background: transparent; padding: 4px 6px; font-family: inherit; font-size: 11px; color: #222; text-align: center; resize: none; transition: 0.15s; }
 textarea { padding-top: 8px; }
+
+/* تحسين تجربة المستخدم للـ Textarea في الجدول */
+.spreadsheet-table textarea {
+  resize: vertical;
+  min-height: 50px;
+}
+
+textarea::-webkit-scrollbar {
+  width: 6px;
+}
+textarea::-webkit-scrollbar-track {
+  background: transparent; 
+}
+textarea::-webkit-scrollbar-thumb {
+  background: #cbd5e1; 
+  border-radius: 4px;
+}
+textarea::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8; 
+}
 input:focus, select:focus, textarea:focus { box-shadow: inset 0 0 0 2px #2196f3; background: #fff; z-index: 10; position: relative; }
 
 .multi-select { height: auto; min-height: 35px; }
@@ -1309,4 +1630,80 @@ input:focus, select:focus, textarea:focus { box-shadow: inset 0 0 0 2px #2196f3;
 .platform-link { font-size: 11px; padding: 4px 8px; background: #e3f2fd; color: #1565c0; border-radius: 4px; text-decoration: none; font-weight: bold; }
 .platform-link:hover { background: #bbdefb; }
 .icon-btn { background: none; border: none; cursor: pointer; font-size: 14px; }
+
+/* ألوان قائمة الهدف (Objective) */
+.objective-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.obj-tag {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  white-space: nowrap;
+  background-color: #f0f0f0; 
+  color: #333;
+}
+
+.obj-tag.obj-awareness { background-color: #d9ead3; color: #274e13; }
+.obj-tag.obj-educational { background-color: #116f44; color: #ffffff; }
+.obj-tag.obj-engagement { background-color: #fce5cd; color: #783f04; }
+.obj-tag.obj-storytelling { background-color: #783f04; color: #ffffff; }
+.obj-tag.obj-conversion { background-color: #f8cccc; color: #cc0000; }
+.obj-tag.obj-social-proof { background-color: #e4d7f5; color: #4a235a; }
+
+.objective-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 140px;
+}
+.delete-btn {
+  color: #ff6b8b;
+  transition: all 0.2s ease;
+}
+.delete-btn:hover {
+  color: #ff335f;
+  background: rgba(255, 51, 95, 0.1);
+  transform: scale(1.05);
+}
+.delete-btn svg {
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.lock-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: stretch;
+}
+.clickable-lock {
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+.clickable-lock:hover {
+  transform: scale(1.2) rotate(-10deg);
+  opacity: 1;
+}
+
+.lock-indicator {
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  z-index: 5;
+  cursor: help;
+  opacity: 0.8;
+  pointer-events: auto;
+}
+input:disabled, select:disabled, textarea:disabled, .custom-multiselect.disabled {
+  cursor: not-allowed !important;
+  opacity: 0.75;
+}
 </style>

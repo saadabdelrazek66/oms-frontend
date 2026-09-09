@@ -7,7 +7,11 @@
       @click="toggleDropdown"
       :disabled="disabled"
     >
-      <span class="selected-text">{{ selectedText }}</span>
+      <span class="selected-text">
+        <slot name="selected-text" :selectedOptions="selectedOptionsList">
+          {{ selectedText }}
+        </slot>
+      </span>
       <span class="arrow" :class="{ up: isOpen }">▼</span>
     </button>
     <div v-if="isOpen" class="dropdown-menu">
@@ -75,18 +79,21 @@ const safeModelValue = computed(() => {
   return [];
 });
 
+const selectedOptionsList = computed(() => {
+  const vals = safeModelValue.value;
+  return props.options.filter(o => vals.some(val => val == o.value));
+});
+
 const selectedText = computed(() => {
   const vals = safeModelValue.value;
   if (vals.length === 0) {
     return props.placeholder;
   }
   
-  const selectedOptions = props.options.filter(o => {
-    return vals.some(val => val == o.value);
-  });
+  const selectedOptions = selectedOptionsList.value;
   
   if (selectedOptions.length > 0) {
-    return selectedOptions.map(o => o.label).join(', ');
+    return selectedOptions.map(o => o.label).join('، ');
   }
   
   return `${vals.length} مختار`;
@@ -165,10 +172,12 @@ onBeforeUnmount(() => {
 }
 
 .selected-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: #2c3e50; /* تأكيد اللون الداكن حتى لا يختفي مع الخلفية البيضاء */
+  color: #2c3e50;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.5;
+  text-align: right;
+  flex: 1;
 }
 
 .arrow {

@@ -47,6 +47,33 @@
     <!-- شريط الفلاتر -->
     <div class="filters-bar">
       <div class="filter-group">
+        <label>خطة المحتوى:</label>
+        <select v-model="planFilter" class="custom-select small-select">
+          <option value="">جميع الخطط</option>
+          <option v-for="plan in plans" :key="plan.id" :value="plan.id">
+            {{ plan.name || plan.title || 'خطة ' + plan.id }}
+          </option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>نوع المنشور:</label>
+        <select v-model="postTypeFilter" class="custom-select small-select">
+          <option value="">الكل</option>
+          <option value="تصميم">تصميم</option>
+          <option value="فيديو">فيديو</option>
+          <option value="مقال">مقال</option>
+          <option value="أخرى">أخرى</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>حالة النشر:</label>
+        <select v-model="publishStatusFilter" class="custom-select small-select">
+          <option value="">الكل</option>
+          <option value="تم النشر">تم النشر</option>
+          <option value="لم يتم">لم يتم</option>
+        </select>
+      </div>
+      <div class="filter-group">
         <label>موقف التسليم:</label>
         <select v-model="deliveryFilter" class="custom-select small-select">
           <option value="">الكل</option>
@@ -64,17 +91,21 @@
         </select>
       </div>
       <div class="filter-group">
-        <label>قبل تاريخ (الديدلاين):</label>
-        <input type="date" v-model="deadlineFilter" class="custom-select small-select" />
+        <label>اعتماد المدير:</label>
+        <select v-model="managerReviewFilter" class="custom-select small-select">
+          <option value="">الكل</option>
+          <option value="قيد الانتظار">قيد الانتظار</option>
+          <option value="معتمد">معتمد</option>
+          <option value="مرفوض">مرفوض</option>
+        </select>
       </div>
       <div class="filter-group">
-        <label>خطة المحتوى:</label>
-        <select v-model="planFilter" class="custom-select small-select">
-          <option value="">جميع الخطط</option>
-          <option v-for="plan in plans" :key="plan.id" :value="plan.id">
-            {{ plan.name || plan.title || 'خطة ' + plan.id }}
-          </option>
-        </select>
+        <label>الديدلاين (من):</label>
+        <input type="date" v-model="deadlineFromFilter" class="custom-select small-select" />
+      </div>
+      <div class="filter-group">
+        <label>الديدلاين (إلى):</label>
+        <input type="date" v-model="deadlineToFilter" class="custom-select small-select" />
       </div>
     </div>
 
@@ -117,9 +148,15 @@
                   <div class="task-avatar" aria-hidden="true">{{ getInitials(task.post_type || 'مهمة') }}</div>
                   <div class="task-info">
                     <strong>{{ task.post_type || 'غير محدد' }}</strong>
+                    <small v-if="task.plan_name" class="plan-name-label">📁 {{ task.plan_name }}</small>
                     <p class="desc-text" v-if="task.publishing_platform">
                       {{ safeJoin(task.publishing_platform) }}
                     </p>
+                    <div class="smart-badges-container" v-if="task.smart_badges && task.smart_badges.length">
+                      <span v-for="badge in task.smart_badges" :key="badge.text" class="smart-badge" :style="{ backgroundColor: badge.color }">
+                        {{ badge.text }}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </td>
@@ -223,7 +260,11 @@ const lastPage = ref(1);
 const totalItems = ref(0);
 const deliveryFilter = ref('');
 const reviewFilter = ref('');
-const deadlineFilter = ref('');
+const managerReviewFilter = ref('');
+const publishStatusFilter = ref('');
+const postTypeFilter = ref('');
+const deadlineFromFilter = ref('');
+const deadlineToFilter = ref('');
 const planFilter = ref('');
 
 const plans = ref([]);
@@ -282,7 +323,11 @@ const fetchTasks = async () => {
       page: currentPage.value,
       delivery_status: deliveryFilter.value,
       review_status: reviewFilter.value,
-      deadline_before: deadlineFilter.value,
+      manager_review_status: managerReviewFilter.value,
+      publish_status: publishStatusFilter.value,
+      post_type: postTypeFilter.value,
+      deadline_from: deadlineFromFilter.value,
+      deadline_to: deadlineToFilter.value,
       content_plan_id: planFilter.value
     };
     if (selectedUserId.value) params.user_id = selectedUserId.value;
@@ -330,7 +375,11 @@ watch(selectedUserId, () => {
   fetchTasks();
 });
 
-watch([deliveryFilter, reviewFilter, deadlineFilter, planFilter], () => {
+watch([
+  deliveryFilter, reviewFilter, managerReviewFilter, 
+  publishStatusFilter, postTypeFilter, deadlineFromFilter, 
+  deadlineToFilter, planFilter
+], () => {
   currentPage.value = 1;
   fetchTasks();
 });
@@ -798,7 +847,31 @@ input[type="date"].custom-select::-webkit-calendar-picker-indicator:hover {
 
 @media (max-width: 720px) {
   .page-topline { align-items: stretch; flex-direction: column; gap: 18px; }
-  .page-topline h2 { font-size: clamp(25px, 8vw, 30px); }
-  .summary-strip { grid-template-columns: 1fr; }
+}
+
+.plan-name-label {
+  display: block;
+  color: #a7b6ff;
+  font-size: 11px;
+  font-weight: 600;
+  margin-top: 2px;
+  margin-bottom: 4px;
+}
+
+.smart-badges-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.smart-badge {
+  color: #fff;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 </style>

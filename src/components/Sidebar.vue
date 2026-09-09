@@ -20,10 +20,11 @@
       </button>
     </div>
 
+    <!-- بطاقة المستخدم المحدثة -->
     <div class="profile-card">
-      <div class="avatar">{{ role === 'manager' ? 'م' : 'و' }}</div>
+      <div class="avatar" aria-hidden="true">{{ userInitial }}</div>
       <div class="profile-copy">
-        <strong>{{ role === 'manager' ? 'مساحة المدير' : 'مساحة الموظف' }}</strong>
+        <strong>{{ userName }}</strong>
         <span><i aria-hidden="true"></i> متصل الآن</span>
       </div>
       <span class="role-badge">{{ role === 'manager' ? 'مدير' : 'موظف' }}</span>
@@ -50,18 +51,18 @@
       </router-link>
 
       <!-- رابط مساحة العمل ومهامي -->
-<router-link to="/my-tasks" class="nav-item">
-  <span class="icon">
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-      <polyline points="14 2 14 8 20 8"></polyline>
-      <line x1="16" y1="13" x2="8" y2="13"></line>
-      <line x1="16" y1="17" x2="8" y2="17"></line>
-      <polyline points="10 9 9 9 8 9"></polyline>
-    </svg>
-  </span>
-  <span class="text">مساحة العمل</span>
-</router-link>
+      <router-link to="/my-tasks" class="nav-item">
+        <span class="icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+        </span>
+        <span class="text">مساحة العمل</span>
+      </router-link>
 
       <router-link v-if="role === 'manager'" class="nav-item" to="/manager/departments">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -160,18 +161,51 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
-// نقرأ الدور من نفس المكان المستخدم في صفحة تسجيل الدخول.
 const role = ref(localStorage.getItem('role') || 'employee')
 const router = useRouter()
+
+// متغيرات حالة المستخدم
+const userName = ref('جاري التحميل...')
+const userInitial = ref('')
+
+// استخراج بيانات المستخدم عند تحميل المكون
+onMounted(() => {
+  const storedUser = localStorage.getItem('user')
+  
+  if (storedUser) {
+    try {
+      const userObj = JSON.parse(storedUser)
+      if (userObj && userObj.name) {
+        // أخذ الاسم الأول فقط
+        const firstName = userObj.name.split(' ')[0]
+        userName.value = firstName
+        // أخذ أول حرف للأفاتار
+        userInitial.value = firstName.charAt(0).toUpperCase()
+      }
+    } catch (e) {
+      console.error('خطأ في قراءة بيانات المستخدم:', e)
+      setFallbackUser()
+    }
+  } else {
+    setFallbackUser()
+  }
+})
+
+// دالة مساعدة لتعيين القيم الافتراضية
+const setFallbackUser = () => {
+  userName.value = role.value === 'manager' ? 'مساحة المدير' : 'مساحة الموظف'
+  userInitial.value = role.value === 'manager' ? 'م' : 'و'
+}
 
 defineEmits(['close'])
 
 const logout = () => {
   localStorage.removeItem('token')
   localStorage.removeItem('role')
+  localStorage.removeItem('user')
   router.push('/login')
 }
 </script>
@@ -334,6 +368,7 @@ const logout = () => {
   color: #241a56;
   background: linear-gradient(145deg, #88ece1, #a884ff);
   font-weight: 800;
+  font-size: 15px; /* تم التعديل ليتناسب مع الحرف */
 }
 
 .profile-copy {
@@ -345,7 +380,7 @@ const logout = () => {
 .profile-copy strong {
   display: block;
   overflow: hidden;
-  font-size: 11px;
+  font-size: 13px; /* تم تكبير الخط قليلاً لإبراز الاسم */
   white-space: nowrap;
   text-overflow: ellipsis;
 }

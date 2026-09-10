@@ -53,7 +53,17 @@
       <!-- رابط مساحة العمل ومهامي -->
       <router-link to="/my-tasks" class="nav-item">
         <span class="icon">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
             <polyline points="14 2 14 8 20 8"></polyline>
             <line x1="16" y1="13" x2="8" y2="13"></line>
@@ -65,7 +75,15 @@
       </router-link>
 
       <router-link v-if="role === 'manager'" class="nav-item" to="/manager/departments">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
           <rect x="16" y="3" width="6" height="6" rx="1"></rect>
           <rect x="2" y="15" width="6" height="6" rx="1"></rect>
           <rect x="16" y="15" width="6" height="6" rx="1"></rect>
@@ -76,7 +94,15 @@
       </router-link>
 
       <router-link v-if="role === 'manager'" class="nav-item" to="/manager/users">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
           <circle cx="9" cy="7" r="4"></circle>
           <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
@@ -85,8 +111,32 @@
         <span>إدارة المستخدمين</span><em>U</em>
       </router-link>
 
+      <router-link v-if="role === 'manager'||role === 'employee'" class="nav-item" to="/projects">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M3 7h5l2 2h11v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+          <path d="M3 7V5a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v2"></path>
+        </svg>
+        <span>المشاريع</span><em>P</em>
+      </router-link>
+
       <router-link v-if="role === 'manager'" class="nav-item" to="/manager/clients">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
           <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
           <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
         </svg>
@@ -94,7 +144,15 @@
       </router-link>
 
       <router-link v-if="role === 'manager'" class="nav-item" to="/content-plans">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
           <polyline points="14 2 14 8 20 8"></polyline>
           <line x1="16" y1="13" x2="8" y2="13"></line>
@@ -105,7 +163,15 @@
       </router-link>
 
       <router-link v-if="role === 'employee'" class="nav-item" to="/content-plans">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
           <polyline points="14 2 14 8 20 8"></polyline>
           <line x1="16" y1="13" x2="8" y2="13"></line>
@@ -115,8 +181,20 @@
         <span>الخطط</span><em>P</em>
       </router-link>
 
-      <router-link v-if="role === 'manager' || role === 'employee'" class="nav-item" to="/plan-contents">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <router-link
+        v-if="role === 'manager' || role === 'employee'"
+        class="nav-item"
+        to="/plan-contents"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
           <polyline points="14 2 14 8 20 8"></polyline>
           <line x1="16" y1="13" x2="8" y2="13"></line>
@@ -127,7 +205,15 @@
       </router-link>
 
       <router-link v-if="role === 'manager'" class="nav-item" to="/app/client-vault">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
           <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
           <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
         </svg>
@@ -174,7 +260,7 @@ const userInitial = ref('')
 // استخراج بيانات المستخدم عند تحميل المكون
 onMounted(() => {
   const storedUser = localStorage.getItem('user')
-  
+
   if (storedUser) {
     try {
       const userObj = JSON.parse(storedUser)
@@ -249,7 +335,7 @@ const logout = () => {
   left: -155px;
   top: 80px;
   background: #7448db;
-  opacity: .13;
+  opacity: 0.13;
   filter: blur(40px);
 }
 
@@ -259,7 +345,7 @@ const logout = () => {
   right: -130px;
   bottom: 20px;
   background: #43d9cf;
-  opacity: .08;
+  opacity: 0.08;
   filter: blur(35px);
 }
 
@@ -289,7 +375,7 @@ const logout = () => {
   place-items: center;
   border-radius: 14px;
   background: linear-gradient(140deg, #b865fc, #5d42d8);
-  box-shadow: 0 9px 20px rgba(125, 70, 225, .3);
+  box-shadow: 0 9px 20px rgba(125, 70, 225, 0.3);
 }
 
 .brand-icon svg {
@@ -311,7 +397,7 @@ const logout = () => {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  letter-spacing: .8px;
+  letter-spacing: 0.8px;
   font-size: 15px;
 }
 
@@ -353,9 +439,9 @@ const logout = () => {
   min-width: 0;
   margin: 39px 0 32px;
   padding: 12px 11px;
-  border: 1px solid rgba(143, 157, 226, .14);
+  border: 1px solid rgba(143, 157, 226, 0.14);
   border-radius: 15px;
-  background: rgba(34, 41, 92, .52);
+  background: rgba(34, 41, 92, 0.52);
 }
 
 .avatar {
@@ -408,7 +494,7 @@ const logout = () => {
   padding: 3px 7px;
   border-radius: 6px;
   color: #bc92ff;
-  background: rgba(174, 116, 255, .12);
+  background: rgba(174, 116, 255, 0.12);
   font-size: 9px;
 }
 
@@ -416,7 +502,7 @@ const logout = () => {
   color: #6874a9;
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: .7px;
+  letter-spacing: 0.7px;
   margin: 0 12px 10px;
 }
 
@@ -446,7 +532,10 @@ const logout = () => {
   border-radius: 12px;
   color: #9da6cd;
   font-size: 12px;
-  transition: color .2s ease, background-color .2s ease, border-color .2s ease;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease;
 }
 
 .nav-item svg {
@@ -477,18 +566,18 @@ const logout = () => {
 
 .nav-item:hover {
   color: #e9ebff;
-  background: rgba(122, 140, 224, .1);
+  background: rgba(122, 140, 224, 0.1);
 }
 
 .nav-item.router-link-exact-active {
   color: #89ede2;
-  border-color: rgba(121, 232, 222, .16);
-  background: linear-gradient(90deg, rgba(85, 216, 205, .15), rgba(133, 111, 241, .1));
+  border-color: rgba(121, 232, 222, 0.16);
+  background: linear-gradient(90deg, rgba(85, 216, 205, 0.15), rgba(133, 111, 241, 0.1));
   box-shadow: inset -3px 0 #72e6db;
 }
 
 .nav-item.router-link-exact-active svg {
-  filter: drop-shadow(0 0 5px rgba(114, 230, 219, .55));
+  filter: drop-shadow(0 0 5px rgba(114, 230, 219, 0.55));
 }
 
 .quick-links {
@@ -502,12 +591,14 @@ const logout = () => {
   color: #939dc4;
   font-size: 11px;
   border-radius: 10px;
-  transition: color .2s ease, background-color .2s ease;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease;
 }
 
 .quick-links a:hover {
   color: #fff;
-  background: rgba(122, 140, 224, .08);
+  background: rgba(122, 140, 224, 0.08);
 }
 
 .quick-icon {
@@ -520,9 +611,18 @@ const logout = () => {
   font-size: 13px;
 }
 
-.purple { color: #ce9aff; background: rgba(178, 112, 255, .13); }
-.teal { color: #78e7df; background: rgba(79, 222, 209, .13); }
-.orange { color: #ffc783; background: rgba(255, 185, 89, .13); }
+.purple {
+  color: #ce9aff;
+  background: rgba(178, 112, 255, 0.13);
+}
+.teal {
+  color: #78e7df;
+  background: rgba(79, 222, 209, 0.13);
+}
+.orange {
+  color: #ffc783;
+  background: rgba(255, 185, 89, 0.13);
+}
 
 .quick-links b {
   min-width: 17px;
@@ -545,9 +645,9 @@ const logout = () => {
   display: flex;
   gap: 9px;
   padding: 12px 11px;
-  border: 1px solid rgba(130, 145, 220, .12);
+  border: 1px solid rgba(130, 145, 220, 0.12);
   border-radius: 13px;
-  background: rgba(25, 32, 78, .62);
+  background: rgba(25, 32, 78, 0.62);
 }
 
 .ocean-tip > span {
@@ -582,13 +682,15 @@ const logout = () => {
   margin-top: 16px;
   padding: 10px 12px;
   border: 0;
-  border-top: 1px solid rgba(144, 157, 220, .12);
+  border-top: 1px solid rgba(144, 157, 220, 0.12);
   color: #8893bd;
   background: transparent;
   font: inherit;
   font-size: 11px;
   cursor: pointer;
-  transition: color .2s ease, background-color .2s ease;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease;
 }
 
 .logout-btn:hover {

@@ -81,6 +81,18 @@ const router = createRouter({
           component: () => import('@/views/EmployeeTasks.vue'),
           meta: { title: 'مهامي / مساحة العمل' },
         },
+        {
+          path: '/projects',
+          name: 'Projects',
+          component: () => import('@/views/Projects.vue'),
+          meta: { title: 'المشاريع' },
+        },
+        {
+          path: '/projects/:id',
+          name: 'ProjectDetails',
+          component: () => import('../views/ProjectDetails.vue'),
+          props: true,
+        },
       ],
     },
   ],

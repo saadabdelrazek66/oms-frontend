@@ -123,6 +123,7 @@
               
               <td v-if="isManager">
                 <div class="actions-cell">
+                  <button class="action duplicate" type="button" title="استنساخ كقالب" aria-label="استنساخ الخطة" @click="openDuplicateModal(plan)">⎘</button>
                   <button class="action edit" type="button" title="تعديل" aria-label="تعديل خطة المحتوى" @click="openManagerModal(plan)">✎</button>
                   <button class="action delete" type="button" title="حذف" aria-label="حذف خطة المحتوى" @click="deletePlan(plan.id)">⌫</button>
                 </div>
@@ -133,13 +134,50 @@
       </div>
     </div>
 
-    <!-- نافذة عرض الصورة المكبرة (Image Viewer) -->
+    <div v-if="showDuplicateModal" class="modal-overlay" role="presentation" @click.self="closeDuplicateModal">
+      <div class="modal-content" role="dialog" style="width: min(500px, 100%) !important;">
+        <button class="modal-close" type="button" @click="closeDuplicateModal">×</button>
+        <div class="modal-icon" style="background: linear-gradient(145deg, #78e4d8, #65b5ff); color: #12183f;">⎘</div>
+        <span class="eyebrow" style="color: #65b5ff;">استنساخ سريع</span>
+        <h3>تحديد تواريخ الشهر الجديد</h3>
+        <p>سيتم نسخ العميل، نوع الخطة، الروابط، وفريق العمل كما هم من الخطة الأصلية.</p>
+        
+        <form class="plan-form mt-2" @submit.prevent="submitDuplicate">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>تاريخ بداية الخطة</label>
+              <input v-model="duplicateForm.start_date" type="date" required />
+            </div>
+            <div class="form-group">
+              <label>تاريخ نهاية الخطة</label>
+              <input v-model="duplicateForm.end_date" type="date" required />
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>التسليم النهائي</label>
+              <input v-model="duplicateForm.planned_delivery_date" type="datetime-local" required />
+            </div>
+            <div class="form-group" v-if="planToDuplicate?.requires_review">
+              <label>موعد إنهاء المراجعة</label>
+              <input v-model="duplicateForm.planned_review_date" type="datetime-local" required />
+            </div>
+          </div>
+          <div class="modal-actions" style="margin-top: 20px;">
+            <button type="button" class="secondary-btn" @click="closeDuplicateModal">إلغاء</button>
+            <button type="submit" class="primary-btn" style="background: linear-gradient(110deg, #78e4d8, #65b5ff);" :disabled="actionLoading === 'duplicate'">
+              {{ actionLoading === 'duplicate' ? 'جارٍ الاستنساخ...' : 'تأكيد واستنساخ 🚀' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <div v-if="showImageViewer" class="modal-overlay image-viewer-overlay" role="presentation" @click.self="closeImageViewer">
       <button class="viewer-close" type="button" @click="closeImageViewer">×</button>
       <img :src="viewerImageUrl" alt="معاينة الصورة" class="viewer-image" />
     </div>
 
-    <!-- نافذة سجل المتابعة -->
     <div v-if="showFollowUpsModal" class="modal-overlay" role="presentation" @click.self="closeFollowUpsModal">
       <div class="modal-content followups-modal" role="dialog" style="width: min(650px, 100%) !important;">
         <button class="modal-close" type="button" @click="closeFollowUpsModal">×</button>
@@ -147,7 +185,6 @@
         <span class="eyebrow" style="color: #65b5ff;">سجل المتابعة</span>
         <h3>متابعة العميل: {{ selectedFollowUpPlan?.client?.name }}</h3>
         
-        <!-- تم التحديث هنا لدعم رفع الصور واستخدام FormData -->
         <form class="plan-form mt-2" style="background: rgba(6,11,37,.3); padding: 15px; border-radius: 12px; border: 1px solid rgba(145,160,230,.1);" @submit.prevent="saveFollowUp">
           <div class="form-group mb-2">
             <label>{{ editingFollowUpId ? 'تعديل التحديث' : 'إضافة تحديث جديد' }}</label>
@@ -186,7 +223,6 @@
               </div>
               <div class="fu-text">{{ followUp.content }}</div>
               
-              <!-- عرض الصورة إذا كانت مرفقة -->
               <div v-if="followUp.image_url" class="fu-image-container" @click="openImageViewer(followUp.image_url)">
                 <img :src="followUp.image_url" alt="مرفق" class="fu-thumbnail" />
                 <div class="zoom-overlay"><span>🔍</span></div>
@@ -202,7 +238,6 @@
       </div>
     </div>
 
-    <!-- باقي النوافذ المعتادة -->
     <div v-if="showReferencesModal" class="modal-overlay" role="presentation" @click.self="closeReferencesModal"><div class="modal-content references-modal" role="dialog" style="width: min(450px, 100%) !important;"><button class="modal-close" type="button" @click="closeReferencesModal">×</button><div class="modal-icon" style="background: linear-gradient(145deg, #76e8de, #4facfe); color: #12183f;">🔗</div><span class="eyebrow" style="color: #4facfe;">مراجع العمل</span><h3>الروابط المساعدة للإنجاز</h3><p>الروابط المرفقة كمرجع ومصدر لإعداد هذه الخطة.</p><div class="ref-links-list mt-3"><a v-for="(link, index) in selectedReferencesPlan?.reference_links" :key="index" :href="link" target="_blank" rel="noopener noreferrer" class="ref-link-item"><span class="link-number">{{ index + 1 }}</span><span class="link-url">{{ link }}</span><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg></a></div><div class="modal-actions" style="justify-content:center; margin-top:20px;"><button type="button" class="secondary-btn" @click="closeReferencesModal">إغلاق</button></div></div></div>
     <div v-if="showCreationSuccessModal" class="modal-overlay" role="presentation" @click.self="closeCreationModal"><div class="modal-content delivery-modal" role="dialog" style="width: min(500px, 100%) !important; text-align: center;"><button class="modal-close" type="button" @click="closeCreationModal">×</button><div class="modal-icon" style="background: linear-gradient(145deg, #7de8dc, #b28aff); color: #12183f; margin: 0 auto 15px;">🚀</div><h3 style="color:#78e4d8;">تم إنشاء الخطة بنجاح!</h3><p style="margin-bottom: 20px;">الآن يمكنك إبلاغ المسؤولين ببدء العمل على هذه الخطة.</p><div class="wa-actions-container" v-if="createdPlan"><div v-if="getResponsibles(createdPlan).length > 0" class="executors-list"><h4 style="font-size:11px; color:#aeb6d7; text-align:right; margin-bottom:10px;">إبلاغ المسؤولين للإنجاز:</h4><div style="display:flex; flex-direction:column; gap:8px;"><a v-for="resp in getResponsibles(createdPlan)" :key="resp.id" :href="generateWaLink('plan_assigned', createdPlan, resp)" target="_blank" class="wa-btn-large" style="text-decoration:none; display:flex; align-items:center; justify-content:center;"><span>إرسال تنبيه للمسؤول: {{ resp.name }}</span> <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="margin-right: 8px;"><path d="M17.472...Z"/></svg></a></div></div><div v-else class="muted mt-3" style="font-size:10px;">لا يوجد مسؤولين مسجلين في هذه الخطة.</div></div><div class="modal-actions" style="justify-content:center; margin-top:25px;"><button type="button" class="secondary-btn" @click="closeCreationModal">تخطي</button></div></div></div>
     <div v-if="showWaPromptModal" class="modal-overlay" @click.self="closeWaPrompt"><div class="modal-content delivery-modal" style="width: min(400px, 100%) !important; text-align: center;"><button class="modal-close" type="button" @click="closeWaPrompt">×</button><div class="modal-icon" style="background: linear-gradient(145deg, #25D366, #128C7E); margin: 0 auto 15px; color:#fff;">📱</div><h3 style="color:#25D366;">{{ waPromptTitle }}</h3><p style="margin-bottom: 20px;">{{ waPromptDesc }}</p><a :href="waPromptLink" target="_blank" class="wa-btn-large" style="text-decoration: none;" @click="closeWaPrompt"><span>إرسال التنبيه عبر واتساب</span> <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg></a><div class="modal-actions" style="justify-content:center; margin-top:15px;"><button type="button" class="secondary-btn" @click="closeWaPrompt">تخطي</button></div></div></div>
@@ -273,7 +308,42 @@ const selectedHistoryPlan = ref(null);
 const selectedRejections = ref([]);
 const selectedFollowUpPlan = ref(null);
 
-// متغيرات ودوال الفورم الخاص بالمتابعة (مع دعم الصور)
+// ==== إضافات دالة الاستنساخ كقالب ====
+const showDuplicateModal = ref(false);
+const planToDuplicate = ref(null);
+const duplicateForm = reactive({ start_date: '', end_date: '', planned_delivery_date: '', planned_review_date: '' });
+
+const openDuplicateModal = (plan) => {
+  planToDuplicate.value = plan;
+  duplicateForm.start_date = '';
+  duplicateForm.end_date = '';
+  duplicateForm.planned_delivery_date = '';
+  duplicateForm.planned_review_date = '';
+  showDuplicateModal.value = true;
+};
+
+const closeDuplicateModal = () => {
+  showDuplicateModal.value = false;
+  planToDuplicate.value = null;
+};
+
+const submitDuplicate = async () => {
+  actionLoading.value = 'duplicate';
+  try {
+    await api.post(`/content-plans/${planToDuplicate.value.id}/duplicate`, duplicateForm);
+    closeDuplicateModal();
+    showToast('تم استنساخ الخطة بنجاح 🚀');
+    await fetchPlans();
+  } catch (error) {
+    console.error('فشل الاستنساخ:', error);
+    showToast(error.response?.data?.message || 'حدث خطأ أثناء محاولة الاستنساخ');
+  } finally {
+    actionLoading.value = '';
+  }
+};
+// ======================================
+
+// متغيرات ودوال الفورم الخاص بالمتابعة
 const editingFollowUpId = ref(null);
 const fileInput = ref(null);
 const imagePreview = ref(null);
@@ -325,7 +395,6 @@ const saveFollowUp = async () => {
   } catch (error) {} finally { actionLoading.value = ''; } 
 };
 const deleteFollowUp = async (id) => { if (!window.confirm('متأكد من حذف المتابعة؟')) return; try { await api.delete(`/follow-ups/${id}`); showToast('تم الحذف'); await fetchPlans(); selectedFollowUpPlan.value = plans.value.find(p => p.id === selectedFollowUpPlan.value.id); } catch (error) {} };
-
 
 const form = reactive({ 
   client_id: '', plan_type: '', start_date: '', end_date: '', requires_review: true, 
@@ -573,7 +642,6 @@ watch(showManagerModal, async (open) => {
   document.body.classList.toggle('modal-is-open', open)
   if (open) {
     await nextTick()
-    managerModalCloseButton.value?.focus({ preventScroll: true })
   }
 })
 
@@ -629,7 +697,10 @@ onBeforeUnmount(() => {
 .accept-btn { color:#78e4d8 !important; border-color:rgba(120,228,216,.3) !important; background:rgba(90,220,207,.08) !important; } 
 .reject-btn { color:#ff9bad !important; border-color:rgba(255,155,173,.3) !important; background:rgba(255,103,139,.08) !important; }
 
-.actions-cell { display:flex; gap:6px; }.action { width:28px; height:28px; display:grid; place-items:center; border:0; border-radius:8px; background:transparent; cursor:pointer; font-size:14px; }.action.edit { color:#78e4da; background:rgba(92,220,208,.08); }.action.delete { color:#ff94ab; background:rgba(255,103,139,.08); }.action:hover { filter:brightness(1.3); transform:translateY(-1px); }.state-cell { height:145px; color:#7d89b6 !important; text-align:center !important; }.spinner { display:inline-block; width:15px; height:15px; margin-left:7px; vertical-align:middle; border:2px solid rgba(125,232,220,.25); border-top-color:#7de8dc; border-radius:50%; animation:spin .7s linear infinite; }
+.actions-cell { display:flex; gap:6px; }.action { width:28px; height:28px; display:grid; place-items:center; border:0; border-radius:8px; background:transparent; cursor:pointer; font-size:14px; }
+/* ستايل زر الاستنساخ الجديد */
+.action.duplicate { color: #65b5ff; background: rgba(101, 181, 255, .08); }
+.action.edit { color:#78e4da; background:rgba(92,220,208,.08); }.action.delete { color:#ff94ab; background:rgba(255,103,139,.08); }.action:hover { filter:brightness(1.3); transform:translateY(-1px); }.state-cell { height:145px; color:#7d89b6 !important; text-align:center !important; }.spinner { display:inline-block; width:15px; height:15px; margin-left:7px; vertical-align:middle; border:2px solid rgba(125,232,220,.25); border-top-color:#7de8dc; border-radius:50%; animation:spin .7s linear infinite; }
 .modal-overlay { position:fixed; inset:82px 0 0; z-index:100; display:grid; place-items:start center; padding:18px; overflow-y:auto; background:rgba(4,7,27,.78); backdrop-filter:blur(7px); }.modal-content { width:min(780px,100%); max-height:calc(100vh - 118px); overflow-y:auto; position:relative; padding:28px; border:1px solid rgba(146,160,233,.2); border-radius:20px; background:linear-gradient(145deg,#171d52,#0d143a); box-shadow:0 25px 70px rgba(0,0,0,.4); }.modal-close { position:absolute; top:12px; left:16px; border:0; color:#8994c2; background:transparent; font-size:25px; cursor:pointer; }.modal-icon { width:42px; height:42px; display:grid; place-items:center; margin-bottom:12px; border-radius:12px; color:#202057; background:linear-gradient(145deg,#80e8df,#b486fb); font-size:21px; }.modal-content h3 { margin:7px 0 2px; font-size:21px; }.modal-content > p { margin:0; color:#818cb9; font-size:11px; }.plan-form { margin-top:23px; }.form-grid,.form-grid-3 { display:grid; gap:13px; margin-bottom:14px; }.form-grid { grid-template-columns:1fr 1fr; }.form-grid-3 { grid-template-columns:repeat(3,1fr); }.form-group { min-width:0; margin-bottom:13px; }.form-group label { display:block; margin-bottom:6px; color:#b8c0e2; font-size:10px; }.form-group label small { color:#6975a7; font-size:8px; }.form-group input,.form-group select, .form-group textarea { width:100%; min-height:42px; padding:0 11px; border:1px solid rgba(145,160,230,.2); border-radius:9px; outline:0; color:#eef0ff; background:rgba(6,11,37,.46); font:inherit; font-size:10px; direction: rtl; }.form-group input[type="url"] { direction: ltr; text-align: left; }.form-group textarea { padding-top: 10px; resize: vertical; }.form-group input:focus,.form-group select:focus, .form-group textarea:focus { border-color:#76e8de; box-shadow:0 0 0 3px rgba(118,232,222,.08); }.form-group input::placeholder, .form-group textarea::placeholder { color:#626e9e; }.separator { height:1px; margin:20px 0 15px; border:0; background:rgba(143,157,226,.14); }.section-title { color:#b986ff; font-size:11px; font-weight:700; }.section-title span { color:#76e8de; margin-left:4px; }.helper-text { margin:3px 0 13px; color:#6f7baa; font-size:9px; }.modal-actions { display:flex; justify-content:flex-start; gap:9px; margin-top:18px; }.secondary-btn { min-height:43px; padding:0 18px; border:1px solid rgba(143,157,226,.2); border-radius:10px; color:#aab4dc; background:transparent; font:inherit; font-size:11px; cursor:pointer; }
 .confirm-btn { margin-top:5px; padding:5px 7px; border:1px solid rgba(117,231,218,.2); border-radius:6px; color:#78e4d8; background:rgba(90,220,207,.08); font-size:8px; cursor:pointer; }.confirm-btn:hover:not(:disabled) { filter:brightness(1.3); }.confirm-btn:disabled { opacity:.5; cursor:wait; }
 .toggle-group { display:flex; align-items:center; gap:10px; flex-direction:row !important; margin-top:15px; } .toggle-group label:first-child { margin-bottom:0; flex-grow:1; } .toggle-switch { position:relative; display:inline-block; width:44px; height:24px; } .toggle-switch input { opacity:0; width:0; height:0; } .slider { position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:rgba(145,160,230,.2); transition:.4s; border-radius:34px; } .slider:before { position:absolute; content:""; height:18px; width:18px; left:3px; bottom:3px; background-color:#7d89b6; transition:.4s; border-radius:50%; } input:checked + .slider { background-color:rgba(125,232,220,.25); } input:checked + .slider:before { transform:translateX(20px); background-color:#7de8dc; } .toggle-label { font-size:10px; color:#aeb6d7; min-width:55px; }

@@ -79,7 +79,8 @@
           <tr v-for="(post, index) in posts" :key="post.id" class="post-row">
             
             <!-- 2. حالة المنشور -->
-            <td class="readonly-cell">
+            <td class="readonly-cell position-relative">
+              <button class="icon-btn view-btn" @click="openViewModal(post)" title="عرض التفاصيل">👁️</button>
               <strong>{{ getDayName(post.target_date) }}</strong>
               <small>{{ formatDate(post.target_date) }}</small>
             </td>
@@ -123,7 +124,6 @@
                    v-show="link" :href="link" target="_blank" class="platform-link" :title="platform">
                    🔗 {{ platform }}
                 </a>
-                <!-- إخفاء زر التعديل إذا كان المنفذ وليس مديراً -->
                 <button v-if="canEditLinks(post)" class="icon-btn edit-links" @click="openLinksModal(post, false)" title="تعديل الروابط">✏️</button>
               </div>
               <button v-else class="secondary-btn small-btn" @click="openLinksModal(post, false)">
@@ -166,7 +166,6 @@
               </div>
             </td>
             
-            <!-- حقل المراجعين (Multi-Select) -->
             <td>
               <div class="lock-wrapper">
                 <CustomMultiSelect
@@ -180,9 +179,7 @@
               </div>
             </td>
 
- <!-- مراجعة القسم (إجماع المراجعين) -->
             <td class="review-cell">
-              <!-- 1. معتمد كلياً -->
               <template v-if="post.review_status === 'معتمد'">
                 <span class="badge approved">🟢 معتمد</span>
                 <span v-if="post.department_approved_at" class="approval-time">
@@ -190,43 +187,34 @@
                 </span>
               </template>
               
-              <!-- 2. مرفوض -->
               <template v-else-if="post.review_status === 'مرفوض'">
                 <span class="badge pending" style="color: #d32f2f;">🔴 مرفوض</span>
-                <!-- زر تراجع وإعادة فتح المراجعة (يظهر للمدير والمراجعين فقط) -->
                 <button v-if="isManager || (post.reviewer_ids && post.reviewer_ids.includes(currentUser?.id))" 
                         class="reset-btn" @click="resetReview(post, 'reviewer')" title="إعادة فتح المراجعة بعد التعديل">
                   🔄 تراجع
                 </button>
               </template>
 
-              <!-- 3. قيد الانتظار -->
               <template v-else>
-                <!-- إذا كان المراجع الحالي قد وافق بالفعل (لكن ينتظر الباقين) تختفي الأزرار وتظهر هذه الشارة -->
                 <span v-if="post.reviewers_statuses && post.reviewers_statuses[currentUser?.id] === 'معتمد' && !isManager" class="badge" style="background: #e3f2fd; color: #1976d2;">
                   ✅ تمت موافقتك
                 </span>
                 
-                <!-- الأزرار تظهر فقط لمن لم يوافق بعد أو للمدير -->
                 <div v-else-if="(post.reviewer_ids && post.reviewer_ids.includes(currentUser?.id)) || isManager" class="review-actions">
                   <button class="approve-btn" :disabled="!post.delivery_links || !post.delivery_links.trim()" @click="approvePost(post, 'reviewer')" :title="(!post.delivery_links || !post.delivery_links.trim()) ? 'لا يمكن المراجعة بدون روابط التسليم' : 'موافقة'">✅ موافقة</button>
                   <button class="reject-btn" :disabled="!post.delivery_links || !post.delivery_links.trim()" @click="openRejectModal(post, 'reviewer')" :title="(!post.delivery_links || !post.delivery_links.trim()) ? 'لا يمكن المراجعة بدون روابط التسليم' : 'رفض'">❌ رفض</button>
                 </div>
                 
-                <!-- المنفذ أو أي شخص آخر -->
                 <span v-else class="badge pending">⏳ قيد الانتظار</span>
               </template>
 
-              <!-- سجل الرفض -->
               <button v-if="post.rejection_history && post.rejection_history.length > 0" 
                       class="history-btn mt-1" @click="openHistoryModal(post.rejection_history, 'القسم')">
                 📜 سجل الرفض
               </button>
             </td>
 
-            <!-- مراجعة المدير -->
             <td class="review-cell" style="background: #eceff1;">
-              <!-- 1. معتمد -->
               <template v-if="post.manager_review_status === 'معتمد'">
                 <span class="badge approved">🟢 معتمد</span>
                 <span v-if="post.manager_approved_at" class="approval-time">
@@ -234,7 +222,6 @@
                 </span>
               </template>
               
-              <!-- 2. مرفوض -->
               <template v-else-if="post.manager_review_status === 'مرفوض'">
                 <span class="badge pending" style="color: #d32f2f;">🔴 مرفوض</span>
                 <button v-if="isManager" 
@@ -243,7 +230,6 @@
                 </button>
               </template>
               
-              <!-- 3. قيد الانتظار -->
               <template v-else>
                 <div v-if="isManager" class="review-actions">
                   <button class="approve-btn" :disabled="!post.delivery_links || !post.delivery_links.trim()" @click="approvePost(post, 'manager')" :title="(!post.delivery_links || !post.delivery_links.trim()) ? 'لا يمكن الاعتماد بدون روابط التسليم' : 'اعتماد نهائي'">✅ اعتماد</button>
@@ -259,7 +245,6 @@
               </button>
             </td>
 
-            <!-- 3. التمويل -->
             <td>
               <div class="lock-wrapper">
                 <CustomMultiSelect
@@ -287,7 +272,6 @@
               </div>
             </td>
 
-            <!-- 4. محتوى المنشور -->
             <td>
               <div class="lock-wrapper">
                 <select v-model="post.post_type" @change="autoSave(post, 'post_type')" :disabled="!canEditFields(post) || isFieldDisabled(post, 'post_type')">
@@ -371,7 +355,6 @@
               </div>
             </td>
 
-            <!-- 5. التسليم والملاحظات -->
             <td class="delivery-cell">
               <div class="textarea-link-wrapper lock-wrapper">
                 <textarea 
@@ -428,7 +411,6 @@
       </table>
     </div>
 
-    <!-- Modal إضافة صف -->
     <div v-if="showAddRowModal" class="modal-overlay" @click.self="showAddRowModal = false">
       <div class="modal-content" style="width: min(400px, 100%)">
         <h3>إضافة منشور إضافي</h3>
@@ -456,7 +438,6 @@
       </div>
     </div>
 
-    <!-- Modal رفض المنشور -->
     <div v-if="rejectModalPost" class="modal-overlay" @click.self="rejectModalPost = null">
       <div class="modal-content" style="width: min(400px, 100%)">
         <h3 style="color: #cc0000;">رفض المنشور ({{ activeReviewTitle }}) ❌</h3>
@@ -474,7 +455,6 @@
       </div>
     </div>
 
-    <!-- Modal سجل الرفض -->
     <div v-if="activeHistoryArray" class="modal-overlay" @click.self="activeHistoryArray = null">
       <div class="modal-content" style="width: min(500px, 100%)">
         <h3>📜 سجل الرفض والتعديلات ({{ activeHistoryTitle }})</h3>
@@ -493,7 +473,6 @@
       </div>
     </div>
     
-    <!-- Modal إشعارات الواتساب -->
     <div v-if="showWaModal" class="modal-overlay" @click.self="showWaModal = false">
       <div class="modal-content wa-card" style="max-width: 450px; border-radius: 16px; overflow: hidden; padding: 0;">
         <div style="background: #25D366; color: white; padding: 20px; text-align: center;">
@@ -531,7 +510,6 @@
       </div>
     </div>
     
-    <!-- Modal روابط النشر -->
     <div v-if="showLinksModal" class="modal-overlay" @click.self="showLinksModal = false">
       <div class="modal-content">
         <h3>🔗 روابط النشر الفعلية</h3>
@@ -553,6 +531,153 @@
     </div>
 
     <transition name="toast"><div v-if="toastMessage" class="toast-message">{{ toastMessage }}</div></transition>
+
+                  <!-- View Post Modal (Premium Report Design) -->
+    <teleport to="body">
+      <div v-if="isViewModalOpen" class="modal-overlay premium-overlay" @click.self="closeViewModal">
+      <div class="modal-content premium-report-modal">
+        
+        <!-- Header -->
+        <div class="premium-header">
+          <div class="header-titles">
+            <h2 class="report-title">
+              <span class="icon">📊</span> تقرير تفصيلي للمنشور
+            </h2>
+            <p class="report-subtitle">
+              حالة النشر: 
+              <span :class="['premium-badge', selectedPostForView.actual_publish_status === 'تم النشر' ? 'badge-success' : 'badge-warning']">
+                {{ selectedPostForView.actual_publish_status || 'لم يتم' }}
+              </span>
+            </p>
+          </div>
+          <button class="premium-close-btn" @click="closeViewModal">
+            <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
+          </button>
+        </div>
+
+        <!-- Body -->
+        <div v-if="selectedPostForView" class="premium-body">
+          <div class="report-grid">
+            
+            <!-- العمود الجانبي للبيانات الأساسية -->
+            <div class="report-sidebar">
+              <div class="premium-card">
+                <h3 class="card-title">📌 معلومات أساسية</h3>
+                <ul class="info-list">
+                  <li>
+                    <span class="info-icon">📅</span>
+                    <div class="info-data">
+                      <span class="info-label">تاريخ النشر</span>
+                      <strong class="info-value">{{ getDayName(selectedPostForView.target_date) }} - {{ formatDate(selectedPostForView.target_date) }}</strong>
+                    </div>
+                  </li>
+                  <li>
+                    <span class="info-icon">⏰</span>
+                    <div class="info-data">
+                      <span class="info-label">الديدلاين</span>
+                      <strong class="info-value text-red">{{ formatDate(selectedPostForView.deadline) || 'غير محدد' }}</strong>
+                    </div>
+                  </li>
+                  <li>
+                    <span class="info-icon">👨‍🎨</span>
+                    <div class="info-data">
+                      <span class="info-label">المنفذ</span>
+                      <strong class="info-value text-blue">{{ getUserName(selectedPostForView.designer_id) }}</strong>
+                    </div>
+                  </li>
+                  <li>
+                    <span class="info-icon">💰</span>
+                    <div class="info-data">
+                      <span class="info-label">حالة التمويل</span>
+                      <strong class="info-value">{{ selectedPostForView.finance_status || 'غير ممول' }}</strong>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- العمود الرئيسي للمحتوى -->
+            <div class="report-main">
+              <div class="premium-card highlight-card">
+                <div class="card-header-flex">
+                  <h3 class="card-title" style="margin: 0;">📝 تفاصيل المحتوى</h3>
+                  <div class="tags-group">
+                    <span class="premium-tag tag-type">{{ selectedPostForView.post_type || 'نوع غير محدد' }}</span>
+                    <span v-for="obj in selectedPostForView.objective_array" :key="obj" class="premium-tag tag-objective">
+                      🎯 {{ obj === 'آخر' ? selectedPostForView.custom_objective : obj }}
+                    </span>
+                  </div>
+                </div>
+                
+                <div class="content-blocks">
+                  <div class="text-block">
+                    <span class="block-label">💡 الفكرة التفصيلية</span>
+                    <div class="block-content">{{ selectedPostForView.detailed_idea || 'لا يوجد تفاصيل إضافية عن الفكرة.' }}</div>
+                  </div>
+                  
+                  <div class="text-block">
+                    <span class="block-label">✍️ الكابشن (Caption)</span>
+                    <div class="block-content caption-box">{{ selectedPostForView.caption || 'لم يتم كتابة الكابشن بعد.' }}</div>
+                  </div>
+
+                  <div class="text-block-grid">
+                    <div class="text-block small-block">
+                      <span class="block-label">🗣️ TOV</span>
+                      <div class="block-content">{{ selectedPostForView.tov || '---' }}</div>
+                    </div>
+                    <div class="text-block small-block">
+                      <span class="block-label">👉 CTA</span>
+                      <div class="block-content">{{ selectedPostForView.call_to_action || '---' }}</div>
+                    </div>
+                    <div class="text-block small-block">
+                      <span class="block-label">#️⃣ Hashtags</span>
+                      <div class="block-content hashtags-box">{{ selectedPostForView.hashtags || '---' }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- بطاقة الروابط -->
+              <div class="premium-card links-card" style="margin-top: 24px;">
+                <h3 class="card-title">🔗 المراجع والروابط</h3>
+                <div class="links-grid">
+                  <div class="link-group">
+                    <span class="group-label">روابط المرجعية (References)</span>
+                    <div class="premium-links-container" v-if="extractUrls(selectedPostForView.reference_link).length">
+                      <a v-for="(url, i) in extractUrls(selectedPostForView.reference_link)" :key="i" :href="url" target="_blank" class="premium-btn-link ref-link">
+                        <span class="link-icon">📑</span> {{ getUrlLabel(url, i) }}
+                      </a>
+                    </div>
+                    <div v-else class="no-data">لا توجد مراجع</div>
+                  </div>
+
+                  <div class="link-group">
+                    <span class="group-label">روابط التسليم (Deliverables)</span>
+                    <div class="premium-links-container" v-if="extractUrls(selectedPostForView.delivery_links).length">
+                      <a v-for="(url, i) in extractUrls(selectedPostForView.delivery_links)" :key="i" :href="url" target="_blank" class="premium-btn-link del-link">
+                        <span class="link-icon">📁</span> {{ getUrlLabel(url, i) }}
+                      </a>
+                    </div>
+                    <div v-else class="no-data">لم يتم تسليم ملفات بعد</div>
+                  </div>
+                  
+                  <div class="link-group" v-if="selectedPostForView.published_links && Object.keys(selectedPostForView.published_links).length">
+                    <span class="group-label">تم النشر على (Live Links)</span>
+                    <div class="premium-links-container">
+                      <a v-for="(link, platform) in selectedPostForView.published_links" :key="platform" v-show="link" :href="link" target="_blank" class="premium-btn-link live-link">
+                        <span class="link-icon">🌐</span> {{ platform }}
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+            </div>
+      </div>
+    </teleport>
   </section>
 </template>
 
@@ -582,7 +707,25 @@ const planEndDate = computed(() => {
   return new Date(currentPlan.value.end_date);
 });
 
-// متغيرات السحب (Drag to Scroll)
+const isViewModalOpen = ref(false);
+const selectedPostForView = ref(null);
+
+const openViewModal = (post) => {
+  selectedPostForView.value = post;
+  isViewModalOpen.value = true;
+};
+
+const closeViewModal = () => {
+  isViewModalOpen.value = false;
+  selectedPostForView.value = null;
+};
+
+const getUserName = (id) => {
+  if (!id) return 'غير محدد';
+  const user = allUsers.value.find(u => u.id === id);
+  return user ? user.name : 'غير محدد';
+};
+
 const spreadsheetContainer = ref(null);
 let isDown = false;
 let startX;
@@ -590,7 +733,6 @@ let scrollLeft;
 
 const onMouseDown = (e) => {
   if (!spreadsheetContainer.value) return;
-  // منع السحب إذا كان المستخدم يضغط على عناصر تفاعلية
   const targetTag = e.target.tagName.toLowerCase();
   if (['input', 'select', 'button', 'textarea', 'a', 'path', 'svg', 'label'].includes(targetTag) || e.target.closest('.icon-btn, .primary-btn, .secondary-btn, .custom-multiselect, .dropdown-menu, .multiselect-toggle')) return;
 
@@ -618,7 +760,7 @@ const onMouseMove = (e) => {
   if (!isDown) return;
   e.preventDefault();
   const x = e.pageX - spreadsheetContainer.value.offsetLeft;
-  const walk = (x - startX) * 1.5; // سرعة السحب (مضاعف)
+  const walk = (x - startX) * 1.5;
   spreadsheetContainer.value.scrollLeft = scrollLeft - walk;
 };
 
@@ -640,17 +782,15 @@ const activeReviewTitle = ref('');
 const activeHistoryArray = ref(null);
 const activeHistoryTitle = ref('');
 
-// متغيرات الواتساب
 const showWaModal = ref(false);
 const waPayload = ref(null);
 const waMessage = ref('');
 
 const showLinksModal = ref(false);
 const currentPostForLinks = ref(null);
-const tempLinks = ref({}); // لتخزين الروابط المؤقتة داخل النافذة
-const pendingPublishStatus = ref(false); // لمعرفة ما إذا كان فتح النافذة بسبب محاولة النشر
+const tempLinks = ref({});
+const pendingPublishStatus = ref(false);
 
-// دالة لفتح نافذة الروابط
 const openLinksModal = (post, fromPublishAction = false) => {
   currentPostForLinks.value = post;
   pendingPublishStatus.value = fromPublishAction;
@@ -672,14 +812,11 @@ const openLinksModal = (post, fromPublishAction = false) => {
   showLinksModal.value = true;
 };
 
-// دالة التحقق من التعديل
 const canEditLinks = (post) => {
   const hasLinks = post.published_links && Object.values(post.published_links).some(link => link && String(link).trim() !== '');
-  // يمكن التعديل إذا لم تكن هناك روابط محفوظة بعد، أو إذا كان المستخدم مديراً
   return !hasLinks || isManager.value; 
 };
 
-// دالة حفظ الروابط
 const savePublishedLinks = async () => {
   const post = currentPostForLinks.value;
   
@@ -704,7 +841,7 @@ const savePublishedLinks = async () => {
     if (typeof showToast === 'function') {
       showToast(`عذراً، يجب إدخال روابط لجميع المنصات المحددة: ${missingStr}`);
     }
-    return; // نوقف عملية الحفظ
+    return;
   }
 
   const payload = { published_links: tempLinks.value };
@@ -719,7 +856,6 @@ const savePublishedLinks = async () => {
     post.published_links = res.data.data ? res.data.data.published_links : tempLinks.value;
     if (pendingPublishStatus.value) {
       post.actual_publish_status = 'تم النشر';
-      // تحديث توقيت النشر كما في السلوك الطبيعي
       const now = new Date();
       const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
       if (!post.publishing_time) {
@@ -741,7 +877,6 @@ const savePublishedLinks = async () => {
   }
 };
 
-// دالة فتح النافذة
 const openWaModal = (payload) => {
   if (!payload || !payload.recipients || payload.recipients.length === 0) return;
   waPayload.value = payload;
@@ -749,7 +884,6 @@ const openWaModal = (payload) => {
   showWaModal.value = true;
 };
 
-// دالة إرسال الواتساب وتوجيه المستخدم
 const sendWhatsApp = (phone, customMessage) => {
   if (!phone) {
     if (typeof showToast === 'function') showToast('رقم الهاتف غير متوفر');
@@ -757,19 +891,16 @@ const sendWhatsApp = (phone, customMessage) => {
   }
   const text = encodeURIComponent(customMessage || waMessage.value);
   
-  // تنظيف الرقم من أي رموز (يفترض أن يكون بالصيغة الدولية، وتعديله لمصر إن بدأ بـ 01)
   let cleanPhone = phone.replace(/[^0-9]/g, '');
   if (cleanPhone.startsWith('01') && cleanPhone.length === 11) {
     cleanPhone = '2' + cleanPhone;
   }
   
-  // استخدام api.whatsapp.com يضمن فتح التطبيق مباشرة على الكمبيوتر والموبايل بشكل أفضل
   window.open(`https://api.whatsapp.com/send/?phone=${cleanPhone}&text=${text}`, '_blank');
 };
 
 const showToast = (message) => { toastMessage.value = message; setTimeout(() => { toastMessage.value = ''; }, 4000); };
 
-// تحديد المدير
 const isManager = computed(() => {
   if (!currentUser.value) return false;
   return currentUser.value.role === 'manager';
@@ -777,17 +908,16 @@ const isManager = computed(() => {
 
 const canEditFields = (post) => {
   if (!currentUser.value) return false;
-  if (isManager.value) return true; // المدير له صلاحية دائمًا
+  if (isManager.value) return true;
   
   if (isPlanResponsible.value) {
     const isDelivered = !!post.delivered_at;
     const isRejected = post.review_status === 'مرفوض' || post.manager_review_status === 'مرفوض';
     
-    // قفل الحقول إذا تم التسليم ولم يتم الرفض (أي أنها قيد المراجعة أو معتمدة)
     if (isDelivered && !isRejected) {
       return false;
     }
-    return true; // مسموح بالتعديل (لم تُسلم بعد، أو رُفضت وتحتاج تعديل)
+    return true;
   }
   
   return false;
@@ -796,9 +926,9 @@ const canEditFields = (post) => {
 const canEditPublishAndNotes = (post) => {
   if (!currentUser.value) return false;
   if (isManager.value) return true;
-  if (isPlanResponsible.value) return true; // دائمًا مفتوحة للمسئول
+  if (isPlanResponsible.value) return true;
   
-  return canEditFields(post); // لباقي الأشخاص تخضع لقفل المراجعة
+  return canEditFields(post);
 };
 
 const canEditDelivery = (post) => {
@@ -810,7 +940,7 @@ const canEditDelivery = (post) => {
     const isRejected = post.review_status === 'مرفوض' || post.manager_review_status === 'مرفوض';
     
     if (isDelivered && !isRejected) {
-      return false; // قفل التعديل على الروابط أثناء المراجعة
+      return false;
     }
     return true;
   }
@@ -823,7 +953,6 @@ const startExecution = async (post) => {
   try {
     const res = await api.post(`/plan-posts/${post.id}/start-execution`);
     
-    // تحديث وقت البدء في الواجهة
     post.execution_started_at = res.data.data.execution_started_at;
     
     if (res.data?.whatsapp_payload) openWaModal(res.data.whatsapp_payload);
@@ -833,7 +962,6 @@ const startExecution = async (post) => {
     }
   } catch (error) {
     if (typeof showToast === 'function') {
-      // إظهار رسالة الخطأ القادمة من الباك إند (والتي تحتوي على أسماء الحقول الناقصة)
       showToast(error.response?.data?.message || 'حدث خطأ أثناء محاولة بدء التنفيذ.');
     }
   }
@@ -875,7 +1003,6 @@ const resubmitPost = async (post) => {
   try {
     const res = await api.post(`/plan-posts/${post.id}/resubmit`);
     
-    // التحديث الفوري للواجهة بالبيانات القادمة من الباك إند
     post.delivered_at = res.data.data.delivered_at;
     post.review_status = res.data.data.review_status;
     post.manager_review_status = res.data.data.manager_review_status;
@@ -894,7 +1021,6 @@ const resubmitPost = async (post) => {
   }
 };
 
-// دالة التحقق من القفل
 const isFieldDisabled = (post, fieldName) => {
   if (isManager.value) return false;
   return post.locked_fields && Array.isArray(post.locked_fields) && post.locked_fields.includes(fieldName);
@@ -920,13 +1046,6 @@ const unlockField = async (post, fieldName) => {
       showToast('حدث خطأ أثناء فك القفل');
     }
   }
-};
-
-// تحديد ما إذا كان المستخدم الحالي من ضمن المراجعين (لحظر تعديل الحقول)
-const isReviewerOnly = (post) => {
-  if (!currentUser.value) return true;
-  if (isManager.value) return false; 
-  return post.reviewer_ids && post.reviewer_ids.includes(currentUser.value.id);
 };
 
 const isReviewerCheck = computed(() => {
@@ -975,7 +1094,6 @@ const fetchUsers = async () => {
   } catch (error) {}
 };
 
-// --- دوال الهدف (Objective) ---
 const predefinedObjectives = ['Awareness', 'Educational', 'Engagement', 'Storytelling', 'Conversion', 'Social Proof'];
 
 const objectiveOptions = [
@@ -1111,7 +1229,6 @@ const autoSave = async (post, field) => {
   }
 };
 
-// --- دوال الاعتماد المزدوج وتعدد المراجعين ---
 const approvePost = async (post, type) => {
   if (!window.confirm('هل أنت متأكد من الاعتماد؟')) return;
   try {
@@ -1120,14 +1237,12 @@ const approvePost = async (post, type) => {
       status: 'معتمد' 
     });
     
-    // التحديث الفوري للواجهة
     post.review_status = res.data.data.review_status;
     post.manager_review_status = res.data.data.manager_review_status;
-    post.reviewers_statuses = res.data.data.reviewers_statuses; // تحديث حالة المراجعين الفردية
+    post.reviewers_statuses = res.data.data.reviewers_statuses;
     post.department_approved_at = res.data.data.department_approved_at;
     post.manager_approved_at = res.data.data.manager_approved_at;
     
-    // --- التقاط إشعار التهنئة والموافقة وفتح الواتساب ---
     if (res.data?.whatsapp_payload) {
       openWaModal(res.data.whatsapp_payload);
     }
@@ -1138,7 +1253,6 @@ const approvePost = async (post, type) => {
   }
 };
 
-// --- دالة التراجع (إعادة فتح المراجعة بعد الرفض) ---
 const resetReview = async (post, type) => {
   if (!window.confirm('هل أنت متأكد من التراجع وإعادة فتح المراجعة لهذا المنشور؟')) return;
   
@@ -1148,7 +1262,6 @@ const resetReview = async (post, type) => {
       post.manager_review_status = 'قيد الانتظار';
       post.manager_approved_at = null;
     } else {
-      // إرجاع القسم لقيد الانتظار، وتفريغ حالات المراجعين ليبدأوا التصويت من جديد
       await api.put(`/plan-posts/${post.id}`, { 
         review_status: 'قيد الانتظار',
         reviewers_statuses: {} 
@@ -1202,12 +1315,10 @@ const openHistoryModal = (historyArray, title) => {
   activeHistoryTitle.value = title;
 };
 
-// حماية النشر من الفرونت إند
 const handlePublishStatusChange = (post, event) => {
-  const newStatus = post.actual_publish_status; // already updated by v-model
+  const newStatus = post.actual_publish_status; 
   
   if (newStatus === 'تم النشر') {
-    // منع النشر قبل الموافقتين
     if (post.review_status !== 'معتمد' || post.manager_review_status !== 'معتمد') {
       showToast('⚠️ لا يمكن النشر قبل الحصول على موافقة جميع المراجعين واعتماد المدير النهائي.');
       post.actual_publish_status = 'لم يتم'; 
@@ -1227,9 +1338,7 @@ const handlePublishStatusChange = (post, event) => {
     );
 
     if (!hasAllLinks) {
-      // نمنع النشر ونعيد القيمة الافتراضية برمجياً
       post.actual_publish_status = 'لم يتم'; 
-      // نفتح النافذة الإجبارية
       openLinksModal(post, true);
       return;
     }
@@ -1705,5 +1814,295 @@ input:focus, select:focus, textarea:focus { box-shadow: inset 0 0 0 2px #2196f3;
 input:disabled, select:disabled, textarea:disabled, .custom-multiselect.disabled {
   cursor: not-allowed !important;
   opacity: 0.75;
+}
+
+/* Premium Report Modal Styles */
+.premium-overlay {
+  background: rgba(10, 12, 20, 0.85);
+  backdrop-filter: blur(10px);
+  z-index: 9999 !important;
+}
+
+.premium-report-modal {
+  width: 900px !important;
+  max-width: 95vw;
+  max-height: 90vh;
+  background: linear-gradient(145deg, #181d33 0%, #111526 100%);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255,255,255,0.1);
+  overflow: hidden;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.premium-header {
+  padding: 16px 32px;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.header-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.report-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.report-subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: #9ba3c4;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.premium-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.badge-success { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+.badge-warning { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+
+.premium-close-btn {
+  background: rgba(255,255,255,0.05);
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ba3c4;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.premium-close-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  transform: rotate(90deg);
+}
+
+.premium-body {
+  padding: 24px 32px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.premium-body::-webkit-scrollbar {
+  width: 6px;
+}
+.premium-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+.report-grid {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 24px;
+}
+
+.premium-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.card-title {
+  margin: 0 0 20px 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #c9d2f4;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.info-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.info-list li {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.info-icon {
+  font-size: 22px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.03);
+  border-radius: 10px;
+}
+
+.info-data {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.info-label {
+  font-size: 12px;
+  color: #7a82a6;
+}
+
+.info-value {
+  font-size: 14px;
+  color: #fff;
+  font-weight: 600;
+}
+
+.text-red { color: #f87171 !important; }
+.text-blue { color: #60a5fa !important; }
+
+.card-header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tags-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.premium-tag {
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tag-type { background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); }
+.tag-objective { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+
+.content-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.text-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.block-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #9ba3c4;
+}
+
+.block-content {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 16px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #e2e8f0;
+  white-space: pre-wrap;
+}
+
+.caption-box {
+  border-right: 3px solid #60a5fa;
+  font-style: italic;
+}
+
+.hashtags-box {
+  color: #38bdf8;
+  font-weight: 500;
+}
+
+.text-block-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.links-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.group-label {
+  font-size: 13px;
+  color: #7a82a6;
+  margin-bottom: 12px;
+  display: block;
+}
+
+.premium-links-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.premium-btn-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.ref-link { background: rgba(59, 130, 246, 0.1); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.2); }
+.ref-link:hover { background: rgba(59, 130, 246, 0.2); transform: translateY(-2px); }
+
+.del-link { background: rgba(16, 185, 129, 0.1); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.2); }
+.del-link:hover { background: rgba(16, 185, 129, 0.2); transform: translateY(-2px); }
+
+.live-link { background: rgba(236, 72, 153, 0.1); color: #f472b6; border: 1px solid rgba(236, 72, 153, 0.2); }
+.live-link:hover { background: rgba(236, 72, 153, 0.2); transform: translateY(-2px); }
+
+.no-data {
+  font-size: 13px;
+  color: #555;
+  font-style: italic;
+  padding: 8px;
+}
+
+@media (max-width: 900px) {
+  .report-grid { grid-template-columns: 1fr; }
+  .text-block-grid { grid-template-columns: 1fr; }
 }
 </style>

@@ -83,6 +83,7 @@
                   <div class="table-avatar" aria-hidden="true">{{ getInitials(user.name) }}</div>
                   <div class="user-copy">
                     <strong>{{ user.name }}</strong>
+                    <span class="user-job-title" v-if="user.job_title">{{ user.job_title }}</span>
                     <span><a :href="'mailto:' + user.email" class="email-link" title="إرسال بريد إلكتروني">{{ user.email }}</a></span>
                   </div>
                 </div>
@@ -139,8 +140,12 @@
         <p>{{ isEditing ? 'حدّث البيانات التي تريد تعديلها.' : 'أضف عضوًا جديدًا إلى مساحتك الرقمية.' }}</p>
 
         <form class="user-form" @submit.prevent="saveUser">
-          <div class="form-group full"><label for="user-name">الاسم بالكامل</label><input id="user-name" v-model="form.name" type="text" placeholder="مثال: أحمد محمد" required /></div>
-          <div class="form-group full"><label for="user-email">البريد الإلكتروني</label><input id="user-email" v-model="form.email" type="email" placeholder="name@company.com" required /></div>
+          <div class="form-group full"><label for="user-name">الاسم بالكامل <span class="text-red">*</span></label><input id="user-name" v-model="form.name" type="text" placeholder="مثال: أحمد محمد" required /></div>
+          
+          <!-- حقل المسمى الوظيفي الجديد -->
+          <div class="form-group full"><label for="user-job-title">المسمى الوظيفي <span class="text-red">*</span></label><input id="user-job-title" v-model="form.job_title" type="text" placeholder="مثال: مطور واجهات أمامية" required minlength="2" maxlength="150" /></div>
+          
+          <div class="form-group full"><label for="user-email">البريد الإلكتروني <span class="text-red">*</span></label><input id="user-email" v-model="form.email" type="email" placeholder="name@company.com" required /></div>
           <div class="form-group full">
             <label for="primary-dept">القسم الأساسي <small>(اختياري)</small></label>
             <select id="primary-dept" v-model="form.primary_department_id" @change="handlePrimaryDeptChange">
@@ -159,7 +164,7 @@
             <p v-if="departmentsList.length === 0" class="muted-cell no-departments">لا توجد أقسام مسجلة حالياً.</p>
           </div>
           <div class="form-group full"><label for="user-password">كلمة المرور</label><input id="user-password" v-model="form.password" type="password" :required="!isEditing" :placeholder="isEditing ? 'اتركه فارغًا للاحتفاظ بالحالية' : 'أدخل كلمة مرور قوية'" /></div>
-          <div class="form-group full"><label for="user-phone">رقم الهاتف</label><input id="user-phone" v-model="form.phone" type="text" placeholder="01xxxxxxxx" required /></div>
+          <div class="form-group full"><label for="user-phone">رقم الهاتف <span class="text-red">*</span></label><input id="user-phone" v-model="form.phone" type="text" placeholder="01xxxxxxxx" required /></div>
           <div class="form-group"><label for="user-role">الصلاحية</label><select id="user-role" v-model="form.role" required><option value="manager">مدير</option><option value="employee">موظف</option></select></div>
           <div class="form-group"><label for="user-work-type">نظام العمل</label><select id="user-work-type" v-model="form.work_type" required><option value="remote">عن بعد</option><option value="onsite">من الشركة</option><option value="per_task">بالتاسك</option><option value="commission">بالعمولة</option></select></div>
           <div class="modal-actions"><button type="button" class="secondary-btn" @click="closeModal">إلغاء</button><button type="submit" class="primary-btn" :disabled="saving">{{ saving ? 'جارٍ الحفظ...' : 'حفظ البيانات' }}</button></div>
@@ -189,7 +194,9 @@ let toastTimer = null
 
 const pagination = ref({ current_page: 1, last_page: 1, total: 0 })
 const filters = reactive({ search: '', role: '', work_type: '' })
-const form = reactive({ name: '', email: '', password: '', phone: '', role: 'employee', work_type: 'onsite', primary_department_id: '', additional_department_ids: [] })
+
+// إضافة job_title إلى المتغير التفاعلي form
+const form = reactive({ name: '', job_title: '', email: '', password: '', phone: '', role: 'employee', work_type: 'onsite', primary_department_id: '', additional_department_ids: [] })
 
 watch(filters, () => {
   window.clearTimeout(filterTimer)
@@ -274,7 +281,8 @@ const fetchDepartmentsList = async () => {
   }
 }
 
-const resetForm = () => Object.assign(form, { name: '', email: '', password: '', phone: '', role: 'employee', work_type: 'onsite', primary_department_id: '', additional_department_ids: [] })
+// تصفير المسمى الوظيفي
+const resetForm = () => Object.assign(form, { name: '', job_title: '', email: '', password: '', phone: '', role: 'employee', work_type: 'onsite', primary_department_id: '', additional_department_ids: [] })
 
 const openModal = (user = null) => {
   isEditing.value = Boolean(user)
@@ -283,8 +291,11 @@ const openModal = (user = null) => {
   if (user) {
     const primaryDeptId = user.departments?.find(dept => dept.pivot?.is_primary)?.id || ''
     const additionalDeptIds = user.departments?.filter(dept => !dept.pivot?.is_primary).map(dept => dept.id) || []
+    
+    // سحب قيمة job_title من المستخدم
     Object.assign(form, {
       name: user.name,
+      job_title: user.job_title || '',
       email: user.email,
       password: '',
       phone: user.phone,
@@ -314,7 +325,9 @@ const saveUser = async () => {
     showToast(successMessage)
     await fetchUsers(pagination.value.current_page)
   } catch (error) {
-    showToast(error.response?.data?.message || 'حدث خطأ أثناء الحفظ')
+    // عرض تفاصيل الخطأ القادمة من الـ Validation
+    const errorMessage = error.response?.data?.message || 'حدث خطأ أثناء الحفظ'
+    showToast(errorMessage)
   } finally {
     saving.value = false
   }
@@ -405,9 +418,13 @@ onBeforeUnmount(() => {
 .users-table td { color: #d9ddf5; font-size: 14px; line-height: 1.6; }
 .user-cell { display: flex; align-items: center; gap: 11px; min-width: 220px; }
 .table-avatar { width: 40px; height: 40px; flex: 0 0 40px; display: grid; place-items: center; border-radius: 10px; color: #242057; background: linear-gradient(145deg, #80e8df, #ad84fa); font-size: 13px; font-weight: 800; }
-.user-copy { min-width: 0; }
+.user-copy { min-width: 0; display: flex; flex-direction: column; }
 .user-cell strong, .user-cell span { display: block; }
-.user-cell strong { overflow: hidden; margin-bottom: 3px; color: #fff; font-size: 14px; line-height: 1.5; text-overflow: ellipsis; white-space: nowrap; }
+.user-cell strong { overflow: hidden; margin-bottom: 2px; color: #fff; font-size: 14px; line-height: 1.5; text-overflow: ellipsis; white-space: nowrap; }
+
+/* تنسيق المسمى الوظيفي تحت الاسم */
+.user-job-title { color: #a3add1; font-size: 12px; margin-bottom: 2px; }
+
 .email-link { display: block; overflow: hidden; color: #76e8de; text-decoration: none; font-size: 13px; line-height: 1.5; text-overflow: ellipsis; white-space: nowrap; }
 .email-link:hover { color: #b28aff; text-decoration: underline; }
 
@@ -461,6 +478,7 @@ onBeforeUnmount(() => {
 .form-group input, .form-group select { width: 100%; min-height: 48px; padding: 0 13px; border: 1px solid rgba(145,160,230,.2); border-radius: 10px; outline: 0; color: #eef0ff; background: rgba(6,11,37,.46); font: inherit; font-size: 14px; line-height: 1.6; }
 .form-group input::placeholder { color: #7783ad; opacity: 1; }
 .form-group input:focus, .form-group select:focus { border-color: #76e8de; box-shadow: 0 0 0 3px rgba(118,232,222,.1); }
+.text-red { color: #ff9bad; }
 .checkbox-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; margin-top: 5px; padding: 13px; border: 1px solid rgba(145,160,230,.15); border-radius: 10px; background: rgba(6,11,37,.25); }
 .custom-cb { min-width: 0; display: flex; align-items: center; gap: 9px; min-height: 38px; cursor: pointer; }
 .custom-cb.disabled { opacity: .4; cursor: not-allowed; }

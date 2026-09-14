@@ -78,12 +78,23 @@
           </tr>
           <tr v-for="(post, index) in posts" :key="post.id" class="post-row">
             
-            <!-- 2. حالة المنشور -->
-            <td class="readonly-cell position-relative">
+            <!-- 2. حالة المنشور وموعد النشر الذكي -->
+            <td class="readonly-cell position-relative" :class="getDeadlineStatus(currentPlan?.start_date || post.created_at, post.target_date, post.actual_publish_status).class + '-border'">
               <button class="icon-btn view-btn" @click="openViewModal(post)" title="عرض التفاصيل">👁️</button>
               <strong>{{ getDayName(post.target_date) }}</strong>
               <small>{{ formatDate(post.target_date) }}</small>
+              
+              <!-- SLA Smart Indicator لموعد النشر -->
+              <div class="sla-indicator" style="margin-top: 5px;">
+                <span class="sla-msg" :class="getDeadlineStatus(currentPlan?.start_date || post.created_at, post.target_date, post.actual_publish_status).class + '-text'">
+                  {{ getDeadlineStatus(currentPlan?.start_date || post.created_at, post.target_date, post.actual_publish_status).message }}
+                </span>
+                <div class="sla-progress-bg" v-if="post.actual_publish_status !== 'تم النشر'">
+                  <div class="sla-progress-fill" :class="getDeadlineStatus(currentPlan?.start_date || post.created_at, post.target_date, post.actual_publish_status).class + '-bg'" :style="{ width: getDeadlineStatus(currentPlan?.start_date || post.created_at, post.target_date, post.actual_publish_status).percentage + '%' }"></div>
+                </div>
+              </div>
             </td>
+
             <td>
               <div class="lock-wrapper">
                 <select v-model="post.actual_publish_status" @change="handlePublishStatusChange(post, $event)" :class="post.actual_publish_status === 'لم يتم' ? 'text-red' : 'text-green'" :disabled="!canEditPublishAndNotes(post) || isFieldDisabled(post, 'actual_publish_status')">
@@ -122,7 +133,7 @@
               <div v-if="post.published_links && Object.keys(post.published_links).length > 0" class="published-links-preview">
                 <a v-for="(link, platform) in post.published_links" :key="platform" 
                    v-show="link" :href="link" target="_blank" class="platform-link" :title="platform">
-                   🔗 {{ platform }}
+                  🔗 {{ platform }}
                 </a>
                 <button v-if="canEditLinks(post)" class="icon-btn edit-links" @click="openLinksModal(post, false)" title="تعديل الروابط">✏️</button>
               </div>
@@ -151,7 +162,9 @@
                 </button>
               </div>
             </td>
-            <td>
+            
+            <!-- عمود الديدلاين وتأثير المحرك الذكي -->
+            <td :class="getDeadlineStatus(post.execution_started_at || post.created_at, post.deadline, post.delivered_at ? 'completed' : 'pending').class + '-border'">
               <div class="lock-wrapper">
                 <VueDatePicker 
                   v-model="post.deadline" 
@@ -163,6 +176,16 @@
                   placeholder="تاريخ ووقت"
                 ></VueDatePicker>
                 <span v-if="hasLockIcon(post, 'deadline')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'deadline')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
+              </div>
+              
+              <!-- SLA Smart Indicator للديدلاين -->
+              <div class="sla-indicator" v-if="post.deadline" style="margin-top: 5px; margin-bottom: 5px;">
+                <span class="sla-msg" :class="getDeadlineStatus(post.execution_started_at || post.created_at, post.deadline, post.delivered_at ? 'completed' : 'pending').class + '-text'">
+                  {{ getDeadlineStatus(post.execution_started_at || post.created_at, post.deadline, post.delivered_at ? 'completed' : 'pending').message }}
+                </span>
+                <div class="sla-progress-bg" v-if="!post.delivered_at">
+                  <div class="sla-progress-fill" :class="getDeadlineStatus(post.execution_started_at || post.created_at, post.deadline, post.delivered_at ? 'completed' : 'pending').class + '-bg'" :style="{ width: getDeadlineStatus(post.execution_started_at || post.created_at, post.deadline, post.delivered_at ? 'completed' : 'pending').percentage + '%' }"></div>
+                </div>
               </div>
             </td>
             
@@ -688,6 +711,9 @@ import api from '../axios';
 import { VueDatePicker } from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css';
 import CustomMultiSelect from '../components/CustomMultiSelect.vue';
+
+// استيراد المحرك الذكي
+import { getDeadlineStatus } from '../utils/timeHelper';
 
 const route = useRoute();
 const planId = route.params.id;
@@ -1451,6 +1477,8 @@ onMounted(() => {
   background: #6c757d;
 }
 .spreadsheet-table { border-collapse: collapse; min-width: max-content; background: #fff; }
+.spreadsheet-table thead { position: sticky; top: 0; z-index: 20; }
+.spreadsheet-table thead th { position: sticky; top: inherit; z-index: 20; box-shadow: inset 0 1px 0 #dcdcdc, inset 0 -1px 0 #dcdcdc; }
 
 .extracted-links {
   display: flex;
@@ -1815,6 +1843,39 @@ input:disabled, select:disabled, textarea:disabled, .custom-multiselect.disabled
   cursor: not-allowed !important;
   opacity: 0.75;
 }
+
+/* ---------------------------------------------------
+   SLA Smart Colors (تأثيرات التأخير الذكية)
+--------------------------------------------------- */
+.dl-completed-text { color: #20b2aa !important; }
+.dl-safe-text { color: #25d366 !important; }
+.dl-warning-text { color: #ffc107 !important; }
+.dl-danger-text { color: #fd7e14 !important; }
+.dl-urgent-text { color: #ff4757 !important; }
+.dl-late-text { color: #ff0000 !important; }
+.dl-critical-text { color: #cc0000 !important; font-weight: bold; animation: pulse-text 2s infinite; }
+
+.dl-completed-bg { background: #20b2aa !important; }
+.dl-safe-bg { background: #25d366 !important; }
+.dl-warning-bg { background: #ffc107 !important; }
+.dl-danger-bg { background: #fd7e14 !important; }
+.dl-urgent-bg { background: #ff4757 !important; }
+.dl-late-bg { background: #ff0000 !important; }
+.dl-critical-bg { background: #cc0000 !important; }
+
+.dl-completed-border { border-right: 3px solid #20b2aa !important; }
+.dl-safe-border { border-right: 3px solid #25d366 !important; }
+.dl-warning-border { border-right: 3px solid #ffc107 !important; }
+.dl-danger-border { border-right: 3px solid #fd7e14 !important; }
+.dl-urgent-border { border-right: 3px solid #ff4757 !important; }
+.dl-late-border { border-right: 3px solid #ff0000 !important; }
+.dl-critical-border { border-right: 3px solid #cc0000 !important; }
+
+.sla-indicator { display: flex; flex-direction: column; gap: 2px; align-items: center; }
+.sla-progress-bg { height: 3px; background: rgba(0, 0, 0, 0.1); border-radius: 2px; overflow: hidden; width: 80%; margin-top: 2px; }
+.sla-progress-fill { height: 100%; transition: width 0.3s ease; }
+.sla-msg { font-size: 9px; font-weight: bold; display: block; }
+@keyframes pulse-text { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
 /* Premium Report Modal Styles */
 .premium-overlay {

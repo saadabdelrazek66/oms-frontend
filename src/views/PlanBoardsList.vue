@@ -57,7 +57,7 @@ const formatDate = (dateString) => {
 const fetchPlans = async () => {
   loading.value = true;
   try {
-    const response = await api.get('/content-plans');
+    const response = await api.get('/plans/boards');
     plans.value = response.data.data || response.data || [];
   } catch (error) {
     console.error('Error fetching plans:', error);

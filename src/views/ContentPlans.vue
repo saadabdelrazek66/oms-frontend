@@ -61,13 +61,23 @@
               <td>
                 <div class="milestone">
                   <span class="date">{{ formatDate(plan.planned_delivery_date) }}</span>
-                  <div v-if="plan.status === 'completed'" class="status-badge status-green">
+                  
+                  <div class="sla-indicator" v-if="plan.planned_delivery_date">
+                    <span class="sla-msg" :class="getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_delivery_date, plan.status).class + '-text'">
+                      {{ getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_delivery_date, plan.status).message }}
+                    </span>
+                    <div class="sla-progress-bg" v-if="plan.status !== 'completed'">
+                      <div class="sla-progress-fill" :class="getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_delivery_date, plan.status).class + '-bg'" :style="{ width: getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_delivery_date, plan.status).percentage + '%' }"></div>
+                    </div>
+                  </div>
+
+                  <div v-if="plan.status === 'completed'" class="status-badge status-green mt-2">
                     <i></i> تم التسليم <small>{{ formatDate(plan.actual_delivery_date) }}</small>
                   </div>
-                  <button v-else-if="isUserResponsible(plan) && (plan.status === 'reviewed' || (!plan.requires_review && (plan.status === 'pending' || plan.status === 'rejected')))" class="confirm-btn" type="button" :disabled="actionLoading === `delivery-${plan.id}`" @click="submitFinalDelivery(plan)">
+                  <button v-else-if="isUserResponsible(plan) && (plan.status === 'reviewed' || (!plan.requires_review && (plan.status === 'pending' || plan.status === 'rejected')))" class="confirm-btn mt-2" type="button" :disabled="actionLoading === `delivery-${plan.id}`" @click="submitFinalDelivery(plan)">
                     {{ actionLoading === `delivery-${plan.id}` ? 'جارٍ...' : 'تأكيد التسليم النهائي' }}
                   </button>
-                  <span v-else class="muted">بانتظار إنهاء الدورة</span>
+                  <span v-else class="muted mt-2 d-block">بانتظار إنهاء الدورة</span>
                 </div>
               </td>
               
@@ -82,6 +92,15 @@
                     </button>
                   </div>
                   
+                  <div class="sla-indicator mb-2" v-if="plan.requires_review && plan.planned_review_date">
+                    <span class="sla-msg" :class="getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status).class + '-text'">
+                      {{ getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status).message }}
+                    </span>
+                    <div class="sla-progress-bg" v-if="!['reviewed', 'completed'].includes(plan.status)">
+                      <div class="sla-progress-fill" :class="getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status).class + '-bg'" :style="{ width: getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status).percentage + '%' }"></div>
+                    </div>
+                  </div>
+
                   <div v-if="isUserResponsible(plan) && plan.requires_review && (plan.status === 'pending' || plan.status === 'rejected')" class="mt-1 mb-1">
                     <button class="confirm-btn review" type="button" :disabled="actionLoading === `submit-review-${plan.id}`" @click="submitForReview(plan)">
                       {{ actionLoading === `submit-review-${plan.id}` ? 'جارٍ...' : 'إرسال للمراجعة الداخلية' }}
@@ -112,7 +131,6 @@
                           @click="openFollowUpsModal(plan)">
                     متابعة العميل 💬 ({{ getFollowUps(plan).length }})
                   </button>
-                  <a v-if="plan.final_link" :href="plan.final_link" target="_blank" rel="noopener noreferrer" class="link-btn">فتح البلان ↗</a>
                   <button v-if="plan.reference_links && plan.reference_links.length > 0" class="ref-links-btn" type="button" @click="openReferencesModal(plan)">
                     المراجع المساعدة 🔗 ({{ plan.reference_links.length }})
                   </button>
@@ -256,6 +274,9 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import api from '../axios';
 
+// استيراد المحرك الذكي للتواريخ
+import { getDeadlineStatus } from '../utils/timeHelper';
+
 const getUserData = () => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch (e) { return {}; } };
 const currentUser = getUserData();
 const currentUserId = ref(currentUser.id || parseInt(localStorage.getItem('user_id') || 0));
@@ -287,7 +308,6 @@ const showDeliverySuccessModal = ref(false);
 const showCreationSuccessModal = ref(false); 
 const showReferencesModal = ref(false); 
 
-// متغيرات ودوال نافذة عرض الصورة المكبرة
 const showImageViewer = ref(false);
 const viewerImageUrl = ref('');
 const openImageViewer = (url) => { viewerImageUrl.value = url; showImageViewer.value = true; };
@@ -308,7 +328,6 @@ const selectedHistoryPlan = ref(null);
 const selectedRejections = ref([]);
 const selectedFollowUpPlan = ref(null);
 
-// ==== إضافات دالة الاستنساخ كقالب ====
 const showDuplicateModal = ref(false);
 const planToDuplicate = ref(null);
 const duplicateForm = reactive({ start_date: '', end_date: '', planned_delivery_date: '', planned_review_date: '' });
@@ -341,9 +360,7 @@ const submitDuplicate = async () => {
     actionLoading.value = '';
   }
 };
-// ======================================
 
-// متغيرات ودوال الفورم الخاص بالمتابعة
 const editingFollowUpId = ref(null);
 const fileInput = ref(null);
 const imagePreview = ref(null);
@@ -425,7 +442,11 @@ const getPlanStatusInfo = (status) => {
 };
 
 const underReviewCount = computed(() => plans.value.filter(plan => plan.status === 'under_review').length);
-const delayedCount = computed(() => plans.value.filter(plan => plan.status === 'rejected' || (plan.status === 'pending' && new Date() > new Date(plan.planned_delivery_date))).length);
+
+// استخدام اللوجيك الذكي لحساب المتأخرات
+const delayedCount = computed(() => plans.value.filter(plan => {
+  return plan.status === 'rejected' || getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_delivery_date, plan.status).isOverdue;
+}).length);
 
 const fetchPlans = async () => { loading.value = true; try { const response = await api.get('/content-plans'); plans.value = response.data.data || response.data || []; } catch (error) { showToast('تعذر تحميل الخطط'); } finally { loading.value = false; } };
 const fetchResources = async () => { if (isManager.value) { try { const [resUsers, resClients] = await Promise.all([api.get('/users?per_page=100'), api.get('/clients?per_page=100')]); allUsers.value = resUsers.data.data || []; allClients.value = resClients.data.data || []; } catch (error) {} } };
@@ -698,7 +719,6 @@ onBeforeUnmount(() => {
 .reject-btn { color:#ff9bad !important; border-color:rgba(255,155,173,.3) !important; background:rgba(255,103,139,.08) !important; }
 
 .actions-cell { display:flex; gap:6px; }.action { width:28px; height:28px; display:grid; place-items:center; border:0; border-radius:8px; background:transparent; cursor:pointer; font-size:14px; }
-/* ستايل زر الاستنساخ الجديد */
 .action.duplicate { color: #65b5ff; background: rgba(101, 181, 255, .08); }
 .action.edit { color:#78e4da; background:rgba(92,220,208,.08); }.action.delete { color:#ff94ab; background:rgba(255,103,139,.08); }.action:hover { filter:brightness(1.3); transform:translateY(-1px); }.state-cell { height:145px; color:#7d89b6 !important; text-align:center !important; }.spinner { display:inline-block; width:15px; height:15px; margin-left:7px; vertical-align:middle; border:2px solid rgba(125,232,220,.25); border-top-color:#7de8dc; border-radius:50%; animation:spin .7s linear infinite; }
 .modal-overlay { position:fixed; inset:82px 0 0; z-index:100; display:grid; place-items:start center; padding:18px; overflow-y:auto; background:rgba(4,7,27,.78); backdrop-filter:blur(7px); }.modal-content { width:min(780px,100%); max-height:calc(100vh - 118px); overflow-y:auto; position:relative; padding:28px; border:1px solid rgba(146,160,233,.2); border-radius:20px; background:linear-gradient(145deg,#171d52,#0d143a); box-shadow:0 25px 70px rgba(0,0,0,.4); }.modal-close { position:absolute; top:12px; left:16px; border:0; color:#8994c2; background:transparent; font-size:25px; cursor:pointer; }.modal-icon { width:42px; height:42px; display:grid; place-items:center; margin-bottom:12px; border-radius:12px; color:#202057; background:linear-gradient(145deg,#80e8df,#b486fb); font-size:21px; }.modal-content h3 { margin:7px 0 2px; font-size:21px; }.modal-content > p { margin:0; color:#818cb9; font-size:11px; }.plan-form { margin-top:23px; }.form-grid,.form-grid-3 { display:grid; gap:13px; margin-bottom:14px; }.form-grid { grid-template-columns:1fr 1fr; }.form-grid-3 { grid-template-columns:repeat(3,1fr); }.form-group { min-width:0; margin-bottom:13px; }.form-group label { display:block; margin-bottom:6px; color:#b8c0e2; font-size:10px; }.form-group label small { color:#6975a7; font-size:8px; }.form-group input,.form-group select, .form-group textarea { width:100%; min-height:42px; padding:0 11px; border:1px solid rgba(145,160,230,.2); border-radius:9px; outline:0; color:#eef0ff; background:rgba(6,11,37,.46); font:inherit; font-size:10px; direction: rtl; }.form-group input[type="url"] { direction: ltr; text-align: left; }.form-group textarea { padding-top: 10px; resize: vertical; }.form-group input:focus,.form-group select:focus, .form-group textarea:focus { border-color:#76e8de; box-shadow:0 0 0 3px rgba(118,232,222,.08); }.form-group input::placeholder, .form-group textarea::placeholder { color:#626e9e; }.separator { height:1px; margin:20px 0 15px; border:0; background:rgba(143,157,226,.14); }.section-title { color:#b986ff; font-size:11px; font-weight:700; }.section-title span { color:#76e8de; margin-left:4px; }.helper-text { margin:3px 0 13px; color:#6f7baa; font-size:9px; }.modal-actions { display:flex; justify-content:flex-start; gap:9px; margin-top:18px; }.secondary-btn { min-height:43px; padding:0 18px; border:1px solid rgba(143,157,226,.2); border-radius:10px; color:#aab4dc; background:transparent; font:inherit; font-size:11px; cursor:pointer; }
@@ -745,6 +765,33 @@ onBeforeUnmount(() => {
 .viewer-image { max-width: 100%; max-height: 90vh; border-radius: 12px; box-shadow: 0 15px 40px rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.1); }
 
 .toast-message { position:fixed; left:25px; bottom:25px; z-index:200; padding:12px 17px; border:1px solid rgba(116,232,220,.22); border-radius:10px; color:#bdf7f0; background:#182552; box-shadow:0 12px 30px rgba(0,0,0,.25); font-size:11px; }.toast-enter-active,.toast-leave-active { transition:.25s; }.toast-enter-from,.toast-leave-to { opacity:0; transform:translateY(10px); } @keyframes spin { to { transform:rotate(360deg); } }
+
+/* ---------------------------------------------------
+   SLA Smart Colors (تأثيرات التأخير الذكية)
+--------------------------------------------------- */
+.dl-completed-text { color: #7de8dc !important; }
+.dl-safe-text { color: #25d366 !important; }
+.dl-warning-text { color: #ffc107 !important; }
+.dl-danger-text { color: #fd7e14 !important; }
+.dl-urgent-text { color: #ff4757 !important; }
+.dl-late-text { color: #ff0000 !important; }
+.dl-critical-text { color: #ff6b81 !important; font-weight: bold; animation: pulse-text 2s infinite; }
+
+.dl-completed-bg { background: #7de8dc !important; }
+.dl-safe-bg { background: #25d366 !important; }
+.dl-warning-bg { background: #ffc107 !important; }
+.dl-danger-bg { background: #fd7e14 !important; }
+.dl-urgent-bg { background: #ff4757 !important; }
+.dl-late-bg { background: #ff0000 !important; }
+.dl-critical-bg { background: #ff4757 !important; }
+
+.sla-indicator { display: flex; flex-direction: column; gap: 2px; margin-top: 5px; }
+.sla-progress-bg { height: 4px; background: rgba(137, 153, 226, 0.1); border-radius: 2px; overflow: hidden; width: 100%; margin-top: 2px; }
+.sla-progress-fill { height: 100%; transition: width 0.3s ease; }
+.sla-msg { font-size: 10px; font-weight: bold; display: block; }
+@keyframes pulse-text { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+.d-block { display: block; }
+
 @media (max-width:720px) { .page-topline { align-items:flex-start; flex-direction:column; }.page-topline h2 { font-size:24px; }.primary-btn { width:100%; }.summary-strip { grid-template-columns:1fr 1fr; }.sync-status { grid-column:1 / -1; }.card-heading { padding-right:15px; padding-left:15px; }.legend { display:none; }.plans-table th,.plans-table td { padding-right:14px; padding-left:14px; }.modal-overlay { inset:70px 0 0; padding:12px; }.modal-content { max-height:calc(100vh - 82px); padding:23px 18px; }.form-grid,.form-grid-3 { grid-template-columns:1fr; gap:0; }.form-group.toggle-group { flex-direction:column !important; align-items:flex-start; margin-top:0; margin-bottom:15px; } .modal-actions { margin-top:5px; } }
 </style>
 

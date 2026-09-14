@@ -111,7 +111,7 @@
         <span>إدارة المستخدمين</span><em>U</em>
       </router-link>
 
-      <router-link v-if="role === 'manager'||role === 'employee'" class="nav-item" to="/projects">
+      <router-link v-if="role === 'manager' || role === 'employee'" class="nav-item" to="/projects">
         <svg
           viewBox="0 0 24 24"
           fill="none"
@@ -204,6 +204,24 @@
         <span>قائمة خطط المحتوى</span><em>L</em>
       </router-link>
 
+      <router-link v-if="role === 'manager'" class="nav-item" to="/system-logs">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M4 4h16v16H4z"></path>
+          <path d="M8 8h8"></path>
+          <path d="M8 12h8"></path>
+          <path d="M8 16h5"></path>
+        </svg>
+        <span>سجل النظام</span><em>L</em>
+      </router-link>
+
       <router-link v-if="role === 'manager'" class="nav-item" to="/app/client-vault">
         <svg
           viewBox="0 0 24 24"
@@ -223,7 +241,6 @@
 
     <p class="section-label workspace-label">مساحتك</p>
     <div class="quick-links">
-      <a href="#" @click.prevent><span class="quick-icon purple">✦</span> نشاط الفريق</a>
       <a href="#" @click.prevent><span class="quick-icon teal">◷</span> الإشعارات <b>3</b></a>
       <a href="#" @click.prevent><span class="quick-icon orange">?</span> المساعدة والدعم</a>
     </div>

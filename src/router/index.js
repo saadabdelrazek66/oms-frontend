@@ -10,6 +10,7 @@ import ContentPlans from '../views/ContentPlans.vue'
 import ClientVault from '../views/ClientVault.vue'
 import PlanBoardsList from '../views/PlanBoardsList.vue'
 import SpreadsheetBoard from '../views/SpreadsheetBoard.vue'
+import SystemLogs from '../views/SystemLogs.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -92,6 +93,15 @@ const router = createRouter({
           name: 'ProjectDetails',
           component: () => import('../views/ProjectDetails.vue'),
           props: true,
+        },
+        {
+          path: '/system-logs',
+          name: 'SystemLogs',
+          component: SystemLogs,
+          meta: {
+            requiresAuth: true,
+            role: 'manager',
+          },
         },
       ],
     },

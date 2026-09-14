@@ -97,36 +97,67 @@
       </div>
 
       <!-- ========================================== -->
-      <!-- 3. الشبكة الرئيسية (Main Grid)               -->
+      <!-- 3. مؤشرات الأداء (KPIs)                      -->
       <!-- ========================================== -->
-      <div class="main-grid mt-4">
+      <div class="kpi-grid mt-4">
         
-        <!-- قسم الـ KPI (مؤشر الأداء) -->
+        <!-- KPI: مهام المشاريع -->
         <div class="glass-card kpi-section">
-          <h3 class="card-title">📈 أداء الشهر الحالي</h3>
-          <div class="circular-progress-wrapper">
-            <svg viewBox="0 0 36 36" class="circular-chart">
-              <path class="circle-bg"
-                d="M18 2.0845
-                  a 15.9155 15.9155 0 0 1 0 31.831
-                  a 15.9155 15.9155 0 0 1 0 -31.831"
-              />
-              <path class="circle"
-                :stroke-dasharray="`${dashboardData.kpi.completion_rate}, 100`"
-                d="M18 2.0845
-                  a 15.9155 15.9155 0 0 1 0 31.831
-                  a 15.9155 15.9155 0 0 1 0 -31.831"
-              />
-              <text x="18" y="20.35" class="percentage">{{ dashboardData.kpi.completion_rate }}%</text>
-            </svg>
+          <h3 class="card-title">📈 أداء المهام (الشهر الحالي)</h3>
+          
+          <template v-if="dashboardData.kpi.tasks.total_this_month > 0">
+            <div class="circular-progress-wrapper">
+              <svg viewBox="0 0 36 36" class="circular-chart">
+                <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                <path class="circle" :stroke-dasharray="`${dashboardData.kpi.tasks.completion_rate}, 100`" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                <text x="18" y="20.35" class="percentage">{{ dashboardData.kpi.tasks.completion_rate }}%</text>
+              </svg>
+            </div>
+            <p class="kpi-desc text-center mt-3">
+              لقد أنجزت <strong class="text-green">{{ dashboardData.kpi.tasks.completion_rate }}%</strong> من المهام المطلوبة منك هذا الشهر.
+              <br>
+              <span class="muted text-sm">(إجمالي مهام الشهر: {{ dashboardData.kpi.tasks.total_this_month }})</span>
+            </p>
+          </template>
+          
+          <div v-else class="empty-kpi">
+            <div class="empty-icon">🌱</div>
+            <p>لا توجد مهام مشاريع مطلوبة منك هذا الشهر حتى الآن. استمتع بوقتك!</p>
           </div>
-          <p class="kpi-desc text-center mt-3">
-            لقد أنجزت <strong class="text-green">{{ dashboardData.kpi.completion_rate }}%</strong> من المهام المطلوبة منك هذا الشهر.
-            <br>
-            <span class="muted text-sm">(إجمالي مهام الشهر: {{ dashboardData.kpi.total_this_month }})</span>
-          </p>
         </div>
 
+        <!-- KPI: منشورات الخطط -->
+        <div class="glass-card kpi-section">
+          <h3 class="card-title">📈 أداء المنشورات (الشهر الحالي)</h3>
+          
+          <template v-if="dashboardData.kpi.posts.total_this_month > 0">
+            <div class="circular-progress-wrapper">
+              <svg viewBox="0 0 36 36" class="circular-chart">
+                <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                <path class="circle circle-purple" :stroke-dasharray="`${dashboardData.kpi.posts.completion_rate}, 100`" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                <text x="18" y="20.35" class="percentage">{{ dashboardData.kpi.posts.completion_rate }}%</text>
+              </svg>
+            </div>
+            <p class="kpi-desc text-center mt-3">
+              لقد سلمت <strong class="text-purple">{{ dashboardData.kpi.posts.completion_rate }}%</strong> من منشورات الخطط هذا الشهر.
+              <br>
+              <span class="muted text-sm">(إجمالي منشورات الشهر: {{ dashboardData.kpi.posts.total_this_month }})</span>
+            </p>
+          </template>
+          
+          <div v-else class="empty-kpi">
+            <div class="empty-icon">✨</div>
+            <p>لا توجد منشورات خطط مطلوبة منك هذا الشهر حتى الآن.</p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ========================================== -->
+      <!-- 4. المهام والأولويات العاجلة                -->
+      <!-- ========================================== -->
+      <div class="priorities-grid mt-4">
+        
         <!-- قسم المهام العاجلة -->
         <div class="glass-card priorities-section">
           <div class="card-header">
@@ -134,7 +165,6 @@
               <h3 class="card-title">⚡ مهام المشاريع العاجلة</h3>
               <span class="badge">{{ dashboardData.priorities.upcoming_tasks.length }} مهام</span>
             </div>
-            <!-- زر الذهاب لصفحة المشاريع إذا كان يمتلك مهام -->
             <router-link v-if="dashboardData.stats.tasks.total > 0" to="/projects" class="view-all-link">
               عرض كل المشاريع ↗
             </router-link>
@@ -173,7 +203,6 @@
               <h3 class="card-title">📝 منشورات مطلوبة للخطط</h3>
               <span class="badge">{{ dashboardData.priorities.upcoming_posts.length }} منشورات</span>
             </div>
-            <!-- زر الذهاب لصفحة مهام الخطط إذا كان يمتلك خطط/مهام -->
             <router-link v-if="dashboardData.stats.posts.total > 0 || dashboardData.stats.total_plans > 0" to="/my-tasks" class="view-all-link">
               عرض كل المهام ↗
             </router-link>
@@ -215,7 +244,6 @@
 import { ref, onMounted, computed } from 'vue';
 import api from '../axios';
 
-// استيراد المحرك الذكي لتلوين التواريخ
 import { getDeadlineStatus } from '../utils/timeHelper';
 
 const loading = ref(true);
@@ -224,7 +252,7 @@ const dashboardData = ref(null);
 const currentUserName = computed(() => {
   try {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
-    return user.name ? user.name.split(' ')[0] : 'زميلي العزيز'; // أخذ الاسم الأول فقط
+    return user.name ? user.name.split(' ')[0] : 'زميلي العزيز';
   } catch (e) {
     return 'زميلي العزيز';
   }
@@ -283,14 +311,13 @@ onMounted(() => {
 .section-title { font-size: 16px; color: #eef0ff; font-weight: 700; margin-bottom: 12px; }
 .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; }
 
-/* تطابق مع شكل الكروت في الصورة image_09b5a9.png */
 .stat-card { 
   display: flex; 
   align-items: center; 
-  justify-content: space-between; /* الأيقونة على اليسار والنص على اليمين */
+  justify-content: space-between; 
   padding: 20px; 
   border-radius: 12px; 
-  background: rgba(10, 15, 44, 0.7); /* لون داكن كما في الصورة */
+  background: rgba(10, 15, 44, 0.7); 
   border: 1px solid rgba(137, 153, 226, 0.15); 
   transition: transform 0.2s, box-shadow 0.2s; 
 }
@@ -309,7 +336,6 @@ onMounted(() => {
   border-radius: 10px; 
 }
 
-/* ألوان السفلية (Bottom Border) للكروت */
 .blue-card { border-bottom: 3px solid #60a5fa; }
 .green-card { border-bottom: 3px solid #34d399; }
 .orange-card { border-bottom: 3px solid #fbbf24; }
@@ -324,8 +350,9 @@ onMounted(() => {
   100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
 }
 
-/* 2. Main Grid */
-.main-grid { display: grid; grid-template-columns: 300px 1fr 1fr; gap: 20px; align-items: start; }
+/* Grids Setup */
+.kpi-grid, .priorities-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+
 .glass-card { background: rgba(15, 22, 61, 0.65); border: 1px solid rgba(137, 153, 226, 0.15); border-radius: 16px; padding: 22px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
 .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
 .d-flex { display: flex; }
@@ -335,31 +362,22 @@ onMounted(() => {
 .badge { background: rgba(137, 153, 226, 0.15); color: #8fc9ff; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: bold; }
 
 /* View All Link */
-.view-all-link {
-  font-size: 12px;
-  color: #7de8dc;
-  text-decoration: none;
-  font-weight: 600;
-  transition: 0.2s;
-  background: rgba(125, 232, 220, 0.05);
-  padding: 4px 10px;
-  border-radius: 6px;
-  border: 1px solid rgba(125, 232, 220, 0.1);
-}
-.view-all-link:hover {
-  background: rgba(125, 232, 220, 0.15);
-  color: #fff;
-}
+.view-all-link { font-size: 12px; color: #7de8dc; text-decoration: none; font-weight: 600; transition: 0.2s; background: rgba(125, 232, 220, 0.05); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(125, 232, 220, 0.1); }
+.view-all-link:hover { background: rgba(125, 232, 220, 0.15); color: #fff; }
 
-/* SVG Circular Progress */
-.kpi-section { display: flex; flex-direction: column; align-items: center; }
+/* SVG Circular Progress & Empty States */
+.kpi-section { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 320px; }
 .circular-progress-wrapper { width: 150px; margin: 20px auto; }
 .circular-chart { display: block; margin: 0 auto; max-width: 100%; max-height: 250px; }
 .circle-bg { fill: none; stroke: rgba(137, 153, 226, 0.1); stroke-width: 2.5; }
 .circle { fill: none; stroke: #34d399; stroke-width: 2.5; stroke-linecap: round; animation: progress 1s ease-out forwards; }
+.circle-purple { stroke: #c084fc; }
 .percentage { fill: #fff; font-family: 'Cairo', sans-serif; font-size: 8px; font-weight: 800; text-anchor: middle; }
 @keyframes progress { 0% { stroke-dasharray: 0 100; } }
 .kpi-desc { font-size: 13px; color: #aab5da; line-height: 1.6; }
+
+.empty-kpi { text-align: center; padding: 30px 20px; color: #aab5da; font-size: 14px; line-height: 1.7; }
+.empty-icon { font-size: 45px; margin-bottom: 15px; opacity: 0.8; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.2)); }
 
 /* Priority Lists */
 .items-list { display: flex; flex-direction: column; gap: 12px; }
@@ -401,6 +419,7 @@ onMounted(() => {
 .dl-urgent-bg, .dl-late-bg, .dl-critical-bg { background: #f87171 !important; }
 
 .text-green { color: #34d399; }
+.text-purple { color: #c084fc; }
 .muted { color: #64748b; }
 .text-sm { font-size: 11px; }
 .text-center { text-align: center; }
@@ -408,17 +427,11 @@ onMounted(() => {
 .mt-4 { margin-top: 25px; }
 .py-4 { padding-top: 20px; padding-bottom: 20px; }
 
-@media (max-width: 1200px) {
-  .main-grid { grid-template-columns: 1fr 1fr; }
-  .kpi-section { grid-column: 1 / -1; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 30px; text-align: right; }
-  .circular-progress-wrapper { margin: 0; width: 120px; }
-  .kpi-desc { text-align: right !important; margin-top: 0; }
+@media (max-width: 900px) {
+  .kpi-grid, .priorities-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 768px) {
-  .main-grid { grid-template-columns: 1fr; }
-  .kpi-section { grid-template-columns: 1fr; text-align: center; gap: 15px; }
-  .kpi-desc { text-align: center !important; }
   .stats-grid { grid-template-columns: 1fr 1fr; }
   .page-topline h2 { font-size: 24px; }
   .card-header { flex-direction: column; align-items: flex-start; }

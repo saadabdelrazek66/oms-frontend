@@ -236,12 +236,6 @@
           <p>أنجز مهامك بتركيز، خطوة واحدة في كل مرة.</p>
         </div>
       </div>
-      <button class="logout-btn" type="button" @click="logout">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M10 5H5v14h5M14 8l4 4-4 4M8 12h10" />
-        </svg>
-        تسجيل الخروج
-      </button>
     </div>
   </aside>
 </template>

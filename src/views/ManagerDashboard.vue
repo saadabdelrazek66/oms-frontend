@@ -241,9 +241,14 @@
                 
                 <!-- إجراء سريع -->
                 <td>
-                  <button @click="sendWhatsAppWarning(user)" class="wa-btn" :disabled="user.metrics.overdue.overall === 0">
-                    💬 تنبيه
-                  </button>
+                  <div style="display: flex; gap: 8px; justify-content: center;">
+                    <button @click="sendWhatsAppWarning(user)" class="quick-action-btn warn-btn" :disabled="user.metrics.overdue.overall === 0" title="إرسال تنبيه بالمتأخرات">
+                      ⚠️ تنبيه
+                    </button>
+                    <button @click="sendGeneralMessage(user)" class="quick-action-btn msg-btn" title="بدء محادثة واتساب">
+                      💬 رسالة
+                    </button>
+                  </div>
                 </td>
                 
               </tr>
@@ -273,6 +278,9 @@
 
     </div>
   </section>
+
+    
+
 </template>
 
 <script setup>
@@ -333,6 +341,13 @@ const getRowClass = (status) => {
 };
 
 // واتساب
+
+
+const sendGeneralMessage = (user) => {
+  const message = `مرحباً ${user.name}،\n`;
+  window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+};
+
 const sendWhatsAppWarning = (user) => {
   if (user.metrics.overdue.overall === 0) return;
   
@@ -497,4 +512,12 @@ onMounted(() => {
   .stats-grid { grid-template-columns: 1fr; }
   .grid-5, .grid-6 { grid-template-columns: 1fr 1fr; }
 }
+
+.quick-action-btn { border: none; padding: 6px 12px; border-radius: 8px; font-weight: bold; font-family: 'Cairo'; cursor: pointer; transition: 0.2s; font-size: 11px; display: flex; align-items: center; gap: 5px; }
+.quick-action-btn.warn-btn { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+.quick-action-btn.warn-btn:hover:not(:disabled) { background: rgba(239, 68, 68, 0.25); transform: scale(1.05); }
+.quick-action-btn.warn-btn:disabled { background: rgba(148, 163, 184, 0.1); color: #94a3b8; cursor: not-allowed; opacity: 0.5; }
+.quick-action-btn.msg-btn { background: rgba(37, 211, 102, 0.15); color: #25d366; }
+.quick-action-btn.msg-btn:hover { background: rgba(37, 211, 102, 0.25); transform: scale(1.05); }
+
 </style>

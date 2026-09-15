@@ -186,6 +186,7 @@
       </div>
     </div>
 
+    <Teleport to="body">
     <!-- نافذة إضافة / تعديل العميل -->
     <div v-if="showModal" class="modal-overlay" role="presentation" @click.self="closeModal">
       <div
@@ -318,6 +319,46 @@
             </div>
           </div>
 
+          <!-- روابط درايف -->
+          <div class="form-section">
+            <div class="section-head">
+              <h4>روابط درايف الخاصة بالعميل 📁</h4>
+              <button type="button" class="outline-btn" @click="addDriveLink">
+                ＋ إضافة رابط درايف
+              </button>
+            </div>
+            <TransitionGroup name="list" tag="div">
+              <div v-for="(link, index) in form.drive_links" :key="'d' + index" class="dynamic-row">
+                <input
+                  v-model="link.title"
+                  type="text"
+                  placeholder="اسم الرابط (مثال: تصميمات شهر 8)"
+                  required
+                  style="flex: 1"
+                />
+                <input
+                  v-model="link.url"
+                  type="url"
+                  placeholder="https://drive.google.com/..."
+                  required
+                  dir="ltr"
+                  style="flex: 2"
+                />
+                <button
+                  type="button"
+                  class="remove-btn"
+                  @click="removeDriveLink(index)"
+                  title="حذف الرابط"
+                >
+                  ×
+                </button>
+              </div>
+            </TransitionGroup>
+            <span v-if="!form.drive_links.length" class="empty-hint"
+              >لم يتم إضافة أي روابط درايف.</span
+            >
+          </div>
+
           <!-- السوشيال ميديا -->
           <div class="form-section">
             <div class="section-head">
@@ -401,7 +442,9 @@
         </form>
       </div>
     </div>
+    </Teleport>
 
+    <Teleport to="body">
     <!-- نافذة عرض التفاصيل الكاملة -->
     <div
       v-if="selectedClient"
@@ -534,6 +577,28 @@
 
         <section class="details-section full-detail">
           <div class="section-heading-row">
+            <h4><span class="section-symbol blue-symbol">📁</span> روابط درايف</h4>
+            <span class="links-count">{{ selectedClient.drive_links?.length || 0 }} روابط</span>
+          </div>
+          <div v-if="selectedClient.drive_links?.length" class="detail-links">
+            <a
+              v-for="(link, index) in selectedClient.drive_links"
+              :key="'dl' + index"
+              :href="link.url"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="drive-link-card"
+            >
+              <span>🔗</span>
+              <strong>{{ link.title }}</strong>
+              <small>{{ link.url }}</small>
+            </a>
+          </div>
+          <span v-else class="empty-detail">لا توجد روابط درايف مسجلة</span>
+        </section>
+
+        <section class="details-section full-detail">
+          <div class="section-heading-row">
             <h4><span class="section-symbol purple-symbol">↗</span> منصات السوشيال ميديا</h4>
             <span class="links-count">{{ selectedClient.social_links?.length || 0 }} منصات</span>
           </div>
@@ -561,6 +626,7 @@
         </div>
       </div>
     </div>
+    </Teleport>
 
     <transition name="toast"
       ><div v-if="toastMessage" class="toast-message" role="status" aria-live="polite">
@@ -596,6 +662,7 @@ const form = reactive({
   instapay: '',
   wallet: '',
   social_links: [], // مصفوفة { platform, url }
+  drive_links: [],
   contacts: [],
 })
 
@@ -677,6 +744,8 @@ const removeEmail = (index) => {
 }
 
 const addSocialLink = () => form.social_links.push({ platform: '', url: '' })
+const addDriveLink = () => form.drive_links.push({ title: '', url: '' })
+const removeDriveLink = (index) => { if(window.confirm('تأكيد الحذف؟')) form.drive_links.splice(index, 1) }
 const removeSocialLink = (index) => {
   if (window.confirm('هل أنت متأكد من حذف هذا الرابط (المنصة)؟')) {
     form.social_links.splice(index, 1)
@@ -702,6 +771,7 @@ const resetForm = () => {
     instapay: '',
     wallet: '',
     social_links: [],
+    drive_links: [],
     contacts: [],
   })
 }
@@ -720,6 +790,7 @@ const openModal = (client) => {
       instapay: client.instapay || '',
       wallet: client.wallet || '',
       social_links: client.social_links ? JSON.parse(JSON.stringify(client.social_links)) : [],
+      drive_links: client.drive_links ? JSON.parse(JSON.stringify(client.drive_links)) : [],
       contacts: client.contacts ? JSON.parse(JSON.stringify(client.contacts)) : [],
     })
   } else {
@@ -1002,6 +1073,10 @@ onBeforeUnmount(() => {
   border-top: 1px solid rgba(138, 152, 222, 0.09);
   vertical-align: middle;
 }
+.clients-table tbody tr {
+  content-visibility: auto;
+  contain-intrinsic-size: 80px;
+}
 .clients-table th {
   color: #8792be;
   background: rgba(10, 16, 47, 0.35);
@@ -1197,18 +1272,16 @@ onBeforeUnmount(() => {
 .modal-overlay,
 .details-overlay {
   position: fixed;
-  inset: 82px 0 0;
-  z-index: 100;
+  inset: 0 !important;
+  z-index: 9999 !important;
   display: grid;
-  place-items: start center;
+  place-items: center;
   padding: 20px;
   overflow-y: auto;
-  background: rgba(4, 7, 27, 0.8);
+  background: rgba(4, 7, 27, 0.85);
   backdrop-filter: blur(8px);
 }
-.details-overlay {
-  z-index: 110;
-}
+
 .modal-content,
 .details-modal {
   width: min(850px, 100%);
@@ -1882,4 +1955,23 @@ onBeforeUnmount(() => {
     animation-duration: 1.5s;
   }
 }
+
+.list-enter-active,
+.list-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.list-enter-from,
+.list-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}
+.drive-link-card {
+  background: rgba(14, 21, 62, 0.4);
+  border: 1px solid rgba(137, 153, 226, 0.15);
+}
+.drive-link-card:hover {
+  background: rgba(14, 21, 62, 0.7);
+  border-color: rgba(125, 232, 220, 0.4);
+}
+
 </style>

@@ -120,7 +120,9 @@
     </div>
 
     <!-- نافذة إدارة السجلات (الحذف) المدمجة -->
-    <div v-if="isManageModalOpen" class="modal-overlay" @click.self="closeManageModal">
+    
+    <Teleport to="body">
+      <div v-if="isManageModalOpen" class="modal-overlay" @click.self="closeManageModal">
       <div class="modal-content manage-modal">
         <div class="modal-header">
           <h3>🗑️ إدارة السجلات وتفريغ المساحة</h3>
@@ -166,9 +168,13 @@
         </div>
       </div>
     </div>
+    </Teleport>
+
 
     <!-- نافذة تفاصيل السجل (مقارنة القديم والجديد) -->
-    <div v-if="isDetailsModalOpen" class="modal-overlay" @click.self="closeDetails">
+    
+    <Teleport to="body">
+      <div v-if="isDetailsModalOpen" class="modal-overlay" @click.self="closeDetails">
       <div class="modal-content details-modal">
         <div class="modal-header">
           <h3>التفاصيل الدقيقة للحدث</h3>
@@ -198,6 +204,8 @@
         </div>
       </div>
     </div>
+    </Teleport>
+
 
   </section>
 </template>
@@ -364,7 +372,7 @@ onMounted(() => fetchLogs(1));
 .page-info { font-size: 12px; color: #818cb9; } .page-info strong { color: #fff; }
 
 /* Modals General */
-.modal-overlay { position: fixed; inset: 0; background: rgba(4, 7, 20, 0.8); backdrop-filter: blur(4px); display: grid; place-items: center; z-index: 1000; padding: 20px; }
+.modal-overlay { position: fixed;  background: rgba(4, 7, 20, 0.8); backdrop-filter: blur(4px); display: grid; place-items: center;  padding: 20px;        inset: 0 !important; z-index: 9999 !important; }
 .modal-content { background: #0f163d; border-radius: 16px; border: 1px solid rgba(137, 153, 226, 0.15); width: 100%; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.4); animation: scaleUp 0.2s ease-out; }
 @keyframes scaleUp { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 18px 24px; border-bottom: 1px solid rgba(137, 153, 226, 0.1); background: rgba(0,0,0,0.15); }

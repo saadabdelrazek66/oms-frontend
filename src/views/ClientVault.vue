@@ -104,7 +104,9 @@
     </div>
 
     <!-- Modal إضافة/تعديل حساب -->
-    <div v-if="showCredModal" class="modal-overlay" role="presentation" @click.self="closeCredModal">
+    
+    <Teleport to="body">
+      <div v-if="showCredModal" class="modal-overlay" role="presentation" @click.self="closeCredModal">
       <div ref="credModalContent" class="modal-content cred-modal" role="dialog" tabindex="-1" @keydown.esc="closeCredModal" style="width: min(450px, 100%) !important;">
         <button ref="credModalCloseButton" class="modal-close" type="button" aria-label="إغلاق النافذة" @click="closeCredModal">×</button>
         <div class="modal-icon" style="background: linear-gradient(145deg, #ffc480, #ffb359); color:#12183f;">🔑</div>
@@ -141,6 +143,8 @@
         </form>
       </div>
     </div>
+    </Teleport>
+
 
     <transition name="toast"><div v-if="toastMessage" class="toast-message" role="status" aria-live="polite">{{ toastMessage }}</div></transition>
   </section>
@@ -431,7 +435,7 @@ onBeforeUnmount(() => {
 .cred-link { color: #7de8dc; text-decoration: none; background: rgba(125,232,220,.1); padding: 2px 6px; border-radius: 4px; font-size: 9px; }
 
 /* Modal Styles */
-.modal-overlay { position:fixed; inset:0; z-index:100; display:grid; place-items:center; padding:18px; overflow-y:auto; background:rgba(4,7,27,.85); backdrop-filter:blur(7px); }
+.modal-overlay { position:fixed;   display:grid; place-items:center; padding:18px; overflow-y:auto; background:rgba(4,7,27,.85); backdrop-filter:blur(7px);        inset: 0 !important; z-index: 9999 !important; }
 .modal-content { max-height:calc(100vh - 40px); overflow-y:auto; position:relative; padding:28px; border:1px solid rgba(146,160,233,.2); border-radius:20px; background:linear-gradient(145deg,#171d52,#0d143a); box-shadow:0 25px 70px rgba(0,0,0,.4); width: 100%; }
 .modal-close { position:absolute; top:12px; left:16px; border:0; color:#8994c2; background:transparent; font-size:25px; cursor:pointer; }
 .modal-icon { width:42px; height:42px; display:grid; place-items:center; margin-bottom:12px; border-radius:12px; font-size:21px; }
@@ -494,7 +498,7 @@ onBeforeUnmount(() => {
 .cred-link { min-height: 36px; display: inline-flex; align-items: center; padding: 0 9px; font-size: 12px !important; }
 
 /* Credential modal */
-.modal-overlay { padding: 20px; }
+.modal-overlay { padding: 20px;        inset: 0 !important; z-index: 9999 !important; }
 .modal-content { max-height: calc(100dvh - 40px); padding: 30px; }
 .cred-modal { width: min(500px, 100%) !important; }
 .modal-content h3 { font-size: 24px !important; line-height: 1.35; }
@@ -521,7 +525,7 @@ onBeforeUnmount(() => {
   .data-row { flex-direction: column; gap: 6px; }
   .data-label { width: auto; flex-basis: auto; }
   .data-val-group { width: 100%; justify-content: flex-start; }
-  .modal-overlay { padding: 12px; }
+  .modal-overlay { padding: 12px;        inset: 0 !important; z-index: 9999 !important; }
   .modal-content { max-height: calc(100dvh - 24px); padding: 25px 18px 20px; border-radius: 16px; }
   .modal-actions { flex-direction: column-reverse; }
   .modal-actions .primary-btn, .modal-actions .secondary-btn { width: 100%; }

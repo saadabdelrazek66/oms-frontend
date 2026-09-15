@@ -131,7 +131,9 @@
     </div>
 
     <!-- Modal إضافة وتعديل -->
-    <div v-if="showModal" class="modal-overlay" role="presentation" @click.self="closeModal">
+    
+    <Teleport to="body">
+      <div v-if="showModal" class="modal-overlay" role="presentation" @click.self="closeModal">
       <div ref="modalContent" class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modal-title" tabindex="-1" @keydown.esc="closeModal">
         <button ref="modalCloseButton" class="modal-close" type="button" aria-label="إغلاق النافذة" @click="closeModal"><span aria-hidden="true">×</span></button>
         <div class="modal-icon" aria-hidden="true">♙</div>
@@ -171,6 +173,8 @@
         </form>
       </div>
     </div>
+    </Teleport>
+
 
     <transition name="toast"><div v-if="toastMessage" class="toast-message" role="status" aria-live="polite">{{ toastMessage }}</div></transition>
   </section>
@@ -465,7 +469,7 @@ onBeforeUnmount(() => {
 .pagination button:disabled { opacity: .35; cursor: not-allowed; }
 .pagination b { color: #7de8dc; }
 
-.modal-overlay { position: fixed; inset: 82px 0 0; z-index: 100; display: grid; place-items: start center; padding: 20px; overflow-y: auto; background: rgba(4,7,27,.78); backdrop-filter: blur(7px); }
+.modal-overlay { position: fixed;   display: grid; place-items: start center; padding: 20px; overflow-y: auto; background: rgba(4,7,27,.78); backdrop-filter: blur(7px);        inset: 0 !important; z-index: 9999 !important; }
 .modal-content { width: min(540px, 100%); max-height: calc(100vh - 122px); overflow-y: auto; position: relative; padding: 30px; border: 1px solid rgba(146,160,233,.2); border-radius: 20px; color: #e9ebff; background: linear-gradient(145deg, #171d52, #0d143a); box-shadow: 0 25px 70px rgba(0,0,0,.4); }
 .modal-close { position: absolute; top: 10px; left: 12px; width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 10px; color: #a3add1; background: transparent; font-size: 28px; line-height: 1; cursor: pointer; }
 .modal-icon { width: 48px; height: 48px; display: grid; place-items: center; margin-bottom: 14px; border-radius: 13px; color: #202057; background: linear-gradient(145deg, #80e8df, #b486fb); font-size: 24px; }
@@ -514,7 +518,7 @@ onBeforeUnmount(() => {
   .live-state { align-self: flex-start; }
   .filters-section { grid-template-columns: 1fr; padding: 0 15px 19px; }
   .users-table th, .users-table td { padding-right: 15px; padding-left: 15px; }
-  .modal-overlay { inset: 70px 0 0; padding: 12px; }
+  .modal-overlay {  padding: 12px;        inset: 0 !important; z-index: 9999 !important; }
   .modal-content { max-height: calc(100dvh - 82px); padding: 25px 18px 20px; border-radius: 16px; }
   .modal-content h3 { font-size: 22px; }
   .user-form { grid-template-columns: 1fr; }

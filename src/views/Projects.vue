@@ -393,15 +393,15 @@ onMounted(() => {
 
 .modal-overlay { 
   position: fixed; 
-  inset: 0; 
-  z-index: 9999; 
+   
+   
   display: grid; 
   place-items: center; 
   padding: 20px; 
   background: rgba(4, 7, 27, .78); 
   backdrop-filter: blur(7px); 
   overflow-y: auto; 
-}
+       inset: 0 !important; z-index: 9999 !important; }
 
 /* 2. ستايل زر فتح المشروع الجديد */
 .details-link-btn {

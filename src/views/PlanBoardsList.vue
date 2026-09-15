@@ -79,7 +79,7 @@ onMounted(fetchPlans);
 .page-topline p { margin: 0; color: #818cb9; font-size: 12px; }
 
 .boards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
-.board-card { background: rgba(15, 22, 61, 0.65); border: 1px solid rgba(137, 153, 226, 0.15); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; transition: 0.2s; }
+.board-card { background: rgba(15, 22, 61, 0.65); border: 1px solid rgba(137, 153, 226, 0.15); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; transition: 0.2s; content-visibility: auto; contain-intrinsic-size: 170px; }
 .board-card:hover { transform: translateY(-3px); border-color: rgba(125, 232, 220, 0.4); box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
 
 .bc-header { display: flex; align-items: center; gap: 12px; padding: 20px; background: rgba(10, 16, 47, 0.35); border-bottom: 1px solid rgba(137, 153, 226, 0.1); }

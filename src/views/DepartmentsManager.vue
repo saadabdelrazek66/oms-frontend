@@ -105,7 +105,9 @@
     </div>
 
     <!-- Modal الإضافة والتعديل -->
-    <div
+    
+    <Teleport to="body">
+      <div
       v-if="showModal"
       class="modal-overlay"
       role="presentation"
@@ -163,6 +165,8 @@
         </form>
       </div>
     </div>
+    </Teleport>
+
 
     <transition name="toast">
       <div v-if="toastMessage" class="toast-message" role="status" aria-live="polite">
@@ -650,15 +654,15 @@ onBeforeUnmount(() => {
 
 .modal-overlay {
   position: fixed;
-  inset: 82px 0 0;
-  z-index: 100;
+  
+  
   display: grid;
   place-items: start center;
   padding: 20px;
   overflow-y: auto;
   background: rgba(4, 7, 27, .78);
   backdrop-filter: blur(7px);
-}
+       inset: 0 !important; z-index: 9999 !important; }
 
 .modal-content {
   width: min(550px, 100%);
@@ -883,10 +887,10 @@ onBeforeUnmount(() => {
   }
 
   .modal-overlay {
-    inset: 70px 0 0;
+    
     align-items: start;
     padding: 12px;
-  }
+         inset: 0 !important; z-index: 9999 !important; }
 
   .modal-content {
     max-height: calc(100dvh - 82px);

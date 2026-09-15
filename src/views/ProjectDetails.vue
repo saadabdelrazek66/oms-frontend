@@ -91,6 +91,12 @@
             ghost-class="ghost-task"
             :move="checkMove" 
             @change="(e) => onTaskMove(e, column.id)"
+            :animation="200"
+            :force-fallback="true"
+            fallback-class="sortable-fallback"
+            :delay="200"
+            :delay-on-touch-only="true"
+            :touch-start-threshold="3"
           >
             <template #item="{ element }">
               <div 
@@ -676,7 +682,8 @@ onMounted(() => {
 .not-draggable { cursor: not-allowed !important; opacity: 0.8; }
 .not-draggable:hover { border-color: rgba(137, 153, 226, .15); transform: none; }
 .highlight-task { box-shadow: 0 0 18px rgba(125, 232, 220, 0.4) !important; border-color: #7de8dc !important; transform: scale(1.02); z-index: 10; }
-.ghost-task { opacity: 0.4; background: rgba(125, 232, 220, 0.1); border: 1px dashed #7de8dc; }
+.ghost-task { opacity: 0.4; background: rgba(125, 232, 220, 0.1); border: 2px dashed #7de8dc; }
+.sortable-fallback { opacity: 1 !important; cursor: grabbing !important; box-shadow: 0 15px 30px rgba(0,0,0,0.5) !important; transform: rotate(3deg) !important; background: #171d52 !important; }
 
 /* SLA Smart Colors */
 .task-card.dl-completed { border-right: 3px solid #7de8dc; }
@@ -730,7 +737,7 @@ onMounted(() => {
 .assignee-avatar { width: 24px; height: 24px; border-radius: 50%; background: #2a3363; display: grid; place-items: center; font-size: 9px; color: #fff; font-weight: bold; }
 
 /* المودال */
-.modal-overlay { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; padding: 20px; background: rgba(4, 7, 27, .78); backdrop-filter: blur(7px); overflow-y: auto; }
+.modal-overlay { position: fixed;   display: grid; place-items: center; padding: 20px; background: rgba(4, 7, 27, .78); backdrop-filter: blur(7px); overflow-y: auto;        inset: 0 !important; z-index: 9999 !important; }
 .modal-content { background: linear-gradient(145deg, #171d52, #0d143a); border: 1px solid rgba(146, 160, 233, .2); border-radius: 20px; padding: 30px; position: relative; box-shadow: 0 25px 70px rgba(0,0,0,.4); }
 .modal-close { position: absolute; top: 15px; left: 20px; border: 0; background: transparent; color: #8994c2; font-size: 28px; cursor: pointer; }
 .modal-icon { width: 45px; height: 45px; display: grid; place-items: center; background: linear-gradient(145deg, #80e8df, #b486fb); border-radius: 12px; color: #202057; font-size: 22px; margin-bottom: 15px; }

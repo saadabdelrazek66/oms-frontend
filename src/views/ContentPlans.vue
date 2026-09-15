@@ -18,6 +18,116 @@
       <div class="sync-status"><i></i> بيانات محدثة من مساحة العمل</div>
     </div>
 
+
+    <!-- Filters Bar -->
+    <div class="filters-bar" :class="{ 'advanced-open': showAdvancedFilters }">
+      <div class="filters-header">
+        <div class="search-input-wrapper">
+          <span class="search-icon">🔍</span>
+          <input type="text" v-model="filters.search" placeholder="بحث باسم العميل، نوع الخطة، أو ملاحظات..." @keyup.enter="applyFilters" />
+        </div>
+        <div class="filters-actions">
+          <button class="secondary-btn" @click="toggleAdvancedFilters">
+            <span>⎈</span> فلاتر متقدمة
+          </button>
+          <button class="primary-btn" @click="applyFilters" :disabled="loading">
+            بحث وتصفية
+          </button>
+          <button class="secondary-btn text-red" v-if="hasActiveFilters" @click="resetFilters">
+            إلغاء الفلاتر
+          </button>
+        </div>
+      </div>
+      
+      <div class="advanced-filters" v-show="showAdvancedFilters">
+        <div class="form-grid-3">
+          <!-- Client Filter -->
+          <div class="form-group">
+            <label>العميل</label>
+            <select v-model="filters.client_id">
+              <option value="">الكل</option>
+              <option v-for="client in allClients" :key="client.id" :value="client.id">{{ client.name }}</option>
+            </select>
+          </div>
+          <!-- Plan Type -->
+          <div class="form-group">
+            <label>نوع الخطة</label>
+            <select v-model="filters.plan_type">
+              <option value="">الكل</option>
+              <option value="استراتيجية">استراتيجية</option>
+              <option value="محتوى">محتوى</option>
+              <option value="سوشيال ميديا">سوشيال ميديا</option>
+              <option value="إعلانات ممولة">إعلانات ممولة</option>
+              <option value="SEO">SEO</option>
+              <option value="خطة شاملة">خطة شاملة</option>
+            </select>
+          </div>
+          <!-- Status -->
+          <div class="form-group">
+            <label>حالة الخطة</label>
+            <select v-model="filters.status">
+              <option value="">الكل</option>
+              <option value="pending">قيد الانتظار</option>
+              <option value="in_progress">قيد التنفيذ</option>
+              <option value="in_review">قيد المراجعة</option>
+              <option value="completed">مكتملة</option>
+              <option value="rejected">مرفوضة</option>
+            </select>
+          </div>
+          <!-- Employee (Manager Only) -->
+          <div class="form-group" v-if="isManager">
+            <label>الموظف</label>
+            <select v-model="filters.employee_id">
+              <option value="">الكل</option>
+              <option v-for="user in allUsers" :key="user.id" :value="user.id">{{ user.name }}</option>
+            </select>
+          </div>
+          <!-- Plan Period -->
+          <div class="form-group">
+            <label>تاريخ الخطة (من)</label>
+            <input type="date" v-model="filters.start_date" />
+          </div>
+          <div class="form-group">
+            <label>تاريخ الخطة (إلى)</label>
+            <input type="date" v-model="filters.end_date" />
+          </div>
+          <!-- Delivery Period -->
+          <div class="form-group">
+            <label>موعد التسليم (من)</label>
+            <input type="date" v-model="filters.delivery_from" />
+          </div>
+          <div class="form-group">
+            <label>موعد التسليم (إلى)</label>
+            <input type="date" v-model="filters.delivery_to" />
+          </div>
+          <!-- Review Period -->
+          <div class="form-group">
+            <label>موعد المراجعة (من)</label>
+            <input type="date" v-model="filters.review_from" />
+          </div>
+          <div class="form-group">
+            <label>موعد المراجعة (إلى)</label>
+            <input type="date" v-model="filters.review_to" />
+          </div>
+          
+          <!-- Toggles -->
+          <div class="form-group toggle-group" style="align-items: flex-start; grid-column: span 2;">
+            <label>خيارات إضافية</label>
+            <div style="display:flex; gap:20px; flex-wrap:wrap; margin-top:5px;">
+              <label class="custom-cb">
+                <input type="checkbox" v-model="filters.is_overdue" value="1" />
+                <span class="cb-text text-red">متأخرة فقط</span>
+              </label>
+              <label class="custom-cb">
+                <input type="checkbox" v-model="filters.requires_review" value="1" />
+                <span class="cb-text">تتطلب مراجعة</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="plans-card">
       <div class="card-heading">
         <div><h3>الخطط الحالية <span>{{ plans.length }}</span></h3><p>حالة التسليم والمراجعة</p></div>
@@ -152,7 +262,17 @@
       </div>
     </div>
 
-    <div v-if="showDuplicateModal" class="modal-overlay" role="presentation" @click.self="closeDuplicateModal">
+    
+
+    <!-- Pagination -->
+    <div class="pagination-controls" v-if="pagination.last_page > 1">
+      <button class="secondary-btn" :disabled="pagination.current_page === 1" @click="changePage(pagination.current_page - 1)">السابق</button>
+      <span class="page-info">صفحة {{ pagination.current_page }} من {{ pagination.last_page }} (إجمالي {{ pagination.total }})</span>
+      <button class="secondary-btn" :disabled="pagination.current_page === pagination.last_page" @click="changePage(pagination.current_page + 1)">التالي</button>
+    </div>
+
+    <Teleport to="body">
+      <div v-if="showDuplicateModal" class="modal-overlay" role="presentation" @click.self="closeDuplicateModal">
       <div class="modal-content" role="dialog" style="width: min(500px, 100%) !important;">
         <button class="modal-close" type="button" @click="closeDuplicateModal">×</button>
         <div class="modal-icon" style="background: linear-gradient(145deg, #78e4d8, #65b5ff); color: #12183f;">⎘</div>
@@ -190,13 +310,21 @@
         </form>
       </div>
     </div>
+    </Teleport>
 
-    <div v-if="showImageViewer" class="modal-overlay image-viewer-overlay" role="presentation" @click.self="closeImageViewer">
+
+    
+    <Teleport to="body">
+      <div v-if="showImageViewer" class="modal-overlay image-viewer-overlay" role="presentation" @click.self="closeImageViewer">
       <button class="viewer-close" type="button" @click="closeImageViewer">×</button>
       <img :src="viewerImageUrl" alt="معاينة الصورة" class="viewer-image" />
     </div>
+    </Teleport>
 
-    <div v-if="showFollowUpsModal" class="modal-overlay" role="presentation" @click.self="closeFollowUpsModal">
+
+    
+    <Teleport to="body">
+      <div v-if="showFollowUpsModal" class="modal-overlay" role="presentation" @click.self="closeFollowUpsModal">
       <div class="modal-content followups-modal" role="dialog" style="width: min(650px, 100%) !important;">
         <button class="modal-close" type="button" @click="closeFollowUpsModal">×</button>
         <div class="modal-icon" style="background: linear-gradient(145deg, #8fc9ff, #65b5ff); color: #12183f;">💬</div>
@@ -255,16 +383,71 @@
         </div>
       </div>
     </div>
+    </Teleport>
 
-    <div v-if="showReferencesModal" class="modal-overlay" role="presentation" @click.self="closeReferencesModal"><div class="modal-content references-modal" role="dialog" style="width: min(450px, 100%) !important;"><button class="modal-close" type="button" @click="closeReferencesModal">×</button><div class="modal-icon" style="background: linear-gradient(145deg, #76e8de, #4facfe); color: #12183f;">🔗</div><span class="eyebrow" style="color: #4facfe;">مراجع العمل</span><h3>الروابط المساعدة للإنجاز</h3><p>الروابط المرفقة كمرجع ومصدر لإعداد هذه الخطة.</p><div class="ref-links-list mt-3"><a v-for="(link, index) in selectedReferencesPlan?.reference_links" :key="index" :href="link" target="_blank" rel="noopener noreferrer" class="ref-link-item"><span class="link-number">{{ index + 1 }}</span><span class="link-url">{{ link }}</span><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg></a></div><div class="modal-actions" style="justify-content:center; margin-top:20px;"><button type="button" class="secondary-btn" @click="closeReferencesModal">إغلاق</button></div></div></div>
-    <div v-if="showCreationSuccessModal" class="modal-overlay" role="presentation" @click.self="closeCreationModal"><div class="modal-content delivery-modal" role="dialog" style="width: min(500px, 100%) !important; text-align: center;"><button class="modal-close" type="button" @click="closeCreationModal">×</button><div class="modal-icon" style="background: linear-gradient(145deg, #7de8dc, #b28aff); color: #12183f; margin: 0 auto 15px;">🚀</div><h3 style="color:#78e4d8;">تم إنشاء الخطة بنجاح!</h3><p style="margin-bottom: 20px;">الآن يمكنك إبلاغ المسؤولين ببدء العمل على هذه الخطة.</p><div class="wa-actions-container" v-if="createdPlan"><div v-if="getResponsibles(createdPlan).length > 0" class="executors-list"><h4 style="font-size:11px; color:#aeb6d7; text-align:right; margin-bottom:10px;">إبلاغ المسؤولين للإنجاز:</h4><div style="display:flex; flex-direction:column; gap:8px;"><a v-for="resp in getResponsibles(createdPlan)" :key="resp.id" :href="generateWaLink('plan_assigned', createdPlan, resp)" target="_blank" class="wa-btn-large" style="text-decoration:none; display:flex; align-items:center; justify-content:center;"><span>إرسال تنبيه للمسؤول: {{ resp.name }}</span> <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="margin-right: 8px;"><path d="M17.472...Z"/></svg></a></div></div><div v-else class="muted mt-3" style="font-size:10px;">لا يوجد مسؤولين مسجلين في هذه الخطة.</div></div><div class="modal-actions" style="justify-content:center; margin-top:25px;"><button type="button" class="secondary-btn" @click="closeCreationModal">تخطي</button></div></div></div>
-    <div v-if="showWaPromptModal" class="modal-overlay" @click.self="closeWaPrompt"><div class="modal-content delivery-modal" style="width: min(400px, 100%) !important; text-align: center;"><button class="modal-close" type="button" @click="closeWaPrompt">×</button><div class="modal-icon" style="background: linear-gradient(145deg, #25D366, #128C7E); margin: 0 auto 15px; color:#fff;">📱</div><h3 style="color:#25D366;">{{ waPromptTitle }}</h3><p style="margin-bottom: 20px;">{{ waPromptDesc }}</p><a :href="waPromptLink" target="_blank" class="wa-btn-large" style="text-decoration: none;" @click="closeWaPrompt"><span>إرسال التنبيه عبر واتساب</span> <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg></a><div class="modal-actions" style="justify-content:center; margin-top:15px;"><button type="button" class="secondary-btn" @click="closeWaPrompt">تخطي</button></div></div></div>
-    <div v-if="showDeliverySuccessModal" class="modal-overlay" @click.self="closeDeliveryModal"><div class="modal-content delivery-modal" role="dialog" style="width: min(500px, 100%) !important; text-align: center;"><button class="modal-close" type="button" @click="closeDeliveryModal">×</button><div class="modal-icon" style="background: linear-gradient(145deg, #70e1d5, #55c8bc); margin: 0 auto 15px;">🎉</div><h3 style="color:#78e4d8;">تم اعتماد وتسليم الخطة بنجاح!</h3><p style="margin-bottom: 20px;">الآن يمكنك إبلاغ العميل بالرابط، وإعطاء إشارة البدء لفريق التنفيذ.</p><div class="wa-actions-container" v-if="deliveredPlan"><a :href="generateWaLink('client_delivery', deliveredPlan)" target="_blank" class="wa-btn-large" style="text-decoration:none;"><span>إبلاغ العميل على واتساب</span> <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M17.472...Z"/></svg></a><div v-if="getExecutors(deliveredPlan).length > 0" class="executors-list mt-3"><h4 style="font-size:11px; color:#aeb6d7; text-align:right; margin-bottom:10px;">إبلاغ المنفذين للبدء:</h4><div style="display:flex; flex-direction:column; gap:8px;"><a v-for="executor in getExecutors(deliveredPlan)" :key="executor.id" :href="generateWaLink('executors_start', deliveredPlan, executor)" target="_blank" class="wa-btn-small" style="text-decoration:none; display:block; text-align:center;">إرسال للمنفذ: {{ executor.name }} 📱</a></div></div><div v-else class="muted mt-3" style="font-size:9px;">لا يوجد منفذين مسجلين في هذه الخطة.</div></div><div class="modal-actions" style="justify-content:center; margin-top:25px;"><button type="button" class="secondary-btn" @click="closeDeliveryModal">إغلاق</button></div></div></div>
-    <div v-if="showManagerModal && isManager" class="modal-overlay" @click.self="closeManagerModal"><div class="modal-content" role="dialog"><button class="modal-close" type="button" @click="closeManagerModal">×</button><div class="modal-icon">◈</div><span class="eyebrow">مساحة التخطيط</span><h3>{{ isEditing ? 'تعديل الخطة' : 'إنشاء خطة جديدة' }}</h3><form class="plan-form" @submit.prevent="saveManagerPlan"><div class="form-grid"><div class="form-group"><label>العميل المستهدف</label><select v-model="form.client_id" required><option value="" disabled>اختر العميل...</option><option v-for="client in allClients" :key="client.id" :value="client.id">{{ client.name }}</option></select></div><div class="form-group"><label>نوع الخطة</label><select v-model="form.plan_type" required><option value="" disabled>اختر...</option><option value="استراتيجية (Strategic)">استراتيجية</option><option value="محتوى (Content)">محتوى</option><option value="تسويق عبر السوشيال ميديا">سوشيال ميديا</option><option value="إعلانات ممولة (Media Buying)">إعلانات ممولة</option><option value="تحسين محركات البحث (SEO)">SEO</option><option value="خطة شاملة">خطة شاملة</option></select></div></div><div class="form-grid"><div class="form-group"><label>تاريخ بداية الخطة</label><input v-model="form.start_date" type="date" required /></div><div class="form-group"><label>تاريخ نهاية الخطة</label><input v-model="form.end_date" type="date" required /></div></div><div class="form-grid"><div class="form-group"><label>التسليم النهائي</label><input v-model="form.planned_delivery_date" type="datetime-local" required /></div><div class="form-group toggle-group"><label>مراجعة داخلية؟</label><label class="toggle-switch"><input type="checkbox" v-model="form.requires_review"><span class="slider"></span></label><span class="toggle-label">{{ form.requires_review ? 'نعم' : 'لا' }}</span></div></div><div class="form-grid" v-if="form.requires_review"><div class="form-group"><label>موعد إنهاء المراجعة</label><input v-model="form.planned_review_date" type="datetime-local" required /></div></div><div class="separator"></div><div class="section-title" style="display:flex; justify-content:space-between; align-items:center;"><div><span>🔗</span> الروابط المرجعية (Reference Links)</div><button type="button" class="add-link-btn" @click="addReferenceLink">＋ إضافة رابط</button></div><div class="reference-links-container"><div v-for="(link, index) in form.reference_links" :key="index" class="link-input-group"><input v-model="form.reference_links[index]" type="url" placeholder="أدخل رابط المرجع (مثال: Google Drive, Notion, etc...)" required /><button type="button" class="remove-link-btn" @click="removeReferenceLink(index)" title="حذف الرابط">⌫</button></div><p v-if="form.reference_links.length === 0" class="muted text-center" style="font-size:10px; margin-top:10px;">لا توجد روابط مرجعية (اختياري)</p></div><div class="separator"></div><div class="section-title"><span>⌁</span> توزيع المهام</div><div class="form-grid-3 users-grid"><div class="form-group"><label>المسؤول</label><div class="checkbox-list"><label v-for="user in allUsers" :key="'resp_'+user.id" class="custom-cb"><input type="checkbox" :value="user.id" v-model="form.responsible_ids" /><span class="cb-text">{{ user.name }}</span></label></div></div><div class="form-group" v-if="form.requires_review"><label>المراجع</label><div class="checkbox-list"><label v-for="user in allUsers" :key="'rev_'+user.id" class="custom-cb"><input type="checkbox" :value="user.id" v-model="form.reviewer_ids" /><span class="cb-text">{{ user.name }}</span></label></div></div><div class="form-group" :style="form.requires_review ? '' : 'grid-column: span 2;'"><label>المنفذ</label><div class="checkbox-list" :style="form.requires_review ? '' : 'display:grid; grid-template-columns:1fr 1fr;'"><label v-for="user in allUsers" :key="'exec_'+user.id" class="custom-cb"><input type="checkbox" :value="user.id" v-model="form.executor_ids" /><span class="cb-text">{{ user.name }}</span></label></div></div></div><div class="modal-actions"><button type="button" class="secondary-btn" @click="closeManagerModal">إلغاء</button><button type="submit" class="primary-btn" :disabled="saving">{{ saving ? 'جارٍ الحفظ...' : 'حفظ الخطة' }}</button></div></form></div></div>
-    <div v-if="showDetailsModal" class="modal-overlay" role="presentation" @click.self="closeDetailsModal"><div class="modal-content" role="dialog" style="width: min(500px, 100%) !important;"><button class="modal-close" type="button" @click="closeDetailsModal">×</button><div class="modal-icon">✎</div><span class="eyebrow">تحديث سريع</span><h3>تحديث تفاصيل الخطة</h3><form class="plan-form" @submit.prevent="saveDetails"><div class="form-group"><label>لينك البلان النهائي</label><input v-model="detailsForm.final_link" type="url" placeholder="https://..." /></div><div class="form-group"><label>ملاحظات عامة</label><textarea v-model="detailsForm.notes" rows="4"></textarea></div><div class="modal-actions"><button type="button" class="secondary-btn" @click="closeDetailsModal">إلغاء</button><button type="submit" class="primary-btn" :disabled="saving">حفظ التفاصيل</button></div></form></div></div>
-    <div v-if="showRejectModal" class="modal-overlay" role="presentation" @click.self="closeRejectModal"><div class="modal-content reject-modal" role="dialog" style="width: min(500px, 100%) !important;"><button class="modal-close" type="button" @click="closeRejectModal">×</button><div class="modal-icon" style="background: linear-gradient(145deg, #ff8fa4, #ff678b);">❌</div><span class="eyebrow" style="color: #ff9bad;">إجراء مراجعة</span><h3 style="color: #ff9bad;">رفض الخطة وطلب تعديل</h3><form class="plan-form" @submit.prevent="submitRejectPlan"><div class="form-group"><label>ملاحظات الرفض (إجبارية)</label><textarea v-model="rejectNotes" rows="5" required></textarea></div><div class="modal-actions"><button type="button" class="secondary-btn" @click="closeRejectModal">إلغاء</button><button type="submit" class="primary-btn" style="background: linear-gradient(110deg, #ff8fa4, #ff678b);" :disabled="actionLoading.startsWith('reject-')">تأكيد الرفض</button></div></form></div></div>
-    <div v-if="showRejectionsModal" class="modal-overlay" role="presentation" @click.self="closeRejectionsModal"><div class="modal-content history-modal" style="width: min(500px, 100%) !important;"><button class="modal-close" type="button" @click="closeRejectionsModal">×</button><div class="modal-icon" style="background: linear-gradient(145deg, #ff8fa4, #ff678b);">❌</div><h3>سجل أسباب الرفض</h3><div class="history-timeline"><div v-for="(rejection, index) in selectedRejections" :key="index" class="timeline-item"><div class="tl-dot tl-red"></div><div class="tl-content"><div class="tl-header"><strong>المراجع: {{ rejection.reviewer?.name || 'مجهول' }}</strong><span class="tl-date" dir="ltr">{{ formatDate(rejection.created_at) }}</span></div><div class="tl-action text-red">الرفض رقم {{ selectedRejections.length - index }}</div><div class="tl-notes">{{ rejection.notes }}</div></div></div></div></div></div>
-    <div v-if="showHistoryModal" class="modal-overlay" role="presentation" @click.self="closeHistoryModal"><div class="modal-content history-modal" style="width: min(500px, 100%) !important;"><button class="modal-close" type="button" @click="closeHistoryModal">×</button><div class="modal-icon">📋</div><h3>السجل الكامل للحركات</h3><div class="history-timeline"><div v-for="(history, index) in getReviewHistories(selectedHistoryPlan)" :key="index" class="timeline-item"><div class="tl-dot" :class="history.action === 'approved' ? 'tl-green' : 'tl-red'"></div><div class="tl-content"><div class="tl-header"><strong>{{ history.reviewer?.name || 'مجهول' }}</strong><span class="tl-date" dir="ltr">{{ formatDate(history.created_at) }}</span></div><div class="tl-action" :class="history.action === 'approved' ? 'text-green' : 'text-red'">{{ history.action === 'approved' ? '✅ وافق على الخطة' : '❌ رفض الخطة' }}</div><div class="tl-notes" v-if="history.notes">{{ history.notes }}</div></div></div></div></div></div>
+
+    
+    <Teleport to="body">
+      <div v-if="showReferencesModal" class="modal-overlay" role="presentation" @click.self="closeReferencesModal"><div class="modal-content references-modal" role="dialog" style="width: min(450px, 100%) !important;"><button class="modal-close" type="button" @click="closeReferencesModal">×</button><div class="modal-icon" style="background: linear-gradient(145deg, #76e8de, #4facfe); color: #12183f;">🔗</div><span class="eyebrow" style="color: #4facfe;">مراجع العمل</span><h3>الروابط المساعدة للإنجاز</h3><p>الروابط المرفقة كمرجع ومصدر لإعداد هذه الخطة.</p><div class="ref-links-list mt-3"><a v-for="(link, index) in selectedReferencesPlan?.reference_links" :key="index" :href="link" target="_blank" rel="noopener noreferrer" class="ref-link-item"><span class="link-number">{{ index + 1 }}</span><span class="link-url">{{ link }}</span><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg></a></div><div class="modal-actions" style="justify-content:center; margin-top:20px;"><button type="button" class="secondary-btn" @click="closeReferencesModal">إغلاق</button></div></div></div>
+    </Teleport>
+
+    
+    <Teleport to="body">
+      <div v-if="showCreationSuccessModal" class="modal-overlay" role="presentation" @click.self="closeCreationModal"><div class="modal-content delivery-modal" role="dialog" style="width: min(500px, 100%) !important; text-align: center;"><button class="modal-close" type="button" @click="closeCreationModal">×</button><div class="modal-icon" style="background: linear-gradient(145deg, #7de8dc, #b28aff); color: #12183f; margin: 0 auto 15px;">🚀</div><h3 style="color:#78e4d8;">تم إنشاء الخطة بنجاح!</h3><p style="margin-bottom: 20px;">الآن يمكنك إبلاغ المسؤولين ببدء العمل على هذه الخطة.</p><div class="wa-actions-container" v-if="createdPlan"><div v-if="getResponsibles(createdPlan).length > 0" class="executors-list"><h4 style="font-size:11px; color:#aeb6d7; text-align:right; margin-bottom:10px;">إبلاغ المسؤولين للإنجاز:</h4><div style="display:flex; flex-direction:column; gap:8px;"><a v-for="resp in getResponsibles(createdPlan)" :key="resp.id" :href="generateWaLink('plan_assigned', createdPlan, resp)" target="_blank" class="wa-btn-large" style="text-decoration:none; display:flex; align-items:center; justify-content:center;"><span>إرسال تنبيه للمسؤول: {{ resp.name }}</span> <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="margin-right: 8px;"><path d="M17.472...Z"/></svg></a></div></div><div v-else class="muted mt-3" style="font-size:10px;">لا يوجد مسؤولين مسجلين في هذه الخطة.</div></div><div class="modal-actions" style="justify-content:center; margin-top:25px;"><button type="button" class="secondary-btn" @click="closeCreationModal">تخطي</button></div></div></div>
+    </Teleport>
+
+    
+    <Teleport to="body">
+      <div v-if="showWaPromptModal" class="modal-overlay" @click.self="closeWaPrompt"><div class="modal-content delivery-modal" style="width: min(400px, 100%) !important; text-align: center;"><button class="modal-close" type="button" @click="closeWaPrompt">×</button><div class="modal-icon" style="background: linear-gradient(145deg, #25D366, #128C7E); margin: 0 auto 15px; color:#fff;">📱</div><h3 style="color:#25D366;">{{ waPromptTitle }}</h3><p style="margin-bottom: 20px;">{{ waPromptDesc }}</p><a :href="waPromptLink" target="_blank" class="wa-btn-large" style="text-decoration: none;" @click="closeWaPrompt"><span>إرسال التنبيه عبر واتساب</span> <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg></a><div class="modal-actions" style="justify-content:center; margin-top:15px;"><button type="button" class="secondary-btn" @click="closeWaPrompt">تخطي</button></div></div></div>
+    </Teleport>
+
+    
+    <Teleport to="body">
+      <div v-if="showDeliverySuccessModal" class="modal-overlay" @click.self="closeDeliveryModal"><div class="modal-content delivery-modal" role="dialog" style="width: min(500px, 100%) !important; text-align: center;"><button class="modal-close" type="button" @click="closeDeliveryModal">×</button><div class="modal-icon" style="background: linear-gradient(145deg, #70e1d5, #55c8bc); margin: 0 auto 15px;">🎉</div><h3 style="color:#78e4d8;">تم اعتماد وتسليم الخطة بنجاح!</h3><p style="margin-bottom: 20px;">الآن يمكنك إبلاغ العميل بالرابط، وإعطاء إشارة البدء لفريق التنفيذ.</p><div class="wa-actions-container" v-if="deliveredPlan"><a :href="generateWaLink('client_delivery', deliveredPlan)" target="_blank" class="wa-btn-large" style="text-decoration:none;"><span>إبلاغ العميل على واتساب</span> <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M17.472...Z"/></svg></a><div v-if="getExecutors(deliveredPlan).length > 0" class="executors-list mt-3"><h4 style="font-size:11px; color:#aeb6d7; text-align:right; margin-bottom:10px;">إبلاغ المنفذين للبدء:</h4><div style="display:flex; flex-direction:column; gap:8px;"><a v-for="executor in getExecutors(deliveredPlan)" :key="executor.id" :href="generateWaLink('executors_start', deliveredPlan, executor)" target="_blank" class="wa-btn-small" style="text-decoration:none; display:block; text-align:center;">إرسال للمنفذ: {{ executor.name }} 📱</a></div></div><div v-else class="muted mt-3" style="font-size:9px;">لا يوجد منفذين مسجلين في هذه الخطة.</div></div><div class="modal-actions" style="justify-content:center; margin-top:25px;"><button type="button" class="secondary-btn" @click="closeDeliveryModal">إغلاق</button></div></div></div>
+    </Teleport>
+
+    
+    <Teleport to="body">
+      <div v-if="showManagerModal && isManager" class="modal-overlay" @click.self="closeManagerModal"><div class="modal-content" role="dialog"><button class="modal-close" type="button" @click="closeManagerModal">×</button><div class="modal-icon">◈</div><span class="eyebrow">مساحة التخطيط</span><h3>{{ isEditing ? 'تعديل الخطة' : 'إنشاء خطة جديدة' }}</h3><form class="plan-form" @submit.prevent="saveManagerPlan"><div class="form-grid"><div class="form-group"><label>العميل المستهدف</label><select v-model="form.client_id" required><option value="" disabled>اختر العميل...</option><option v-for="client in allClients" :key="client.id" :value="client.id">{{ client.name }}</option></select></div><div class="form-group"><label>نوع الخطة</label><select v-model="form.plan_type" required><option value="" disabled>اختر...</option><option value="استراتيجية (Strategic)">استراتيجية</option><option value="محتوى (Content)">محتوى</option><option value="تسويق عبر السوشيال ميديا">سوشيال ميديا</option><option value="إعلانات ممولة (Media Buying)">إعلانات ممولة</option><option value="تحسين محركات البحث (SEO)">SEO</option><option value="خطة شاملة">خطة شاملة</option></select></div></div><div class="form-grid"><div class="form-group"><label>تاريخ بداية الخطة</label><input v-model="form.start_date" type="date" required /></div><div class="form-group"><label>تاريخ نهاية الخطة</label><input v-model="form.end_date" type="date" required /></div></div><div class="form-grid"><div class="form-group"><label>التسليم النهائي</label><input v-model="form.planned_delivery_date" type="datetime-local" required /></div><div class="form-group toggle-group"><label>مراجعة داخلية؟</label><label class="toggle-switch"><input type="checkbox" v-model="form.requires_review"><span class="slider"></span></label><span class="toggle-label">{{ form.requires_review ? 'نعم' : 'لا' }}</span></div></div><div class="form-grid" v-if="form.requires_review"><div class="form-group"><label>موعد إنهاء المراجعة</label><input v-model="form.planned_review_date" type="datetime-local" required /></div></div><div class="separator"></div><div class="section-title" style="display:flex; justify-content:space-between; align-items:center;"><div><span>🔗</span> الروابط المرجعية (Reference Links)</div><button type="button" class="add-link-btn" @click="addReferenceLink">＋ إضافة رابط</button></div><div class="reference-links-container"><div v-for="(link, index) in form.reference_links" :key="index" class="link-input-group"><input v-model="form.reference_links[index]" type="url" placeholder="أدخل رابط المرجع (مثال: Google Drive, Notion, etc...)" required /><button type="button" class="remove-link-btn" @click="removeReferenceLink(index)" title="حذف الرابط">⌫</button></div><p v-if="form.reference_links.length === 0" class="muted text-center" style="font-size:10px; margin-top:10px;">لا توجد روابط مرجعية (اختياري)</p></div>
+<div class="separator"></div>
+<div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
+  <div><span>⚙️</span> إعدادات الحقول الإلزامية للمنشورات (Brief Settings)</div>
+</div>
+<p style="font-size: 11px; color: #8792be; margin-bottom: 20px; margin-top: 5px; padding-right: 5px;">
+  حدد الحقول التي يجب على مسؤول الخطة تعبئتها إلزامياً قبل أن يتمكن من إرسال التكليف للمصمم/المنفذ. (بشكل افتراضي جميع الحقول مطلوبة).
+</p>
+<div class="brief-settings-container" style="margin-bottom: 10px;">
+  <div class="checkbox-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; padding: 5px;">
+    <label v-for="(label, key) in availableBriefFields" :key="key" class="custom-cb">
+      <input type="checkbox" :value="key" v-model="form.required_brief_fields" />
+      <span class="cb-text">{{ label }}</span>
+    </label>
+  </div>
+</div>
+<div class="separator"></div>
+<div class="section-title"><span>⌁</span> توزيع المهام</div><div class="form-grid-3 users-grid"><div class="form-group"><label>المسؤول</label><div class="checkbox-list"><label v-for="user in allUsers" :key="'resp_'+user.id" class="custom-cb"><input type="checkbox" :value="user.id" v-model="form.responsible_ids" /><span class="cb-text">{{ user.name }}</span></label></div></div><div class="form-group" v-if="form.requires_review"><label>المراجع</label><div class="checkbox-list"><label v-for="user in allUsers" :key="'rev_'+user.id" class="custom-cb"><input type="checkbox" :value="user.id" v-model="form.reviewer_ids" /><span class="cb-text">{{ user.name }}</span></label></div></div><div class="form-group" :style="form.requires_review ? '' : 'grid-column: span 2;'"><label>المنفذ</label><div class="checkbox-list" :style="form.requires_review ? '' : 'display:grid; grid-template-columns:1fr 1fr;'"><label v-for="user in allUsers" :key="'exec_'+user.id" class="custom-cb"><input type="checkbox" :value="user.id" v-model="form.executor_ids" /><span class="cb-text">{{ user.name }}</span></label></div></div></div><div class="modal-actions"><button type="button" class="secondary-btn" @click="closeManagerModal">إلغاء</button><button type="submit" class="primary-btn" :disabled="saving">{{ saving ? 'جارٍ الحفظ...' : 'حفظ الخطة' }}</button></div></form></div></div>
+    </Teleport>
+
+    
+    <Teleport to="body">
+      <div v-if="showDetailsModal" class="modal-overlay" role="presentation" @click.self="closeDetailsModal"><div class="modal-content" role="dialog" style="width: min(500px, 100%) !important;"><button class="modal-close" type="button" @click="closeDetailsModal">×</button><div class="modal-icon">✎</div><span class="eyebrow">تحديث سريع</span><h3>تحديث تفاصيل الخطة</h3><form class="plan-form" @submit.prevent="saveDetails"><div class="form-group"><label>لينك البلان النهائي</label><input v-model="detailsForm.final_link" type="url" placeholder="https://..." /></div><div class="form-group"><label>ملاحظات عامة</label><textarea v-model="detailsForm.notes" rows="4"></textarea></div><div class="modal-actions"><button type="button" class="secondary-btn" @click="closeDetailsModal">إلغاء</button><button type="submit" class="primary-btn" :disabled="saving">حفظ التفاصيل</button></div></form></div></div>
+    </Teleport>
+
+    
+    <Teleport to="body">
+      <div v-if="showRejectModal" class="modal-overlay" role="presentation" @click.self="closeRejectModal"><div class="modal-content reject-modal" role="dialog" style="width: min(500px, 100%) !important;"><button class="modal-close" type="button" @click="closeRejectModal">×</button><div class="modal-icon" style="background: linear-gradient(145deg, #ff8fa4, #ff678b);">❌</div><span class="eyebrow" style="color: #ff9bad;">إجراء مراجعة</span><h3 style="color: #ff9bad;">رفض الخطة وطلب تعديل</h3><form class="plan-form" @submit.prevent="submitRejectPlan"><div class="form-group"><label>ملاحظات الرفض (إجبارية)</label><textarea v-model="rejectNotes" rows="5" required></textarea></div><div class="modal-actions"><button type="button" class="secondary-btn" @click="closeRejectModal">إلغاء</button><button type="submit" class="primary-btn" style="background: linear-gradient(110deg, #ff8fa4, #ff678b);" :disabled="actionLoading.startsWith('reject-')">تأكيد الرفض</button></div></form></div></div>
+    </Teleport>
+
+    
+    <Teleport to="body">
+      <div v-if="showRejectionsModal" class="modal-overlay" role="presentation" @click.self="closeRejectionsModal"><div class="modal-content history-modal" style="width: min(500px, 100%) !important;"><button class="modal-close" type="button" @click="closeRejectionsModal">×</button><div class="modal-icon" style="background: linear-gradient(145deg, #ff8fa4, #ff678b);">❌</div><h3>سجل أسباب الرفض</h3><div class="history-timeline"><div v-for="(rejection, index) in selectedRejections" :key="index" class="timeline-item"><div class="tl-dot tl-red"></div><div class="tl-content"><div class="tl-header"><strong>المراجع: {{ rejection.reviewer?.name || 'مجهول' }}</strong><span class="tl-date" dir="ltr">{{ formatDate(rejection.created_at) }}</span></div><div class="tl-action text-red">الرفض رقم {{ selectedRejections.length - index }}</div><div class="tl-notes">{{ rejection.notes }}</div></div></div></div></div></div>
+    </Teleport>
+
+    
+    <Teleport to="body">
+      <div v-if="showHistoryModal" class="modal-overlay" role="presentation" @click.self="closeHistoryModal"><div class="modal-content history-modal" style="width: min(500px, 100%) !important;"><button class="modal-close" type="button" @click="closeHistoryModal">×</button><div class="modal-icon">📋</div><h3>السجل الكامل للحركات</h3><div class="history-timeline"><div v-for="(history, index) in getReviewHistories(selectedHistoryPlan)" :key="index" class="timeline-item"><div class="tl-dot" :class="history.action === 'approved' ? 'tl-green' : 'tl-red'"></div><div class="tl-content"><div class="tl-header"><strong>{{ history.reviewer?.name || 'مجهول' }}</strong><span class="tl-date" dir="ltr">{{ formatDate(history.created_at) }}</span></div><div class="tl-action" :class="history.action === 'approved' ? 'text-green' : 'text-red'">{{ history.action === 'approved' ? '✅ وافق على الخطة' : '❌ رفض الخطة' }}</div><div class="tl-notes" v-if="history.notes">{{ history.notes }}</div></div></div></div></div></div>
+    </Teleport>
+
 
     <transition name="toast"><div v-if="toastMessage" class="toast-message" role="status" aria-live="polite">{{ toastMessage }}</div></transition>
   </section>
@@ -277,6 +460,21 @@ import api from '../axios';
 // استيراد المحرك الذكي للتواريخ
 import { getDeadlineStatus } from '../utils/timeHelper';
 
+// القائمة المرجعية للحقول الإلزامية للمنشورات
+const availableBriefFields = {
+  reviewer_ids: 'المراجعين',
+  deadline: 'الديدلاين',
+  finance_status: 'موقف التمويل',
+  publishing_platform: 'منصة النشر',
+  post_type: 'نوع المنشور',
+  objective: 'الهدف',
+  detailed_idea: 'شرح الفكرة تفصيلياً',
+  caption: 'Caption',
+  tov: 'TOV',
+  call_to_action: 'Call to Action',
+  hashtags: 'Hashtag'
+};
+
 const getUserData = () => { try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch (e) { return {}; } };
 const currentUser = getUserData();
 const currentUserId = ref(currentUser.id || parseInt(localStorage.getItem('user_id') || 0));
@@ -288,6 +486,36 @@ const isUserResponsible = (plan) => { if (isManager.value) return true; return p
 const isUserReviewer = (plan) => { if (isManager.value) return true; return plan.users?.some(u => u.id === currentUserId.value && u.pivot.task_role === 'reviewer'); };
 const getExecutors = (plan) => { if (!plan || !plan.users) return []; return plan.users.filter(u => u.pivot?.task_role === 'executor'); };
 const getResponsibles = (plan) => { if (!plan || !plan.users) return []; return plan.users.filter(u => u.pivot?.task_role === 'responsible'); }; 
+
+
+const showAdvancedFilters = ref(false);
+const toggleAdvancedFilters = () => showAdvancedFilters.value = !showAdvancedFilters.value;
+
+const filters = reactive({
+  search: '', client_id: '', plan_type: '', status: '', employee_id: '',
+  start_date: '', end_date: '', delivery_from: '', delivery_to: '',
+  review_from: '', review_to: '', is_overdue: false, requires_review: false
+});
+
+const pagination = reactive({ current_page: 1, last_page: 1, total: 0 });
+
+const hasActiveFilters = computed(() => {
+  return Object.values(filters).some(val => val !== '' && val !== false);
+});
+
+const resetFilters = () => {
+  Object.keys(filters).forEach(key => filters[key] = (typeof filters[key] === 'boolean' ? false : ''));
+  pagination.current_page = 1;
+  fetchPlans();
+};
+
+const applyFilters = () => { pagination.current_page = 1; fetchPlans(); };
+
+const changePage = (page) => {
+  if (page < 1 || page > pagination.last_page) return;
+  pagination.current_page = page;
+  fetchPlans();
+};
 
 const plans = ref([]); 
 const allUsers = ref([]); 
@@ -334,10 +562,50 @@ const duplicateForm = reactive({ start_date: '', end_date: '', planned_delivery_
 
 const openDuplicateModal = (plan) => {
   planToDuplicate.value = plan;
-  duplicateForm.start_date = '';
-  duplicateForm.end_date = '';
-  duplicateForm.planned_delivery_date = '';
-  duplicateForm.planned_review_date = '';
+  
+  if (plan.start_date && plan.end_date && plan.planned_delivery_date) {
+    const oldStart = new Date(plan.start_date);
+    const oldEnd = new Date(plan.end_date);
+    const oldReview = plan.planned_review_date ? new Date(plan.planned_review_date) : null;
+    const oldDelivery = new Date(plan.planned_delivery_date);
+
+    const durationMs = oldEnd.getTime() - oldStart.getTime();
+    const reviewGapMs = oldReview ? (oldReview.getTime() - oldStart.getTime()) : 0;
+    const deliveryGapMs = oldDelivery.getTime() - oldStart.getTime();
+
+    const now = new Date();
+    let newStart = new Date(oldStart);
+    newStart.setMonth(newStart.getMonth() + 1);
+    
+    // التاكد من ان البداية الجديدة ليست في الماضي
+    if (newStart < now) {
+      const targetDay = oldStart.getDate();
+      newStart = new Date();
+      newStart.setHours(oldStart.getHours(), oldStart.getMinutes(), 0, 0);
+      newStart.setDate(targetDay);
+      if (newStart < now) newStart.setMonth(newStart.getMonth() + 1);
+    }
+
+    const newEnd = new Date(newStart.getTime() + durationMs);
+    const newReview = oldReview ? new Date(newStart.getTime() + reviewGapMs) : null;
+    const newDelivery = new Date(newStart.getTime() + deliveryGapMs);
+
+    const toDateString = (d) => {
+      const offset = d.getTimezoneOffset() * 60000;
+      return new Date(d.getTime() - offset).toISOString().split('T')[0];
+    };
+
+    duplicateForm.start_date = toDateString(newStart);
+    duplicateForm.end_date = toDateString(newEnd);
+    duplicateForm.planned_review_date = newReview ? toDatetimeLocal(newReview) : '';
+    duplicateForm.planned_delivery_date = toDatetimeLocal(newDelivery);
+  } else {
+    duplicateForm.start_date = '';
+    duplicateForm.end_date = '';
+    duplicateForm.planned_delivery_date = '';
+    duplicateForm.planned_review_date = '';
+  }
+  
   showDuplicateModal.value = true;
 };
 
@@ -417,7 +685,8 @@ const form = reactive({
   client_id: '', plan_type: '', start_date: '', end_date: '', requires_review: true, 
   planned_delivery_date: '', planned_review_date: '', 
   final_link: '', notes: '', reference_links: [], 
-  responsible_ids: [], reviewer_ids: [], executor_ids: [] 
+  responsible_ids: [], reviewer_ids: [], executor_ids: [],
+  required_brief_fields: Object.keys(availableBriefFields) 
 });
 const detailsForm = reactive({ final_link: '', notes: '' });
 
@@ -448,7 +717,36 @@ const delayedCount = computed(() => plans.value.filter(plan => {
   return plan.status === 'rejected' || getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_delivery_date, plan.status).isOverdue;
 }).length);
 
-const fetchPlans = async () => { loading.value = true; try { const response = await api.get('/content-plans'); plans.value = response.data.data || response.data || []; } catch (error) { showToast('تعذر تحميل الخطط'); } finally { loading.value = false; } };
+const fetchPlans = async () => { 
+  loading.value = true; 
+  try { 
+    const params = new URLSearchParams();
+    params.append('page', pagination.current_page);
+    
+    Object.keys(filters).forEach(key => {
+      if (filters[key] !== '' && filters[key] !== false) {
+        params.append(key, typeof filters[key] === 'boolean' ? 1 : filters[key]);
+      }
+    });
+
+    const response = await api.get(`/content-plans?${params.toString()}`); 
+    
+    if (response.data && response.data.data !== undefined && response.data.current_page) {
+      plans.value = response.data.data;
+      pagination.current_page = response.data.current_page;
+      pagination.last_page = response.data.last_page;
+      pagination.total = response.data.total;
+    } else {
+      plans.value = response.data.data || response.data || [];
+      pagination.last_page = 1;
+      pagination.total = plans.value.length;
+    }
+  } catch (error) { 
+    showToast('تعذر تحميل الخطط'); 
+  } finally { 
+    loading.value = false; 
+  } 
+};
 const fetchResources = async () => { if (isManager.value) { try { const [resUsers, resClients] = await Promise.all([api.get('/users?per_page=100'), api.get('/clients?per_page=100')]); allUsers.value = resUsers.data.data || []; allClients.value = resClients.data.data || []; } catch (error) {} } };
 
 const formatPhone = (phone) => {
@@ -586,7 +884,8 @@ const resetForm = () => Object.assign(form, {
   client_id: '', plan_type: '', start_date: '', end_date: '', requires_review: true, 
   planned_delivery_date: '', planned_review_date: '', 
   final_link: '', notes: '', reference_links: [],
-  responsible_ids: [], reviewer_ids: [], executor_ids: [] 
+  responsible_ids: [], reviewer_ids: [], executor_ids: [],
+  required_brief_fields: Object.keys(availableBriefFields) 
 });
 
 const openManagerModal = (plan = null) => { 
@@ -606,7 +905,10 @@ const openManagerModal = (plan = null) => {
       reference_links: Array.isArray(plan.reference_links) ? [...plan.reference_links] : [],
       responsible_ids: (plan.users || []).filter(user => user.pivot?.task_role === 'responsible').map(user => user.id), 
       reviewer_ids: (plan.users || []).filter(user => user.pivot?.task_role === 'reviewer').map(user => user.id), 
-      executor_ids: (plan.users || []).filter(user => user.pivot?.task_role === 'executor').map(user => user.id) 
+      executor_ids: (plan.users || []).filter(user => user.pivot?.task_role === 'executor').map(user => user.id),
+      required_brief_fields: plan.required_brief_fields === null 
+        ? Object.keys(availableBriefFields) 
+        : (Array.isArray(plan.required_brief_fields) ? [...plan.required_brief_fields] : [])
     }); 
   } else { 
     resetForm(); 
@@ -629,7 +931,7 @@ const saveManagerPlan = async () => {
       await fetchPlans(); 
     } else {
       const response = await api.post('/content-plans', form);
-      closeManagerModal(); 
+      closeManagerModal();
       showToast('تم الإنشاء بنجاح'); 
       await fetchPlans(); 
       const newPlanId = response.data?.data?.id;
@@ -721,7 +1023,7 @@ onBeforeUnmount(() => {
 .actions-cell { display:flex; gap:6px; }.action { width:28px; height:28px; display:grid; place-items:center; border:0; border-radius:8px; background:transparent; cursor:pointer; font-size:14px; }
 .action.duplicate { color: #65b5ff; background: rgba(101, 181, 255, .08); }
 .action.edit { color:#78e4da; background:rgba(92,220,208,.08); }.action.delete { color:#ff94ab; background:rgba(255,103,139,.08); }.action:hover { filter:brightness(1.3); transform:translateY(-1px); }.state-cell { height:145px; color:#7d89b6 !important; text-align:center !important; }.spinner { display:inline-block; width:15px; height:15px; margin-left:7px; vertical-align:middle; border:2px solid rgba(125,232,220,.25); border-top-color:#7de8dc; border-radius:50%; animation:spin .7s linear infinite; }
-.modal-overlay { position:fixed; inset:82px 0 0; z-index:100; display:grid; place-items:start center; padding:18px; overflow-y:auto; background:rgba(4,7,27,.78); backdrop-filter:blur(7px); }.modal-content { width:min(780px,100%); max-height:calc(100vh - 118px); overflow-y:auto; position:relative; padding:28px; border:1px solid rgba(146,160,233,.2); border-radius:20px; background:linear-gradient(145deg,#171d52,#0d143a); box-shadow:0 25px 70px rgba(0,0,0,.4); }.modal-close { position:absolute; top:12px; left:16px; border:0; color:#8994c2; background:transparent; font-size:25px; cursor:pointer; }.modal-icon { width:42px; height:42px; display:grid; place-items:center; margin-bottom:12px; border-radius:12px; color:#202057; background:linear-gradient(145deg,#80e8df,#b486fb); font-size:21px; }.modal-content h3 { margin:7px 0 2px; font-size:21px; }.modal-content > p { margin:0; color:#818cb9; font-size:11px; }.plan-form { margin-top:23px; }.form-grid,.form-grid-3 { display:grid; gap:13px; margin-bottom:14px; }.form-grid { grid-template-columns:1fr 1fr; }.form-grid-3 { grid-template-columns:repeat(3,1fr); }.form-group { min-width:0; margin-bottom:13px; }.form-group label { display:block; margin-bottom:6px; color:#b8c0e2; font-size:10px; }.form-group label small { color:#6975a7; font-size:8px; }.form-group input,.form-group select, .form-group textarea { width:100%; min-height:42px; padding:0 11px; border:1px solid rgba(145,160,230,.2); border-radius:9px; outline:0; color:#eef0ff; background:rgba(6,11,37,.46); font:inherit; font-size:10px; direction: rtl; }.form-group input[type="url"] { direction: ltr; text-align: left; }.form-group textarea { padding-top: 10px; resize: vertical; }.form-group input:focus,.form-group select:focus, .form-group textarea:focus { border-color:#76e8de; box-shadow:0 0 0 3px rgba(118,232,222,.08); }.form-group input::placeholder, .form-group textarea::placeholder { color:#626e9e; }.separator { height:1px; margin:20px 0 15px; border:0; background:rgba(143,157,226,.14); }.section-title { color:#b986ff; font-size:11px; font-weight:700; }.section-title span { color:#76e8de; margin-left:4px; }.helper-text { margin:3px 0 13px; color:#6f7baa; font-size:9px; }.modal-actions { display:flex; justify-content:flex-start; gap:9px; margin-top:18px; }.secondary-btn { min-height:43px; padding:0 18px; border:1px solid rgba(143,157,226,.2); border-radius:10px; color:#aab4dc; background:transparent; font:inherit; font-size:11px; cursor:pointer; }
+.modal-overlay { position:fixed;   display:grid; place-items:start center; padding:18px; overflow-y:auto; background:rgba(4,7,27,.78); backdrop-filter:blur(7px);     inset: 0 !important; z-index: 9999 !important; }.modal-content { width:min(780px,100%); max-height:calc(100vh - 118px); overflow-y:auto; position:relative; padding:28px; border:1px solid rgba(146,160,233,.2); border-radius:20px; background:linear-gradient(145deg,#171d52,#0d143a); box-shadow:0 25px 70px rgba(0,0,0,.4); }.modal-close { position:absolute; top:12px; left:16px; border:0; color:#8994c2; background:transparent; font-size:25px; cursor:pointer; }.modal-icon { width:42px; height:42px; display:grid; place-items:center; margin-bottom:12px; border-radius:12px; color:#202057; background:linear-gradient(145deg,#80e8df,#b486fb); font-size:21px; }.modal-content h3 { margin:7px 0 2px; font-size:21px; }.modal-content > p { margin:0; color:#818cb9; font-size:11px; }.plan-form { margin-top:23px; }.form-grid,.form-grid-3 { display:grid; gap:13px; margin-bottom:14px; }.form-grid { grid-template-columns:1fr 1fr; }.form-grid-3 { grid-template-columns:repeat(3,1fr); }.form-group { min-width:0; margin-bottom:13px; }.form-group label { display:block; margin-bottom:6px; color:#b8c0e2; font-size:10px; }.form-group label small { color:#6975a7; font-size:8px; }.form-group input,.form-group select, .form-group textarea { width:100%; min-height:42px; padding:0 11px; border:1px solid rgba(145,160,230,.2); border-radius:9px; outline:0; color:#eef0ff; background:rgba(6,11,37,.46); font:inherit; font-size:10px; direction: rtl; }.form-group input[type="url"] { direction: ltr; text-align: left; }.form-group textarea { padding-top: 10px; resize: vertical; }.form-group input:focus,.form-group select:focus, .form-group textarea:focus { border-color:#76e8de; box-shadow:0 0 0 3px rgba(118,232,222,.08); }.form-group input::placeholder, .form-group textarea::placeholder { color:#626e9e; }.separator { height:1px; margin:20px 0 15px; border:0; background:rgba(143,157,226,.14); }.section-title { color:#b986ff; font-size:11px; font-weight:700; }.section-title span { color:#76e8de; margin-left:4px; }.helper-text { margin:3px 0 13px; color:#6f7baa; font-size:9px; }.modal-actions { display:flex; justify-content:flex-start; gap:9px; margin-top:18px; }.secondary-btn { min-height:43px; padding:0 18px; border:1px solid rgba(143,157,226,.2); border-radius:10px; color:#aab4dc; background:transparent; font:inherit; font-size:11px; cursor:pointer; }
 .confirm-btn { margin-top:5px; padding:5px 7px; border:1px solid rgba(117,231,218,.2); border-radius:6px; color:#78e4d8; background:rgba(90,220,207,.08); font-size:8px; cursor:pointer; }.confirm-btn:hover:not(:disabled) { filter:brightness(1.3); }.confirm-btn:disabled { opacity:.5; cursor:wait; }
 .toggle-group { display:flex; align-items:center; gap:10px; flex-direction:row !important; margin-top:15px; } .toggle-group label:first-child { margin-bottom:0; flex-grow:1; } .toggle-switch { position:relative; display:inline-block; width:44px; height:24px; } .toggle-switch input { opacity:0; width:0; height:0; } .slider { position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:rgba(145,160,230,.2); transition:.4s; border-radius:34px; } .slider:before { position:absolute; content:""; height:18px; width:18px; left:3px; bottom:3px; background-color:#7d89b6; transition:.4s; border-radius:50%; } input:checked + .slider { background-color:rgba(125,232,220,.25); } input:checked + .slider:before { transform:translateX(20px); background-color:#7de8dc; } .toggle-label { font-size:10px; color:#aeb6d7; min-width:55px; }
 .checkbox-list { display:flex; flex-direction:column; gap:8px; padding:10px; border:1px solid rgba(145,160,230,.15); border-radius:9px; background:rgba(6,11,37,.25); max-height:150px; overflow-y:auto; } .custom-cb { display:flex; align-items:center; gap:8px; cursor:pointer; margin-bottom:0 !important; } .custom-cb input[type="checkbox"] { width:14px !important; min-height:14px !important; margin:0; accent-color:#76e8de; } .custom-cb .cb-text { color:#d9ddf5; font-size:11px; }
@@ -792,7 +1094,21 @@ onBeforeUnmount(() => {
 @keyframes pulse-text { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 .d-block { display: block; }
 
-@media (max-width:720px) { .page-topline { align-items:flex-start; flex-direction:column; }.page-topline h2 { font-size:24px; }.primary-btn { width:100%; }.summary-strip { grid-template-columns:1fr 1fr; }.sync-status { grid-column:1 / -1; }.card-heading { padding-right:15px; padding-left:15px; }.legend { display:none; }.plans-table th,.plans-table td { padding-right:14px; padding-left:14px; }.modal-overlay { inset:70px 0 0; padding:12px; }.modal-content { max-height:calc(100vh - 82px); padding:23px 18px; }.form-grid,.form-grid-3 { grid-template-columns:1fr; gap:0; }.form-group.toggle-group { flex-direction:column !important; align-items:flex-start; margin-top:0; margin-bottom:15px; } .modal-actions { margin-top:5px; } }
+@media (max-width:720px) { .page-topline { align-items:flex-start; flex-direction:column; }.page-topline h2 { font-size:24px; }.primary-btn { width:100%; }.summary-strip { grid-template-columns:1fr 1fr; }.sync-status { grid-column:1 / -1; }.card-heading { padding-right:15px; padding-left:15px; }.legend { display:none; }.plans-table th,.plans-table td { padding-right:14px; padding-left:14px; }.modal-overlay {  padding:12px;     inset: 0 !important; z-index: 9999 !important; }.modal-content { max-height:calc(100vh - 82px); padding:23px 18px; }.form-grid,.form-grid-3 { grid-template-columns:1fr; gap:0; }.form-group.toggle-group { flex-direction:column !important; align-items:flex-start; margin-top:0; margin-bottom:15px; } .modal-actions { margin-top:5px; } }
+
+.filters-bar { background: rgba(15,22,61,.65); border: 1px solid rgba(137,153,226,.13); border-radius: 15px; margin-bottom: 20px; padding: 15px 20px; transition: 0.3s ease; }
+.filters-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.search-input-wrapper { display: flex; align-items: center; background: rgba(10,16,47,.35); border-radius: 10px; padding: 0 15px; flex: 1; min-width: 250px; border: 1px solid rgba(137,153,226,.08); transition: 0.2s; }
+.search-input-wrapper:focus-within { border-color: #7de8dc; box-shadow: 0 0 10px rgba(125,232,220,0.1); }
+.search-input-wrapper input { background: transparent; border: none; color: #fff; padding: 12px 10px; width: 100%; outline: none; font-family: inherit; font-size: 13px; }
+.search-input-wrapper input:focus-visible { outline: none !important; box-shadow: none !important; }
+.search-icon { color: #6e79a9; margin-left: 8px; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+.filters-actions { display: flex; gap: 10px; }
+.advanced-filters { margin-top: 20px; padding-top: 20px; border-top: 1px dashed rgba(137,153,226,.15); animation: slideDown 0.3s ease; }
+@keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+.pagination-controls { display: flex; align-items: center; justify-content: center; gap: 15px; margin-top: 25px; padding: 15px; }
+.page-info { color: #818cb9; font-size: 12px; font-weight: bold; }
+
 </style>
 
 <style scoped>
@@ -835,7 +1151,7 @@ onBeforeUnmount(() => {
 .action { width: 40px; height: 40px; font-size: 18px; }
 
 /* Forms and overlays */
-.modal-overlay { padding: 20px; }
+.modal-overlay { padding: 20px;     inset: 0 !important; z-index: 9999 !important; }
 .modal-content { max-height: calc(100vh - 122px); padding: 30px; }
 .modal-content h3 { font-size: 24px !important; line-height: 1.35; }
 .modal-content > p { font-size: 14px !important; line-height: 1.7; }
@@ -885,7 +1201,7 @@ onBeforeUnmount(() => {
   .card-heading { align-items: flex-start; flex-direction: column; padding: 20px 15px 17px; }
   .legend { width: 100%; gap: 8px 12px; }
   .plans-table th, .plans-table td { padding-right: 14px; padding-left: 14px; }
-  .modal-overlay { inset: 70px 0 0; padding: 12px; }
+  .modal-overlay {  padding: 12px;     inset: 0 !important; z-index: 9999 !important; }
   .modal-content { max-height: calc(100dvh - 82px); padding: 25px 18px 20px; border-radius: 16px; }
   .form-grid, .form-grid-3 { grid-template-columns: 1fr; gap: 0; }
   .form-group.toggle-group { flex-direction: column !important; align-items: flex-start; margin-top: 0; margin-bottom: 15px; }

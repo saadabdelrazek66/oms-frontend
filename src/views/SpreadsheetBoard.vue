@@ -76,13 +76,14 @@
           <tr v-if="posts.length === 0">
             <td colspan="21" class="text-center py-4 muted">لا توجد منشورات. قم بإضافة منشور جديد.</td>
           </tr>
-          <tr v-for="(post, index) in posts" :key="post.id" class="post-row">
+          <tr v-for="(post, index) in posts" :key="post.id" class="post-row" :class="{ 'urgent-row': post.is_urgent }">
             
             <!-- 2. حالة المنشور وموعد النشر الذكي -->
             <td class="readonly-cell position-relative" :class="getDeadlineStatus(currentPlan?.start_date || post.created_at, post.target_date, post.actual_publish_status).class + '-border'">
               <button class="icon-btn view-btn" @click="openViewModal(post)" title="عرض التفاصيل">👁️</button>
               <strong>{{ getDayName(post.target_date) }}</strong>
               <small>{{ formatDate(post.target_date) }}</small>
+              <div v-if="post.is_urgent" class="urgent-badge" title="هذا المنشور ذو أولوية قصوى وعاجلة">🚨 عاجل</div>
               
               <!-- SLA Smart Indicator لموعد النشر -->
               <div class="sla-indicator" style="margin-top: 5px;">
@@ -434,7 +435,9 @@
       </table>
     </div>
 
-    <div v-if="showAddRowModal" class="modal-overlay" @click.self="showAddRowModal = false">
+    
+    <Teleport to="body">
+      <div v-if="showAddRowModal" class="modal-overlay" @click.self="showAddRowModal = false">
       <div class="modal-content" style="width: min(400px, 100%)">
         <h3>إضافة منشور إضافي</h3>
         <p>حدد تاريخ اليوم الذي تريد إضافة صف جديد فيه.</p>
@@ -453,15 +456,30 @@
               required
             ></VueDatePicker>
           </div>
-          <div class="modal-actions">
+
+          <!-- 🔴 الإضافة الجديدة التي نسيها الـ AI 🔴 -->
+          <div class="form-group" style="margin-top: 20px; background: rgba(239, 68, 68, 0.05); padding: 12px; border-radius: 8px; border: 1px dashed rgba(239, 68, 68, 0.3);">
+            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin: 0; font-size: 13px; color: #ef4444; font-weight: bold;">
+              <input type="checkbox" v-model="newRowIsUrgent" style="width: 18px; height: 18px; accent-color: #ef4444;" />
+              🚨 تعيين كمنشور عاجل ذو أولوية قصوى
+            </label>
+            <p style="margin: 5px 0 0 28px; font-size: 10px; color: #666;">سيظهر المنشور مميزاً باللون الأحمر لتنبيه فريق العمل.</p>
+          </div>
+          <!-- ==================================== -->
+
+          <div class="modal-actions mt-4">
             <button type="button" class="secondary-btn" @click="showAddRowModal = false">إلغاء</button>
             <button type="submit" class="primary-btn" :disabled="addingRow || !newRowDate">إضافة الصف</button>
           </div>
         </form>
       </div>
     </div>
+    </Teleport>
 
-    <div v-if="rejectModalPost" class="modal-overlay" @click.self="rejectModalPost = null">
+
+    
+    <Teleport to="body">
+      <div v-if="rejectModalPost" class="modal-overlay" @click.self="rejectModalPost = null">
       <div class="modal-content" style="width: min(400px, 100%)">
         <h3 style="color: #cc0000;">رفض المنشور ({{ activeReviewTitle }}) ❌</h3>
         <p>يرجى توضيح سبب الرفض أو التعديلات المطلوبة للمنفذ.</p>
@@ -477,8 +495,12 @@
         </form>
       </div>
     </div>
+    </Teleport>
 
-    <div v-if="activeHistoryArray" class="modal-overlay" @click.self="activeHistoryArray = null">
+
+    
+    <Teleport to="body">
+      <div v-if="activeHistoryArray" class="modal-overlay" @click.self="activeHistoryArray = null">
       <div class="modal-content" style="width: min(500px, 100%)">
         <h3>📜 سجل الرفض والتعديلات ({{ activeHistoryTitle }})</h3>
         <div class="history-list">
@@ -495,8 +517,12 @@
         </div>
       </div>
     </div>
+    </Teleport>
+
     
-    <div v-if="showWaModal" class="modal-overlay" @click.self="showWaModal = false">
+    
+    <Teleport to="body">
+      <div v-if="showWaModal" class="modal-overlay" @click.self="showWaModal = false">
       <div class="modal-content wa-card" style="max-width: 450px; border-radius: 16px; overflow: hidden; padding: 0;">
         <div style="background: #25D366; color: white; padding: 20px; text-align: center;">
           <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="white" style="margin-bottom: 10px;"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.274.072.376-.043c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564c.173.087.289.129.332.202.043.073.043.423-.101.827z"/></svg>
@@ -532,8 +558,12 @@
         </div>
       </div>
     </div>
+    </Teleport>
+
     
-    <div v-if="showLinksModal" class="modal-overlay" @click.self="showLinksModal = false">
+    
+    <Teleport to="body">
+      <div v-if="showLinksModal" class="modal-overlay" @click.self="showLinksModal = false">
       <div class="modal-content">
         <h3>🔗 روابط النشر الفعلية</h3>
         <p v-if="pendingPublishStatus" style="color: #ef6c00; font-weight: bold; font-size: 13px;">
@@ -552,6 +582,8 @@
         </div>
       </div>
     </div>
+    </Teleport>
+
 
     <transition name="toast"><div v-if="toastMessage" class="toast-message">{{ toastMessage }}</div></transition>
 
@@ -796,6 +828,7 @@ const toastMessage = ref('');
 
 const showAddRowModal = ref(false);
 const newRowDate = ref('');
+const newRowIsUrgent = ref(false);
 const addingRow = ref(false);
 
 const isPlanResponsible = ref(false);
@@ -1388,7 +1421,7 @@ const addNewRow = async () => {
   if (!newRowDate.value) return;
   addingRow.value = true;
   try {
-    const res = await api.post(`/content-plans/${planId}/posts`, { target_date: newRowDate.value });
+    const res = await api.post(`/content-plans/${planId}/posts`, { target_date: newRowDate.value, is_urgent: newRowIsUrgent.value });
     const newPost = res.data.data;
     newPost.ad_platform = []; 
     newPost.reviewer_ids = []; 
@@ -1691,7 +1724,7 @@ input:focus, select:focus, textarea:focus { box-shadow: inset 0 0 0 2px #2196f3;
 .text-green { color: #388e3c !important; font-weight: bold; }
 .muted { color: #888; }
 
-.modal-overlay { position: fixed; inset: 0; z-index: 999; background: rgba(0,0,0,0.5); display: grid; place-items: center; }
+.modal-overlay { position: fixed;   background: rgba(0,0,0,0.5); display: grid; place-items: center;     inset: 0 !important; z-index: 9999 !important; }
 .modal-content { background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto; }
 .modal-content h3 { margin: 0 0 10px; font-size: 18px; color: #222; }
 .modal-content p { font-size: 12px; color: #666; margin-bottom: 20px; }
@@ -1978,7 +2011,7 @@ input:disabled, select:disabled, textarea:disabled, .custom-multiselect.disabled
 
 .report-grid {
   display: grid;
-  grid-template-columns: 280px 1fr;
+  grid-template-columns: 280px minmax(0, 1fr);
   gap: 24px;
 }
 
@@ -1993,7 +2026,7 @@ input:disabled, select:disabled, textarea:disabled, .custom-multiselect.disabled
   margin: 0 0 20px 0;
   font-size: 16px;
   font-weight: 700;
-  color: #c9d2f4;
+  color: #7de8dc !important;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -2029,17 +2062,20 @@ input:disabled, select:disabled, textarea:disabled, .custom-multiselect.disabled
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0; /* يسمح للنص الطويل بالالتفاف */
 }
 
 .info-label {
   font-size: 12px;
-  color: #7a82a6;
+  color: #aab5da;
 }
 
 .info-value {
   font-size: 14px;
   color: #fff;
   font-weight: 600;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .text-red { color: #f87171 !important; }
@@ -2085,7 +2121,7 @@ input:disabled, select:disabled, textarea:disabled, .custom-multiselect.disabled
 .block-label {
   font-size: 13px;
   font-weight: 600;
-  color: #9ba3c4;
+  color: #aab5da;
 }
 
 .block-content {
@@ -2097,6 +2133,18 @@ input:disabled, select:disabled, textarea:disabled, .custom-multiselect.disabled
   line-height: 1.7;
   color: #e2e8f0;
   white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.block-content::-webkit-scrollbar {
+  width: 5px;
+}
+.block-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
 }
 
 .caption-box {
@@ -2111,7 +2159,7 @@ input:disabled, select:disabled, textarea:disabled, .custom-multiselect.disabled
 
 .text-block-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 16px;
 }
 
@@ -2123,7 +2171,7 @@ input:disabled, select:disabled, textarea:disabled, .custom-multiselect.disabled
 
 .group-label {
   font-size: 13px;
-  color: #7a82a6;
+  color: #aab5da;
   margin-bottom: 12px;
   display: block;
 }
@@ -2166,4 +2214,45 @@ input:disabled, select:disabled, textarea:disabled, .custom-multiselect.disabled
   .report-grid { grid-template-columns: 1fr; }
   .text-block-grid { grid-template-columns: 1fr; }
 }
+
+.urgent-row {
+  background-color: rgba(239, 68, 68, 0.04) !important;
+}
+.urgent-row td {
+  border-top: 1px solid rgba(239, 68, 68, 0.4) !important;
+  border-bottom: 1px solid rgba(239, 68, 68, 0.4) !important;
+  animation: row-cell-glow 2s infinite ease-in-out;
+}
+.urgent-row td:first-child {
+  border-right: 2px solid rgba(239, 68, 68, 0.8) !important;
+}
+.urgent-row td:last-child {
+  border-left: 2px solid rgba(239, 68, 68, 0.8) !important;
+}
+@keyframes row-cell-glow {
+  0% { border-color: rgba(239, 68, 68, 0.3) !important; box-shadow: inset 0 0 5px rgba(239, 68, 68, 0.1); }
+  50% { border-color: rgba(239, 68, 68, 0.8) !important; box-shadow: inset 0 0 15px rgba(239, 68, 68, 0.3); }
+  100% { border-color: rgba(239, 68, 68, 0.3) !important; box-shadow: inset 0 0 5px rgba(239, 68, 68, 0.1); }
+}
+.urgent-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(239, 68, 68, 0.15);
+  color: #ff8b9f;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: bold;
+  margin-top: 8px;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  animation: pulse-urgent 2s infinite;
+  white-space: nowrap;
+}
+@keyframes pulse-urgent {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  70% { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
 </style>

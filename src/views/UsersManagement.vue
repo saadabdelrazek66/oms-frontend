@@ -144,8 +144,35 @@
         <form class="user-form" @submit.prevent="saveUser">
           <div class="form-group full"><label for="user-name">الاسم بالكامل <span class="text-red">*</span></label><input id="user-name" v-model="form.name" type="text" placeholder="مثال: أحمد محمد" required /></div>
           
-          <!-- حقل المسمى الوظيفي الجديد -->
-          <div class="form-group full"><label for="user-job-title">المسمى الوظيفي <span class="text-red">*</span></label><input id="user-job-title" v-model="form.job_title" type="text" placeholder="مثال: مطور واجهات أمامية" required minlength="2" maxlength="150" /></div>
+          <!-- 1. حقل الصلاحية / الدور أولاً -->
+          <div :class="form.role === 'employee' ? 'form-group' : 'form-group full'">
+            <label for="user-role">الصلاحية / الدور <span class="text-red">*</span></label>
+            <select id="user-role" v-model="form.role" @change="handleRoleChange" required>
+              <option value="employee">موظف</option>
+              <option value="manager">مدير</option>
+            </select>
+            <small v-if="form.role === 'manager'" class="role-hint">
+              ⚡ حساب المدير يتمتع بصلاحيات إدارية شاملة ولا يتطلب مسمى وظيفي.
+            </small>
+          </div>
+
+          <!-- 2. حقل المسمى الوظيفي (مترتب على اختيار موظف) -->
+          <div v-if="form.role === 'employee'" class="form-group">
+            <label for="user-job-title">المسمى الوظيفي <span class="text-red">*</span></label>
+            <select
+              id="user-job-title"
+              v-model="form.job_title"
+              :required="form.role === 'employee'"
+            >
+              <option value="" disabled>اختر المسمى الوظيفي...</option>
+              <option v-for="title in jobTitles" :key="title" :value="title">
+                {{ title }}
+              </option>
+              <option v-if="form.job_title && !jobTitles.includes(form.job_title)" :value="form.job_title">
+                {{ form.job_title }}
+              </option>
+            </select>
+          </div>
           
           <div class="form-group full"><label for="user-email">البريد الإلكتروني <span class="text-red">*</span></label><input id="user-email" v-model="form.email" type="email" placeholder="name@company.com" required /></div>
           <div class="form-group full">
@@ -167,8 +194,7 @@
           </div>
           <div class="form-group full"><label for="user-password">كلمة المرور</label><input id="user-password" v-model="form.password" type="password" :required="!isEditing" :placeholder="isEditing ? 'اتركه فارغًا للاحتفاظ بالحالية' : 'أدخل كلمة مرور قوية'" /></div>
           <div class="form-group full"><label for="user-phone">رقم الهاتف <span class="text-red">*</span></label><input id="user-phone" v-model="form.phone" type="text" placeholder="01xxxxxxxx" required /></div>
-          <div class="form-group"><label for="user-role">الصلاحية</label><select id="user-role" v-model="form.role" required><option value="manager">مدير</option><option value="employee">موظف</option></select></div>
-          <div class="form-group"><label for="user-work-type">نظام العمل</label><select id="user-work-type" v-model="form.work_type" required><option value="remote">عن بعد</option><option value="onsite">من الشركة</option><option value="per_task">بالتاسك</option><option value="commission">بالعمولة</option></select></div>
+          <div class="form-group full"><label for="user-work-type">نظام العمل <span class="text-red">*</span></label><select id="user-work-type" v-model="form.work_type" required><option value="remote">عن بعد</option><option value="onsite">من الشركة</option><option value="per_task">بالتاسك</option><option value="commission">بالعمولة</option></select></div>
           <div class="modal-actions"><button type="button" class="secondary-btn" @click="closeModal">إلغاء</button><button type="submit" class="primary-btn" :disabled="saving">{{ saving ? 'جارٍ الحفظ...' : 'حفظ البيانات' }}</button></div>
         </form>
       </div>
@@ -199,8 +225,30 @@ let toastTimer = null
 const pagination = ref({ current_page: 1, last_page: 1, total: 0 })
 const filters = reactive({ search: '', role: '', work_type: '' })
 
+// قائمة المسميات الوظيفية المعتمدة
+const jobTitles = [
+  'Video Editor',
+  'Graphic Designer',
+  'Developer',
+  'Media Buyer',
+  'Account Manager',
+  'Sales',
+]
+
 // إضافة job_title إلى المتغير التفاعلي form
 const form = reactive({ name: '', job_title: '', email: '', password: '', phone: '', role: 'employee', work_type: 'onsite', primary_department_id: '', additional_department_ids: [] })
+
+const handleRoleChange = () => {
+  if (form.role === 'manager') {
+    form.job_title = ''
+  }
+}
+
+watch(() => form.role, (newRole) => {
+  if (newRole === 'manager') {
+    form.job_title = ''
+  }
+})
 
 watch(filters, () => {
   window.clearTimeout(filterTimer)
@@ -296,10 +344,16 @@ const openModal = (user = null) => {
     const primaryDeptId = user.departments?.find(dept => dept.pivot?.is_primary)?.id || ''
     const additionalDeptIds = user.departments?.filter(dept => !dept.pivot?.is_primary).map(dept => dept.id) || []
     
-    // سحب قيمة job_title من المستخدم
+    // سحب ومطابقة قيمة job_title من المستخدم
+    let matchedTitle = ''
+    if (user.role === 'employee' && user.job_title) {
+      const found = jobTitles.find(t => t.toLowerCase() === user.job_title.trim().toLowerCase())
+      matchedTitle = found || user.job_title
+    }
+
     Object.assign(form, {
       name: user.name,
-      job_title: user.job_title || '',
+      job_title: matchedTitle,
       email: user.email,
       password: '',
       phone: user.phone,
@@ -322,8 +376,12 @@ const closeModal = () => {
 const saveUser = async () => {
   saving.value = true
   try {
-    if (isEditing.value) await api.put(`/users/${editId.value}`, form)
-    else await api.post('/users', form)
+    const payload = { ...form }
+    if (payload.role === 'manager') {
+      payload.job_title = ''
+    }
+    if (isEditing.value) await api.put(`/users/${editId.value}`, payload)
+    else await api.post('/users', payload)
     const successMessage = isEditing.value ? 'تم تحديث بيانات المستخدم' : 'تم إنشاء المستخدم بنجاح'
     closeModal()
     showToast(successMessage)
@@ -480,6 +538,9 @@ onBeforeUnmount(() => {
 .form-group label { display: block; margin-bottom: 8px; color: #c7cde8; font-size: 14px; line-height: 1.5; font-weight: 600; }
 .form-group label small { color: #8490bd; font-size: 12px; font-weight: 400; }
 .form-group input, .form-group select { width: 100%; min-height: 48px; padding: 0 13px; border: 1px solid rgba(145,160,230,.2); border-radius: 10px; outline: 0; color: #eef0ff; background: rgba(6,11,37,.46); font: inherit; font-size: 14px; line-height: 1.6; }
+.form-group select option { background: #171d52; color: #eef0ff; }
+.form-group select option:disabled { color: #7783ad; }
+.role-hint { display: block; margin-top: 6px; color: #7de8de; font-size: 11px; line-height: 1.4; font-weight: 500; }
 .form-group input::placeholder { color: #7783ad; opacity: 1; }
 .form-group input:focus, .form-group select:focus { border-color: #76e8de; box-shadow: 0 0 0 3px rgba(118,232,222,.1); }
 .text-red { color: #ff9bad; }

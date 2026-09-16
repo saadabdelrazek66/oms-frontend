@@ -11,6 +11,7 @@ import ClientVault from '../views/ClientVault.vue'
 import PlanBoardsList from '../views/PlanBoardsList.vue'
 import SpreadsheetBoard from '../views/SpreadsheetBoard.vue'
 import SystemLogs from '../views/SystemLogs.vue'
+import { canManageAccounts, canManagePlans } from '../utils/permissions'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -51,14 +52,16 @@ const router = createRouter({
         },
         {
           path: '/manager/clients',
+          alias: '/clients',
           name: 'manager-clients',
           component: ClientsManager,
-          meta: { role: 'manager' },
+          meta: { canManageAccounts: true },
         },
         {
           path: '/content-plans',
           name: 'content-plans',
           component: ContentPlans,
+          meta: { canManagePlans: true },
         },
         {
           path: '/app/client-vault',
@@ -113,10 +116,43 @@ router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token')
   const role = localStorage.getItem('role')
 
+  let user = null
+  try {
+    const storedUser = localStorage.getItem('user')
+    if (storedUser) {
+      user = JSON.parse(storedUser)
+    }
+  } catch (e) {
+    console.error('Error parsing stored user in router:', e)
+  }
+  if (!user && role) {
+    user = { role }
+  }
+
   // التحقق إذا كان المسار أو أي من آبائه يحتاج تسجيل دخول
   if (to.matched.some((record) => record.meta.requiresAuth)) {
     if (!token) {
       return next('/') // طرده لصفحة الدخول
+    }
+
+    // فحص مسار العملاء: السماح للمدير أو Account Manager أو Sales
+    if (to.matched.some((record) => record.meta.canManageAccounts) || to.path === '/manager/clients' || to.path === '/clients') {
+      const allowed = canManageAccounts(user) || (user && (user.role === 'manager' || user.job_title === 'Account Manager' || user.job_title === 'Sales'))
+      if (allowed) {
+        return next()
+      } else {
+        return role === 'manager' ? next('/manager/dashboard') : next('/employee/dashboard')
+      }
+    }
+
+    // فحص مسار الخطط: السماح فقط للمدير أو Account Manager
+    if (to.matched.some((record) => record.meta.canManagePlans) || to.path === '/content-plans') {
+      const allowed = canManagePlans(user) || (user && (user.role === 'manager' || user.job_title === 'Account Manager'))
+      if (allowed) {
+        return next()
+      } else {
+        return role === 'manager' ? next('/manager/dashboard') : next('/my-tasks')
+      }
     }
 
     // التحقق من الصلاحيات بناءً على الدور

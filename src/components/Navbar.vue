@@ -13,8 +13,11 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
       </button>
 
+      <router-link to="/" class="navbar-brand-link" title="Octo Space">
+        <img src="/logo.png" alt="Octo Media" class="navbar-logo-img" />
+      </router-link>
+
       <div class="page-heading">
-        <span class="wave-mark" aria-hidden="true">⌁</span>
         <div class="heading-copy">
           <span class="breadcrumb">مساحتك الرقمية</span>
           <h1>{{ pageTitle }}</h1>
@@ -197,24 +200,31 @@ const logout = async () => {
   background: rgba(122, 140, 224, .08);
 }
 
+.navbar-brand-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+  flex-shrink: 0;
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.navbar-brand-link:hover {
+  transform: scale(1.06);
+}
+
+.navbar-logo-img {
+  height: 42px;
+  width: auto;
+  max-width: 60px;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 2px 10px rgba(123, 231, 221, 0.3));
+}
+
 .page-heading {
   min-width: 0;
   gap: 12px;
-}
-
-.wave-mark {
-  width: 39px;
-  height: 39px;
-  flex: 0 0 39px;
-  display: grid;
-  place-items: center;
-  border: 1px solid rgba(123, 231, 221, .2);
-  border-radius: 12px;
-  color: #7de8de;
-  background: rgba(85, 213, 201, .1);
-  font-size: 29px;
-  line-height: 1;
-  transform: rotate(-10deg);
 }
 
 .heading-copy {
@@ -391,11 +401,14 @@ const logout = async () => {
     padding: 11px max(16px, env(safe-area-inset-right)) 11px max(16px, env(safe-area-inset-left));
   }
 
-  .wave-mark,
   .breadcrumb,
   .user-copy,
   .divider {
     display: none;
+  }
+
+  .navbar-logo-img {
+    height: 34px;
   }
 
   .nav-main {

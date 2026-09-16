@@ -1,20 +1,15 @@
 <template>
   <aside class="sidebar" dir="rtl" aria-label="القائمة الجانبية">
     <div class="brand">
-      <div class="brand-icon" aria-hidden="true">
-        <svg viewBox="0 0 80 80">
-          <path
-            d="M18 39c0-14 9-25 22-25s22 11 22 25c0 8-3 14-8 18 0 7 4 9 8 12-7 2-12-1-16-7-3 7-8 9-15 7 4-4 7-7 7-12-6-4-10-10-10-18Z"
-          />
-          <circle cx="33" cy="36" r="3" />
-          <circle cx="47" cy="36" r="3" />
-          <path d="M34 45c4 3 8 3 12 0" />
-        </svg>
-      </div>
-      <div class="brand-copy">
-        <strong>OCTO<span>SPACE</span></strong>
-        <small>مساحة فريقك الذكية</small>
-      </div>
+      <router-link to="/" class="brand-link" title="Octo Media">
+        <div class="brand-icon" aria-hidden="true">
+          <img src="/logo.png" alt="Octo Media" class="brand-logo-img" />
+        </div>
+        <div class="brand-copy">
+          <strong>OCTO<span>SPACE</span></strong>
+          <small>مساحة فريقك الذكية</small>
+        </div>
+      </router-link>
       <button class="close-btn" type="button" aria-label="إغلاق القائمة" @click="$emit('close')">
         <span aria-hidden="true">×</span>
       </button>
@@ -127,7 +122,7 @@
         <span>المشاريع</span><em>P</em>
       </router-link>
 
-      <router-link v-if="role === 'manager'" class="nav-item" to="/manager/clients">
+      <router-link v-if="canManageAccounts(currentUser)" class="nav-item" to="/manager/clients">
         <svg
           viewBox="0 0 24 24"
           fill="none"
@@ -143,26 +138,11 @@
         <span>العملاء والشركات</span><em>C</em>
       </router-link>
 
-      <router-link v-if="role === 'manager'" class="nav-item" to="/content-plans">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-          <polyline points="14 2 14 8 20 8"></polyline>
-          <line x1="16" y1="13" x2="8" y2="13"></line>
-          <line x1="16" y1="17" x2="8" y2="17"></line>
-          <polyline points="10 9 9 9 8 9"></polyline>
-        </svg>
-        <span>الخطط</span><em>P</em>
-      </router-link>
-
-      <router-link v-if="role === 'employee'" class="nav-item" to="/content-plans">
+      <router-link
+        v-if="user && (user.role === 'manager' || user.job_title === 'Account Manager')"
+        class="nav-item"
+        to="/content-plans"
+      >
         <svg
           viewBox="0 0 24 24"
           fill="none"
@@ -260,9 +240,25 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { canManageAccounts } from '@/utils/permissions'
 
 const role = ref(localStorage.getItem('role') || 'employee')
 const router = useRouter()
+
+// كائن المستخدم الحالي لتحديد الصلاحيات
+const currentUser = ref(null)
+try {
+  const storedUser = localStorage.getItem('user')
+  if (storedUser) {
+    currentUser.value = JSON.parse(storedUser)
+  }
+} catch (e) {
+  console.error('خطأ في قراءة بيانات المستخدم:', e)
+}
+if (!currentUser.value && role.value) {
+  currentUser.value = { role: role.value }
+}
+const user = currentUser
 
 // متغيرات حالة المستخدم
 const userName = ref('جاري التحميل...')
@@ -275,6 +271,7 @@ onMounted(() => {
   if (storedUser) {
     try {
       const userObj = JSON.parse(storedUser)
+      currentUser.value = userObj
       if (userObj && userObj.name) {
         // أخذ الاسم الأول فقط
         const firstName = userObj.name.split(' ')[0]
@@ -373,30 +370,50 @@ const logout = () => {
 .brand {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 11px;
   min-width: 0;
   padding: 0 8px;
 }
 
+.brand-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+  flex: 1 1 auto;
+}
+
 .brand-icon {
-  width: 43px;
-  height: 43px;
-  flex: 0 0 43px;
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
   display: grid;
   place-items: center;
   border-radius: 14px;
-  background: linear-gradient(140deg, #b865fc, #5d42d8);
-  box-shadow: 0 9px 20px rgba(125, 70, 225, 0.3);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(145, 160, 231, 0.18);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  padding: 4px;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+  backdrop-filter: blur(10px);
 }
 
-.brand-icon svg {
-  width: 35px;
-  height: 35px;
-  fill: #f4a7ff;
-  stroke: #251b5d;
-  stroke-width: 2.3;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.brand-link:hover .brand-icon {
+  transform: scale(1.05);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(123, 231, 221, 0.4);
+  box-shadow: 0 8px 24px rgba(123, 231, 221, 0.25);
+}
+
+.brand-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 2px 8px rgba(123, 231, 221, 0.25));
 }
 
 .brand-copy {
@@ -408,20 +425,22 @@ const logout = () => {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  letter-spacing: 0.8px;
-  font-size: 15px;
+  letter-spacing: 1.1px;
+  font-size: 16px;
+  font-weight: 800;
+  color: #ffffff;
 }
 
 .brand strong span {
-  color: #bd83ff;
+  color: #7de8de;
 }
 
 .brand small {
   display: block;
   overflow: hidden;
-  color: #7f89b8;
-  font-size: 9px;
-  margin-top: 1px;
+  color: #8f9ac9;
+  font-size: 10px;
+  margin-top: 2px;
   white-space: nowrap;
   text-overflow: ellipsis;
 }

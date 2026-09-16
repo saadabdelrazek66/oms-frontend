@@ -6,13 +6,7 @@
     <section class="auth-shell" aria-label="تسجيل الدخول">
       <aside class="brand-panel">
         <div class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 80 80" role="img">
-            <path class="octopus-body" d="M18 39c0-14 9-25 22-25s22 11 22 25c0 8-3 14-8 18 0 7 4 9 8 12-7 2-12-1-16-7-3 7-8 9-15 7 4-4 7-7 7-12-6-4-10-10-10-18Z" />
-            <circle class="octopus-eye" cx="33" cy="36" r="3" />
-            <circle class="octopus-eye" cx="47" cy="36" r="3" />
-            <path class="octopus-smile" d="M34 45c4 3 8 3 12 0" />
-            <path class="suction" d="M24 56h4m-1 5h4m25-5h-4m1 5h-4" />
-          </svg>
+          <img src="/logo.png" alt="Octo Media" class="login-brand-img" />
         </div>
 
         <div class="brand-copy">
@@ -33,10 +27,7 @@
 
       <section class="form-panel">
         <div class="mobile-brand" aria-hidden="true">
-          <div class="brand-mark small">
-            <svg viewBox="0 0 80 80"><path class="octopus-body" d="M18 39c0-14 9-25 22-25s22 11 22 25c0 8-3 14-8 18 0 7 4 9 8 12-7 2-12-1-16-7-3 7-8 9-15 7 4-4 7-7 7-12-6-4-10-10-10-18Z" /><circle class="octopus-eye" cx="33" cy="36" r="3" /><circle class="octopus-eye" cx="47" cy="36" r="3" /><path class="octopus-smile" d="M34 45c4 3 8 3 12 0" /></svg>
-          </div>
-          <span>OCTO<span class="accent-text">SPACE</span></span>
+          <img src="/logo.png" alt="Octo Media" class="login-brand-img mobile-logo" />
         </div>
 
         <div class="form-content">
@@ -155,12 +146,9 @@ const handleLogin = async () => {
 .auth-shell { width: min(980px, 100%); min-height: 620px; display: grid; grid-template-columns: .9fr 1.1fr; position: relative; overflow: hidden; border: 1px solid rgba(255,255,255,.14); border-radius: 28px; background: rgba(16, 20, 60, .74); box-shadow: 0 30px 90px rgba(0,0,0,.42), inset 0 1px rgba(255,255,255,.1); backdrop-filter: blur(20px); }
 .brand-panel { position: relative; padding: 54px 46px; display: flex; flex-direction: column; background: linear-gradient(145deg, rgba(36, 32, 97, .9), rgba(18, 32, 82, .58)); border-left: 1px solid rgba(255,255,255,.11); overflow: hidden; }
 .brand-panel::after { content: ''; position: absolute; width: 310px; height: 310px; bottom: -170px; right: -130px; border: 1px solid rgba(79, 231, 219, .22); border-radius: 46% 54% 62% 38%; transform: rotate(25deg); box-shadow: 0 0 0 20px rgba(79,231,219,.03), 0 0 0 40px rgba(79,231,219,.03); }
-.brand-mark { width: 76px; height: 76px; display: grid; place-items: center; border-radius: 24px; background: linear-gradient(145deg, #b55cff, #653ad9); box-shadow: 0 14px 30px rgba(159, 79, 255, .32); }
-.brand-mark svg { width: 60px; height: 60px; }
-.octopus-body { fill: #f5a4ff; }
-.octopus-eye { fill: #26205e; }
-.octopus-smile, .suction { fill: none; stroke: #26205e; stroke-width: 2.5; stroke-linecap: round; }
-.brand-copy { margin-top: 72px; max-width: 290px; }
+.brand-mark { width: 140px; height: 110px; display: flex; align-items: center; justify-content: flex-start; background: transparent; padding: 0; box-shadow: none; border-radius: 0; }
+.login-brand-img { width: 100%; height: 100%; object-fit: contain; display: block; filter: drop-shadow(0 8px 24px rgba(0, 216, 204, 0.35)); }
+.brand-copy { margin-top: 40px; max-width: 290px; }
 .eyebrow, .form-kicker { color: #77e9df; font-size: 12px; font-weight: 700; letter-spacing: 1.4px; }
 .brand-copy h1 { margin: 15px 0; font-size: clamp(32px, 4vw, 48px); line-height: 1.2; letter-spacing: -1px; }
 .brand-copy h1 strong { color: #d8a0ff; font-weight: 800; }
@@ -179,5 +167,5 @@ const handleLogin = async () => {
 .submit-btn { width: 100%; min-height: 52px; border: 0; border-radius: 13px; color: #11143a; background: linear-gradient(100deg, #83ece2, #b98aff); font: inherit; font-size: 14px; font-weight: 800; cursor: pointer; box-shadow: 0 12px 25px rgba(119, 233, 223, .14); transition: transform .2s, box-shadow .2s, filter .2s; }.submit-btn:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.06); box-shadow: 0 16px 30px rgba(119, 233, 223, .23); }.submit-btn:disabled { opacity: .7; cursor: wait; }.arrow { font-size: 19px; margin-right: 6px; }.loading-state { display: inline-flex; gap: 9px; align-items: center; }.spinner { width: 15px; height: 15px; border: 2px solid rgba(17,20,58,.3); border-top-color: #11143a; border-radius: 50%; animation: spin .7s linear infinite; }
 .error-message { display: flex; align-items: center; gap: 8px; color: #ff9eaf; font-size: 11px; margin: 14px 0 0; }.error-message span { display: inline-grid; place-items: center; width: 16px; height: 16px; border: 1px solid currentColor; border-radius: 50%; font-weight: 800; }.form-footer { color: #747ea9; font-size: 11px; text-align: center; margin: 44px 0 0; }.mobile-brand { display: none; }
 @keyframes spin { to { transform: rotate(360deg); } }
-@media (max-width: 760px) { .auth-page { padding: 16px; }.auth-shell { display: block; min-height: auto; border-radius: 22px; }.brand-panel { display: none; }.form-panel { padding: 30px 24px 26px; }.mobile-brand { display: flex; align-items: center; gap: 10px; color: #f5f6ff; font-size: 15px; font-weight: 800; margin-bottom: 45px; }.brand-mark.small { width: 42px; height: 42px; border-radius: 13px; }.brand-mark.small svg { width: 35px; height: 35px; }.accent-text { color: #b978ff; }.form-heading h2 { font-size: 27px; } }
+@media (max-width: 760px) { .auth-page { padding: 16px; }.auth-shell { display: block; min-height: auto; border-radius: 22px; }.brand-panel { display: none; }.form-panel { padding: 30px 24px 26px; }.mobile-brand { display: flex; justify-content: center; align-items: center; margin-bottom: 30px; }.mobile-logo { height: 75px; width: auto; max-width: 170px; object-fit: contain; filter: drop-shadow(0 6px 20px rgba(0, 216, 204, 0.35)); }.form-heading h2 { font-size: 27px; } }
 </style>

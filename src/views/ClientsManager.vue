@@ -6,7 +6,12 @@
         <h2>إدارة العملاء والشركات</h2>
         <p>نظّم بيانات العملاء ووسائل التواصل والتفاصيل المالية في مكان واحد.</p>
       </div>
-      <button class="primary-btn" type="button" @click="openModal()">
+      <button
+        v-if="canManageAccounts(currentUser)"
+        class="primary-btn"
+        type="button"
+        @click="openModal()"
+      >
         <span>＋</span> إضافة عميل جديد
       </button>
     </div>
@@ -161,6 +166,7 @@
                     ⌁
                   </button>
                   <button
+                    v-if="canManageAccounts(currentUser)"
                     class="action edit"
                     type="button"
                     title="تعديل"
@@ -170,6 +176,7 @@
                     ✎
                   </button>
                   <button
+                    v-if="canManageAccounts(currentUser)"
                     class="action delete"
                     type="button"
                     title="حذف العميل"
@@ -188,7 +195,12 @@
 
     <Teleport to="body">
     <!-- نافذة إضافة / تعديل العميل -->
-    <div v-if="showModal" class="modal-overlay" role="presentation" @click.self="closeModal">
+    <div
+      v-if="showModal && canManageAccounts(currentUser)"
+      class="modal-overlay"
+      role="presentation"
+      @click.self="closeModal"
+    >
       <div
         ref="modalContent"
         class="modal-content"
@@ -620,7 +632,12 @@
 
         <div class="detail-footer">
           <button class="secondary-btn" type="button" @click="closeDetails">إغلاق</button>
-          <button class="primary-btn" type="button" @click="editSelectedClient">
+          <button
+            v-if="canManageAccounts(currentUser)"
+            class="primary-btn"
+            type="button"
+            @click="editSelectedClient"
+          >
             تعديل ملف العميل
           </button>
         </div>
@@ -639,6 +656,22 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import api from '../axios'
+import { canManageAccounts } from '@/utils/permissions'
+
+// كائن المستخدم الحالي لتطبيق صلاحيات إدارة العملاء
+const currentUser = ref(null)
+try {
+  const storedUser = localStorage.getItem('user')
+  if (storedUser) {
+    currentUser.value = JSON.parse(storedUser)
+  }
+} catch (e) {
+  console.error('خطأ في قراءة بيانات المستخدم:', e)
+}
+if (!currentUser.value) {
+  const storedRole = localStorage.getItem('role')
+  if (storedRole) currentUser.value = { role: storedRole }
+}
 
 const clients = ref([])
 const loading = ref(true)
@@ -691,6 +724,10 @@ const closeDetails = () => {
   selectedClient.value = null
 }
 const editSelectedClient = () => {
+  if (!canManageAccounts(currentUser.value)) {
+    showToast('عذراً، لا تمتلك الصلاحية لتعديل العميل')
+    return
+  }
   const client = selectedClient.value
   selectedClient.value = null
   openModal(client)
@@ -777,6 +814,10 @@ const resetForm = () => {
 }
 
 const openModal = (client) => {
+  if (!canManageAccounts(currentUser.value)) {
+    showToast('عذراً، لا تمتلك الصلاحية لإضافة أو تعديل العملاء')
+    return
+  }
   isEditing.value = Boolean(client)
   editId.value = client?.id || null
   if (client) {
@@ -812,6 +853,10 @@ watch([showModal, selectedClient], async ([modalOpen, detailsOpen]) => {
 })
 
 const saveClient = async () => {
+  if (!canManageAccounts(currentUser.value)) {
+    showToast('عذراً، لا تمتلك الصلاحية لحفظ بيانات العميل')
+    return
+  }
   saving.value = true
   try {
     // إرسال البيانات للباك إند، الـ Validation سيتكفل بالباقي
@@ -829,6 +874,10 @@ const saveClient = async () => {
 
 // تنبيه الحذف القوي
 const deleteClient = async (id) => {
+  if (!canManageAccounts(currentUser.value)) {
+    showToast('عذراً، لا تمتلك الصلاحية لحذف العميل')
+    return
+  }
   const confirmMessage =
     '⚠️ تنبيه هام وحرج!\n\nهل أنت متأكد تماماً من رغبتك في حذف هذا العميل؟\n\n- سيتم حذف الشركة بالكامل.\n- سيتم حذف جميع وسائل التواصل والأشخاص المرتبطين.\n- لا يمكن التراجع عن هذه الخطوة أبداً!'
   if (!window.confirm(confirmMessage)) return

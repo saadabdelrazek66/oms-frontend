@@ -3,11 +3,16 @@
     <div class="page-topline">
       <div>
         <span class="eyebrow">مساحة العمل / خطط المحتوى</span>
-        <h2>{{ isManager ? 'إدارة خطط المحتوى' : 'الخطط المسندة إليّ' }}</h2>
+        <h2>{{ (user && (user.role === 'manager' || user.job_title === 'Account Manager')) ? 'إدارة خطط المحتوى' : 'الخطط المسندة إليّ' }}</h2>
         <p>تابع مراحل العمل، دورات المراجعة، ومواعيد التسليم من مكان واحد.</p>
       </div>
-      <button v-if="isManager" class="primary-btn" type="button" @click="openManagerModal()">
-        <span>＋</span> إضافة خطة جديدة
+      <button
+        v-if="user && (user.role === 'manager' || user.job_title === 'Account Manager')"
+        class="primary-btn"
+        type="button"
+        @click="openManagerModal()"
+      >
+        <span>＋</span> إنشاء خطة جديدة
       </button>
     </div>
 
@@ -75,7 +80,7 @@
             </select>
           </div>
           <!-- Employee (Manager Only) -->
-          <div class="form-group" v-if="isManager">
+          <div class="form-group" v-if="user && (user.role === 'manager' || user.job_title === 'Account Manager')">
             <label>الموظف</label>
             <select v-model="filters.employee_id">
               <option value="">الكل</option>
@@ -151,12 +156,12 @@
               <th scope="col">التسليم النهائي</th>
               <th scope="col">المراجعة وحالة الخطة</th>
               <th scope="col">الروابط والمتابعة</th>
-              <th v-if="isManager">إدارة</th>
+              <th v-if="user && (user.role === 'manager' || user.job_title === 'Account Manager')">إدارة</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-if="loading"><td :colspan="isManager ? 8 : 7" class="state-cell"><span class="spinner"></span> جارٍ التحميل...</td></tr>
-            <tr v-else-if="plans.length === 0"><td :colspan="isManager ? 8 : 7" class="state-cell">لا توجد خطط مسجلة حاليًا</td></tr>
+            <tr v-if="loading"><td :colspan="(user && (user.role === 'manager' || user.job_title === 'Account Manager')) ? 8 : 7" class="state-cell"><span class="spinner"></span> جارٍ التحميل...</td></tr>
+            <tr v-else-if="plans.length === 0"><td :colspan="(user && (user.role === 'manager' || user.job_title === 'Account Manager')) ? 8 : 7" class="state-cell">لا توجد خطط مسجلة حاليًا</td></tr>
             <tr v-for="plan in plans" v-else :key="plan.id">
               <td>
                 <div class="plan-cell">
@@ -249,7 +254,7 @@
                 </div>
               </td>
               
-              <td v-if="isManager">
+              <td v-if="user && (user.role === 'manager' || user.job_title === 'Account Manager')">
                 <div class="actions-cell">
                   <button class="action duplicate" type="button" title="استنساخ كقالب" aria-label="استنساخ الخطة" @click="openDuplicateModal(plan)">⎘</button>
                   <button class="action edit" type="button" title="تعديل" aria-label="تعديل خطة المحتوى" @click="openManagerModal(plan)">✎</button>
@@ -408,7 +413,7 @@
 
     
     <Teleport to="body">
-      <div v-if="showManagerModal && isManager" class="modal-overlay" @click.self="closeManagerModal"><div class="modal-content" role="dialog"><button class="modal-close" type="button" @click="closeManagerModal">×</button><div class="modal-icon">◈</div><span class="eyebrow">مساحة التخطيط</span><h3>{{ isEditing ? 'تعديل الخطة' : 'إنشاء خطة جديدة' }}</h3><form class="plan-form" @submit.prevent="saveManagerPlan"><div class="form-grid"><div class="form-group"><label>العميل المستهدف</label><select v-model="form.client_id" required><option value="" disabled>اختر العميل...</option><option v-for="client in allClients" :key="client.id" :value="client.id">{{ client.name }}</option></select></div><div class="form-group"><label>نوع الخطة</label><select v-model="form.plan_type" required><option value="" disabled>اختر...</option><option value="استراتيجية (Strategic)">استراتيجية</option><option value="محتوى (Content)">محتوى</option><option value="تسويق عبر السوشيال ميديا">سوشيال ميديا</option><option value="إعلانات ممولة (Media Buying)">إعلانات ممولة</option><option value="تحسين محركات البحث (SEO)">SEO</option><option value="خطة شاملة">خطة شاملة</option></select></div></div><div class="form-grid"><div class="form-group"><label>تاريخ بداية الخطة</label><input v-model="form.start_date" type="date" required /></div><div class="form-group"><label>تاريخ نهاية الخطة</label><input v-model="form.end_date" type="date" required /></div></div><div class="form-grid"><div class="form-group"><label>التسليم النهائي</label><input v-model="form.planned_delivery_date" type="datetime-local" required /></div><div class="form-group toggle-group"><label>مراجعة داخلية؟</label><label class="toggle-switch"><input type="checkbox" v-model="form.requires_review"><span class="slider"></span></label><span class="toggle-label">{{ form.requires_review ? 'نعم' : 'لا' }}</span></div></div><div class="form-grid" v-if="form.requires_review"><div class="form-group"><label>موعد إنهاء المراجعة</label><input v-model="form.planned_review_date" type="datetime-local" required /></div></div><div class="separator"></div><div class="section-title" style="display:flex; justify-content:space-between; align-items:center;"><div><span>🔗</span> الروابط المرجعية (Reference Links)</div><button type="button" class="add-link-btn" @click="addReferenceLink">＋ إضافة رابط</button></div><div class="reference-links-container"><div v-for="(link, index) in form.reference_links" :key="index" class="link-input-group"><input v-model="form.reference_links[index]" type="url" placeholder="أدخل رابط المرجع (مثال: Google Drive, Notion, etc...)" required /><button type="button" class="remove-link-btn" @click="removeReferenceLink(index)" title="حذف الرابط">⌫</button></div><p v-if="form.reference_links.length === 0" class="muted text-center" style="font-size:10px; margin-top:10px;">لا توجد روابط مرجعية (اختياري)</p></div>
+      <div v-if="showManagerModal && (user && (user.role === 'manager' || user.job_title === 'Account Manager'))" class="modal-overlay" @click.self="closeManagerModal"><div class="modal-content" role="dialog"><button class="modal-close" type="button" @click="closeManagerModal">×</button><div class="modal-icon">◈</div><span class="eyebrow">مساحة التخطيط</span><h3>{{ isEditing ? 'تعديل الخطة' : 'إنشاء خطة جديدة' }}</h3><form class="plan-form" @submit.prevent="saveManagerPlan"><div class="form-grid"><div class="form-group"><label>العميل المستهدف</label><select v-model="form.client_id" required><option value="" disabled>اختر العميل...</option><option v-for="client in allClients" :key="client.id" :value="client.id">{{ client.name }}</option></select></div><div class="form-group"><label>نوع الخطة</label><select v-model="form.plan_type" required><option value="" disabled>اختر...</option><option value="استراتيجية (Strategic)">استراتيجية</option><option value="محتوى (Content)">محتوى</option><option value="تسويق عبر السوشيال ميديا">سوشيال ميديا</option><option value="إعلانات ممولة (Media Buying)">إعلانات ممولة</option><option value="تحسين محركات البحث (SEO)">SEO</option><option value="خطة شاملة">خطة شاملة</option></select></div></div><div class="form-grid"><div class="form-group"><label>تاريخ بداية الخطة</label><input v-model="form.start_date" type="date" required /></div><div class="form-group"><label>تاريخ نهاية الخطة</label><input v-model="form.end_date" type="date" required /></div></div><div class="form-grid"><div class="form-group"><label>التسليم النهائي</label><input v-model="form.planned_delivery_date" type="datetime-local" required /></div><div class="form-group toggle-group"><label>مراجعة داخلية؟</label><label class="toggle-switch"><input type="checkbox" v-model="form.requires_review"><span class="slider"></span></label><span class="toggle-label">{{ form.requires_review ? 'نعم' : 'لا' }}</span></div></div><div class="form-grid" v-if="form.requires_review"><div class="form-group"><label>موعد إنهاء المراجعة</label><input v-model="form.planned_review_date" type="datetime-local" required /></div></div><div class="separator"></div><div class="section-title" style="display:flex; justify-content:space-between; align-items:center;"><div><span>🔗</span> الروابط المرجعية (Reference Links)</div><button type="button" class="add-link-btn" @click="addReferenceLink">＋ إضافة رابط</button></div><div class="reference-links-container"><div v-for="(link, index) in form.reference_links" :key="index" class="link-input-group"><input v-model="form.reference_links[index]" type="url" placeholder="أدخل رابط المرجع (مثال: Google Drive, Notion, etc...)" required /><button type="button" class="remove-link-btn" @click="removeReferenceLink(index)" title="حذف الرابط">⌫</button></div><p v-if="form.reference_links.length === 0" class="muted text-center" style="font-size:10px; margin-top:10px;">لا توجد روابط مرجعية (اختياري)</p></div>
 <div class="separator"></div>
 <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
   <div><span>⚙️</span> إعدادات الحقول الإلزامية للمنشورات (Brief Settings)</div>
@@ -481,6 +486,7 @@ const currentUserId = ref(currentUser.id || parseInt(localStorage.getItem('user_
 
 const userRole = ref(localStorage.getItem('role') || 'employee'); 
 const isManager = computed(() => userRole.value === 'manager');
+const user = ref(currentUser);
 
 const isUserResponsible = (plan) => { if (isManager.value) return true; return plan.users?.some(u => u.id === currentUserId.value && u.pivot.task_role === 'responsible'); };
 const isUserReviewer = (plan) => { if (isManager.value) return true; return plan.users?.some(u => u.id === currentUserId.value && u.pivot.task_role === 'reviewer'); };
@@ -561,6 +567,10 @@ const planToDuplicate = ref(null);
 const duplicateForm = reactive({ start_date: '', end_date: '', planned_delivery_date: '', planned_review_date: '' });
 
 const openDuplicateModal = (plan) => {
+  if (user.value?.role !== 'manager' && user.value?.job_title !== 'Account Manager') {
+    showToast('عذراً، لا تمتلك الصلاحية لاستنساخ الخطط');
+    return;
+  }
   planToDuplicate.value = plan;
   
   if (plan.start_date && plan.end_date && plan.planned_delivery_date) {
@@ -747,7 +757,7 @@ const fetchPlans = async () => {
     loading.value = false; 
   } 
 };
-const fetchResources = async () => { if (isManager.value) { try { const [resUsers, resClients] = await Promise.all([api.get('/users?per_page=100'), api.get('/clients?per_page=100')]); allUsers.value = resUsers.data.data || []; allClients.value = resClients.data.data || []; } catch (error) {} } };
+const fetchResources = async () => { if (isManager.value || user.value?.job_title === 'Account Manager') { try { const [resUsers, resClients] = await Promise.all([api.get('/users?per_page=100'), api.get('/clients?per_page=100')]); allUsers.value = resUsers.data.data || []; allClients.value = resClients.data.data || []; } catch (error) {} } };
 
 const formatPhone = (phone) => {
   if (!phone) return null;
@@ -889,6 +899,10 @@ const resetForm = () => Object.assign(form, {
 });
 
 const openManagerModal = (plan = null) => { 
+  if (user.value?.role !== 'manager' && user.value?.job_title !== 'Account Manager') {
+    showToast('عذراً، لا تمتلك الصلاحية لإنشاء أو تعديل الخطط');
+    return;
+  }
   isEditing.value = Boolean(plan); 
   editId.value = plan?.id || null; 
   if (plan) { 
@@ -919,6 +933,10 @@ const closeManagerModal = () => { showManagerModal.value = false; };
 const closeCreationModal = () => { showCreationSuccessModal.value = false; createdPlan.value = null; };
 
 const saveManagerPlan = async () => { 
+  if (user.value?.role !== 'manager' && user.value?.job_title !== 'Account Manager') {
+    showToast('عذراً، لا تمتلك الصلاحية لحفظ الخطط');
+    return;
+  }
   saving.value = true; 
   if (!form.requires_review) { form.planned_review_date = ''; form.reviewer_ids = []; } 
   form.reference_links = form.reference_links.filter(link => link.trim() !== '');
@@ -943,7 +961,7 @@ const saveManagerPlan = async () => {
   } catch (error) {} finally { saving.value = false; } 
 };
 
-const deletePlan = async (id) => { if (!window.confirm('تأكيد الحذف؟')) return; try { await api.delete(`/content-plans/${id}`); showToast('تم الحذف'); await fetchPlans(); } catch (error) {} };
+const deletePlan = async (id) => { if (user.value?.role !== 'manager' && user.value?.job_title !== 'Account Manager') { showToast('عذراً، لا تمتلك الصلاحية لحذف الخطط'); return; } if (!window.confirm('تأكيد الحذف؟')) return; try { await api.delete(`/content-plans/${id}`); showToast('تم الحذف'); await fetchPlans(); } catch (error) {} };
 
 const openDetailsModal = (plan) => { editId.value = plan.id; detailsForm.final_link = plan.final_link || ''; detailsForm.notes = plan.notes || ''; showDetailsModal.value = true; };
 const closeDetailsModal = () => { showDetailsModal.value = false; };

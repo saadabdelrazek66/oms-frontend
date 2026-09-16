@@ -33,39 +33,41 @@
       <table class="spreadsheet-table">
         <thead>
           <tr>
-            <th colspan="5" class="group-header red-group">حالة المنشور</th>
-            <th colspan="6" class="group-header admin-group">الإدارة والتكليف والمراجعة</th>
-            <th colspan="2" class="group-header dark-red-group">موقف التمويل</th>
-            <th colspan="8" class="group-header blue-group">محتوى المنشور</th>
+            <th :colspan="isMediaBuyer ? 3 : 5" class="group-header red-group">حالة المنشور</th>
+            <th v-if="!isMediaBuyer" colspan="6" class="group-header admin-group">الإدارة والتكليف والمراجعة</th>
+            <th colspan="4" class="group-header dark-red-group">موقف التمويل</th>
+            <th v-if="!isMediaBuyer" colspan="8" class="group-header blue-group">محتوى المنشور</th>
             <th colspan="1" class="group-header light-blue-group">التسليم</th>
             <th colspan="1" class="group-header pink-group">ملاحظات</th>
             <th v-if="isManager" colspan="1" class="group-header admin-group">إجراءات</th>
           </tr>
           <tr>
             <th class="sub-th red-th">تاريخ النشر المخطط</th>
-            <th class="sub-th red-th">النشر الفعلي</th>
+            <th v-if="!isMediaBuyer" class="sub-th red-th">النشر الفعلي</th>
             <th class="sub-th red-th">توقيت النشر</th>
-            <th class="sub-th red-th">منصة النشر</th>
+            <th v-if="!isMediaBuyer" class="sub-th red-th">منصة النشر</th>
             <th class="sub-th red-th">روابط النشر</th>
 
-            <th class="sub-th admin-th">المنفذ</th>
-            <th class="sub-th admin-th">بدء التنفيذ</th>
-            <th class="sub-th admin-th">الديدلاين</th>
-            <th class="sub-th admin-th">المراجعين (متعدد)</th>
-            <th class="sub-th admin-th">مراجعة القسم</th>
-            <th class="sub-th admin-th" style="background: #cfd8dc;">اعتماد المدير</th>
+            <th v-if="!isMediaBuyer" class="sub-th admin-th">المنفذ</th>
+            <th v-if="!isMediaBuyer" class="sub-th admin-th">بدء التنفيذ</th>
+            <th v-if="!isMediaBuyer" class="sub-th admin-th">الديدلاين</th>
+            <th v-if="!isMediaBuyer" class="sub-th admin-th">المراجعين (متعدد)</th>
+            <th v-if="!isMediaBuyer" class="sub-th admin-th">مراجعة القسم</th>
+            <th v-if="!isMediaBuyer" class="sub-th admin-th" style="background: #cfd8dc;">اعتماد المدير</th>
 
             <th class="sub-th dark-red-th">منصة الإعلان</th>
             <th class="sub-th dark-red-th">حالة التمويل</th>
+            <th class="sub-th dark-red-th">تكلفة التمويل ($)</th>
+            <th class="sub-th dark-red-th">أيام التمويل</th>
 
-            <th class="sub-th blue-th">نوع المنشور</th>
-            <th class="sub-th blue-th">الهدف</th>
-            <th class="sub-th blue-th">شرح الفكرة تفصيلياً</th>
-            <th class="sub-th blue-th">Caption</th>
-            <th class="sub-th blue-th">TOV</th>
-            <th class="sub-th blue-th">Call to Action</th>
-            <th class="sub-th blue-th">Hashtag</th>
-            <th class="sub-th blue-th">Reference Link</th>
+            <th v-if="!isMediaBuyer" class="sub-th blue-th">نوع المنشور</th>
+            <th v-if="!isMediaBuyer" class="sub-th blue-th">الهدف</th>
+            <th v-if="!isMediaBuyer" class="sub-th blue-th">شرح الفكرة تفصيلياً</th>
+            <th v-if="!isMediaBuyer" class="sub-th blue-th">Caption</th>
+            <th v-if="!isMediaBuyer" class="sub-th blue-th">TOV</th>
+            <th v-if="!isMediaBuyer" class="sub-th blue-th">Call to Action</th>
+            <th v-if="!isMediaBuyer" class="sub-th blue-th">Hashtag</th>
+            <th v-if="!isMediaBuyer" class="sub-th blue-th">Reference Link</th>
 
             <th class="sub-th light-blue-th">روابط ووقت التسليم</th>
             <th class="sub-th pink-th">Note</th>
@@ -74,7 +76,7 @@
         </thead>
         <tbody>
           <tr v-if="posts.length === 0">
-            <td colspan="21" class="text-center py-4 muted">لا توجد منشورات. قم بإضافة منشور جديد.</td>
+            <td :colspan="isMediaBuyer ? 9 : 26" class="text-center py-4 muted">لا توجد منشورات. قم بإضافة منشور جديد.</td>
           </tr>
           <tr v-for="(post, index) in posts" :key="post.id" class="post-row" :class="{ 'urgent-row': post.is_urgent }">
             
@@ -96,7 +98,7 @@
               </div>
             </td>
 
-            <td>
+            <td v-if="!isMediaBuyer">
               <div class="lock-wrapper">
                 <select v-model="post.actual_publish_status" @change="handlePublishStatusChange(post, $event)" :class="post.actual_publish_status === 'لم يتم' ? 'text-red' : 'text-green'" :disabled="!canEditPublishAndNotes(post) || isFieldDisabled(post, 'actual_publish_status')">
                   <option value="لم يتم">لم يتم</option>
@@ -111,7 +113,7 @@
                 <span v-if="hasLockIcon(post, 'publishing_time')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'publishing_time')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
               </div>
             </td>
-            <td>
+            <td v-if="!isMediaBuyer">
               <div class="lock-wrapper">
                 <CustomMultiSelect
                   v-model="post.publishing_platform"
@@ -144,7 +146,7 @@
             </td>
 
             <!-- 1. الإدارة والتكليف -->
-            <td>
+            <td v-if="!isMediaBuyer">
               <div class="lock-wrapper">
                 <select v-model="post.designer_id" @change="autoSave(post, 'designer_id')" :disabled="!canEditFields(post) || isFieldDisabled(post, 'designer_id')">
                   <option :value="null">لم يحدد</option>
@@ -153,7 +155,7 @@
                 <span v-if="hasLockIcon(post, 'designer_id')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'designer_id')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
               </div>
             </td>
-            <td style="min-width: 130px; padding: 4px;">
+            <td v-if="!isMediaBuyer" style="min-width: 130px; padding: 4px;">
               <div class="execution-trigger" v-if="post.designer_id">
                 <span v-if="post.execution_started_at" class="badge started">
                   🚀 بدأ: {{ new Date(post.execution_started_at).toLocaleString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
@@ -165,7 +167,7 @@
             </td>
             
             <!-- عمود الديدلاين وتأثير المحرك الذكي -->
-            <td :class="getDeadlineStatus(post.execution_started_at || post.created_at, post.deadline, post.delivered_at ? 'completed' : 'pending').class + '-border'">
+            <td v-if="!isMediaBuyer" :class="getDeadlineStatus(post.execution_started_at || post.created_at, post.deadline, post.delivered_at ? 'completed' : 'pending').class + '-border'">
               <div class="lock-wrapper">
                 <VueDatePicker 
                   v-model="post.deadline" 
@@ -190,7 +192,7 @@
               </div>
             </td>
             
-            <td>
+            <td v-if="!isMediaBuyer">
               <div class="lock-wrapper">
                 <CustomMultiSelect
                   v-model="post.reviewer_ids"
@@ -203,7 +205,7 @@
               </div>
             </td>
 
-            <td class="review-cell">
+            <td v-if="!isMediaBuyer" class="review-cell">
               <template v-if="post.review_status === 'معتمد'">
                 <span class="badge approved">🟢 معتمد</span>
                 <span v-if="post.department_approved_at" class="approval-time">
@@ -238,7 +240,7 @@
               </button>
             </td>
 
-            <td class="review-cell" style="background: #eceff1;">
+            <td v-if="!isMediaBuyer" class="review-cell" style="background: #eceff1;">
               <template v-if="post.manager_review_status === 'معتمد'">
                 <span class="badge approved">🟢 معتمد</span>
                 <span v-if="post.manager_approved_at" class="approval-time">
@@ -295,8 +297,36 @@
                 <span v-if="hasLockIcon(post, 'finance_status')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'finance_status')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
               </div>
             </td>
-
             <td>
+              <div class="lock-wrapper">
+                <input 
+                  type="number" 
+                  step="0.01" 
+                  min="0"
+                  v-model="post.finance_cost" 
+                  @blur="autoSave(post, 'finance_cost')" 
+                  placeholder="0.00"
+                  :disabled="!canEditFields(post) || isFieldDisabled(post, 'finance_cost')" 
+                />
+                <span v-if="hasLockIcon(post, 'finance_cost')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'finance_cost')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
+              </div>
+            </td>
+            <td>
+              <div class="lock-wrapper">
+                <input 
+                  type="number" 
+                  step="1" 
+                  min="0"
+                  v-model="post.finance_days" 
+                  @blur="autoSave(post, 'finance_days')" 
+                  placeholder="0"
+                  :disabled="!canEditFields(post) || isFieldDisabled(post, 'finance_days')" 
+                />
+                <span v-if="hasLockIcon(post, 'finance_days')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'finance_days')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
+              </div>
+            </td>
+
+            <td v-if="!isMediaBuyer">
               <div class="lock-wrapper">
                 <select v-model="post.post_type" @change="autoSave(post, 'post_type')" :disabled="!canEditFields(post) || isFieldDisabled(post, 'post_type')">
                   <option value="">اختيار...</option>
@@ -309,7 +339,7 @@
                 <span v-if="hasLockIcon(post, 'post_type')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'post_type')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
               </div>
             </td>
-            <td>
+            <td v-if="!isMediaBuyer">
               <div class="objective-wrapper" style="flex-direction: column; align-items: stretch; position: relative;">
                 <CustomMultiSelect 
                   v-model="post.objective_array" 
@@ -337,37 +367,37 @@
                 <span v-if="hasLockIcon(post, 'objective')" class="lock-indicator" style="top: 15px;" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'objective')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
               </div>
             </td>
-            <td>
+            <td v-if="!isMediaBuyer">
               <div class="lock-wrapper">
                 <textarea v-model="post.detailed_idea" @blur="autoSave(post, 'detailed_idea')" rows="2" :disabled="!canEditFields(post) || isFieldDisabled(post, 'detailed_idea')"></textarea>
                 <span v-if="hasLockIcon(post, 'detailed_idea')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'detailed_idea')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
               </div>
             </td>
-            <td>
+            <td v-if="!isMediaBuyer">
               <div class="lock-wrapper">
                 <textarea v-model="post.caption" @blur="autoSave(post, 'caption')" rows="2" :disabled="!canEditFields(post) || isFieldDisabled(post, 'caption')"></textarea>
                 <span v-if="hasLockIcon(post, 'caption')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'caption')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
               </div>
             </td>
-            <td>
+            <td v-if="!isMediaBuyer">
               <div class="lock-wrapper">
                 <textarea v-model="post.tov" @blur="autoSave(post, 'tov')" rows="2" placeholder="..." :disabled="!canEditFields(post) || isFieldDisabled(post, 'tov')"></textarea>
                 <span v-if="hasLockIcon(post, 'tov')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'tov')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
               </div>
             </td>
-            <td>
+            <td v-if="!isMediaBuyer">
               <div class="lock-wrapper">
                 <textarea v-model="post.call_to_action" @blur="autoSave(post, 'call_to_action')" rows="2" placeholder="..." :disabled="!canEditFields(post) || isFieldDisabled(post, 'call_to_action')"></textarea>
                 <span v-if="hasLockIcon(post, 'call_to_action')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'call_to_action')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
               </div>
             </td>
-            <td>
+            <td v-if="!isMediaBuyer">
               <div class="lock-wrapper">
                 <textarea v-model="post.hashtags" @blur="autoSave(post, 'hashtags')" rows="2" placeholder="#..." dir="ltr" :disabled="!canEditFields(post) || isFieldDisabled(post, 'hashtags')"></textarea>
                 <span v-if="hasLockIcon(post, 'hashtags')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'hashtags')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
               </div>
             </td>
-            <td>
+            <td v-if="!isMediaBuyer">
               <div class="textarea-link-wrapper lock-wrapper">
                 <textarea v-model="post.reference_link" @blur="autoSave(post, 'reference_link')" rows="2" placeholder="Link..." dir="ltr" :disabled="!canEditFields(post) || isFieldDisabled(post, 'reference_link')"></textarea>
                 <span v-if="hasLockIcon(post, 'reference_link')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'reference_link')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
@@ -598,10 +628,16 @@
             <h2 class="report-title">
               <span class="icon">📊</span> تقرير تفصيلي للمنشور
             </h2>
-            <p class="report-subtitle">
+            <p v-if="!isMediaBuyer" class="report-subtitle">
               حالة النشر: 
               <span :class="['premium-badge', selectedPostForView.actual_publish_status === 'تم النشر' ? 'badge-success' : 'badge-warning']">
                 {{ selectedPostForView.actual_publish_status || 'لم يتم' }}
+              </span>
+            </p>
+            <p v-else class="report-subtitle">
+              حالة التمويل: 
+              <span :class="['premium-badge', selectedPostForView.finance_status === 'ممول' ? 'badge-success' : 'badge-warning']">
+                {{ selectedPostForView.finance_status || 'غير ممول' }}
               </span>
             </p>
           </div>
@@ -626,18 +662,32 @@
                       <strong class="info-value">{{ getDayName(selectedPostForView.target_date) }} - {{ formatDate(selectedPostForView.target_date) }}</strong>
                     </div>
                   </li>
-                  <li>
+                  <li v-if="selectedPostForView.publishing_time">
+                    <span class="info-icon">⏰</span>
+                    <div class="info-data">
+                      <span class="info-label">وقت النشر</span>
+                      <strong class="info-value" dir="ltr">{{ selectedPostForView.publishing_time }}</strong>
+                    </div>
+                  </li>
+                  <li v-if="!isMediaBuyer">
                     <span class="info-icon">⏰</span>
                     <div class="info-data">
                       <span class="info-label">الديدلاين</span>
                       <strong class="info-value text-red">{{ formatDate(selectedPostForView.deadline) || 'غير محدد' }}</strong>
                     </div>
                   </li>
-                  <li>
+                  <li v-if="!isMediaBuyer">
                     <span class="info-icon">👨‍🎨</span>
                     <div class="info-data">
                       <span class="info-label">المنفذ</span>
                       <strong class="info-value text-blue">{{ getUserName(selectedPostForView.designer_id) }}</strong>
+                    </div>
+                  </li>
+                  <li v-if="selectedPostForView.ad_platform">
+                    <span class="info-icon">📢</span>
+                    <div class="info-data">
+                      <span class="info-label">منصة الإعلان</span>
+                      <strong class="info-value">{{ Array.isArray(selectedPostForView.ad_platform) ? selectedPostForView.ad_platform.join(', ') : selectedPostForView.ad_platform }}</strong>
                     </div>
                   </li>
                   <li>
@@ -647,13 +697,27 @@
                       <strong class="info-value">{{ selectedPostForView.finance_status || 'غير ممول' }}</strong>
                     </div>
                   </li>
+                  <li v-if="selectedPostForView.finance_cost !== null && selectedPostForView.finance_cost !== undefined && selectedPostForView.finance_cost !== ''">
+                    <span class="info-icon">💵</span>
+                    <div class="info-data">
+                      <span class="info-label">تكلفة التمويل</span>
+                      <strong class="info-value">{{ selectedPostForView.finance_cost }} $</strong>
+                    </div>
+                  </li>
+                  <li v-if="selectedPostForView.finance_days !== null && selectedPostForView.finance_days !== undefined && selectedPostForView.finance_days !== ''">
+                    <span class="info-icon">📅</span>
+                    <div class="info-data">
+                      <span class="info-label">أيام التمويل</span>
+                      <strong class="info-value">{{ selectedPostForView.finance_days }} يوم</strong>
+                    </div>
+                  </li>
                 </ul>
               </div>
             </div>
 
             <!-- العمود الرئيسي للمحتوى -->
             <div class="report-main">
-              <div class="premium-card highlight-card">
+              <div v-if="!isMediaBuyer" class="premium-card highlight-card">
                 <div class="card-header-flex">
                   <h3 class="card-title" style="margin: 0;">📝 تفاصيل المحتوى</h3>
                   <div class="tags-group">
@@ -693,10 +757,10 @@
               </div>
               
               <!-- بطاقة الروابط -->
-              <div class="premium-card links-card" style="margin-top: 24px;">
-                <h3 class="card-title">🔗 المراجع والروابط</h3>
+              <div class="premium-card links-card" :style="!isMediaBuyer ? 'margin-top: 24px;' : ''">
+                <h3 class="card-title">🔗 {{ isMediaBuyer ? 'الروابط والتسليمات' : 'المراجع والروابط' }}</h3>
                 <div class="links-grid">
-                  <div class="link-group">
+                  <div v-if="!isMediaBuyer" class="link-group">
                     <span class="group-label">روابط المرجعية (References)</span>
                     <div class="premium-links-container" v-if="extractUrls(selectedPostForView.reference_link).length">
                       <a v-for="(url, i) in extractUrls(selectedPostForView.reference_link)" :key="i" :href="url" target="_blank" class="premium-btn-link ref-link">
@@ -727,10 +791,18 @@
                 </div>
               </div>
 
+              <!-- بطاقة الملاحظات (Notes) لو كانت موجودة -->
+              <div v-if="selectedPostForView.notes" class="premium-card notes-card" style="margin-top: 24px;">
+                <h3 class="card-title">📝 ملاحظات (Notes)</h3>
+                <div class="notes-content" style="white-space: pre-wrap; color: #cbd5e1; line-height: 1.6; background: rgba(255, 255, 255, 0.03); padding: 14px 18px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.05);">
+                  {{ selectedPostForView.notes }}
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
-            </div>
+      </div>
       </div>
     </teleport>
   </section>
@@ -750,10 +822,20 @@ import { getDeadlineStatus } from '../utils/timeHelper';
 const route = useRoute();
 const planId = route.params.id;
 
+const getStoredUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem('user') || 'null');
+  } catch (e) {
+    return null;
+  }
+};
+
 const posts = ref([]);
 const allUsers = ref([]);
-const currentUser = ref(null);
+const currentUser = ref(getStoredUser());
 const currentPlan = ref(null);
+
+const isMediaBuyer = computed(() => currentUser.value?.job_title === 'Media Buyer');
 
 const planStartDate = computed(() => {
   if (!currentPlan.value || !currentPlan.value.start_date) return null;
@@ -1696,6 +1778,16 @@ input:disabled, select:disabled, textarea:disabled {
 
 input, select, textarea { width: 100%; height: 100%; min-height: 33px; border: none; outline: none; background: transparent; padding: 4px 6px; font-family: inherit; font-size: 11px; color: #222; text-align: center; resize: none; transition: 0.15s; }
 textarea { padding-top: 8px; }
+
+/* تحسين تجربة المستخدم لحقول الأرقام في الجدول لتشبه الإكسيل */
+.spreadsheet-table input[type="number"]::-webkit-outer-spin-button,
+.spreadsheet-table input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.spreadsheet-table input[type="number"] {
+  -moz-appearance: textfield;
+}
 
 /* تحسين تجربة المستخدم للـ Textarea في الجدول */
 .spreadsheet-table textarea {

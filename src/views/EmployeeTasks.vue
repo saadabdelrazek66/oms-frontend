@@ -223,8 +223,8 @@
               <!-- 7. الإجراءات -->
               <td>
                 <div class="actions-cell">
-                  <router-link :to="`/plan-board/${task.content_plan_id}`" class="primary-btn small-btn" title="الذهاب للخطة">
-                    <span aria-hidden="true">🔗</span> عرض الخطة
+                  <router-link :to="{ path: `/plan-board/${task.content_plan_id}`, query: { postId: task.id } }" class="primary-btn small-btn" title="عرض الخطة وتفاصيل المنشور">
+                    <span aria-hidden="true">📊</span> عرض الخطة
                   </router-link>
                 </div>
               </td>

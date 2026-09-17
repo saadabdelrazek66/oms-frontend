@@ -31,8 +31,9 @@ export const getDeadlineStatus = (createdAt, dueDate, status) => {
 
   // 3. الحسابات الزمنية
   const start = new Date(createdAt).getTime()
-  // نجعل الديدلاين ينتهي بنهاية اليوم (الساعة 23:59:59) ليكون الحساب دقيقاً
-  const end = new Date(dueDate).setHours(23, 59, 59, 999)
+  // إذا كان الديدلاين يحتوي على وقت نعتمد عليه بدقة، وإلا نجعله ينتهي بنهاية اليوم
+  const hasTime = String(dueDate).includes(':')
+  const end = hasTime ? new Date(dueDate).getTime() : new Date(dueDate).setHours(23, 59, 59, 999)
   const now = new Date().getTime()
 
   // إجمالي الوقت المتاح للمهمة

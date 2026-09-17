@@ -136,6 +136,37 @@
     <div class="plans-card">
       <div class="card-heading">
         <div><h3>الخطط الحالية <span>{{ plans.length }}</span></h3><p>حالة التسليم والمراجعة</p></div>
+
+        <!-- أدوات التمرير السريع ومعلومات السحب بالماوس -->
+        <div class="table-scroll-tools" v-if="isOverflowing">
+          <span class="drag-hint">
+            <span class="hint-icon">🖐️</span>
+            <span>اسحب بالماوس أو Shift + العجلة</span>
+          </span>
+          <div class="quick-nav-group">
+            <button
+              type="button"
+              class="quick-nav-btn"
+              :disabled="!canScrollRight"
+              @click="scrollTable('right')"
+              title="تمرير الجدول لليمين"
+              aria-label="تمرير الجدول لليمين"
+            >
+              <span>▶</span> لليمين
+            </button>
+            <button
+              type="button"
+              class="quick-nav-btn"
+              :disabled="!canScrollLeft"
+              @click="scrollTable('left')"
+              title="تمرير الجدول لليسار"
+              aria-label="تمرير الجدول لليسار"
+            >
+              لليسار <span>◀</span>
+            </button>
+          </div>
+        </div>
+
         <div class="legend">
           <span><i class="green-dot"></i> مكتملة</span>
           <span><i class="blue-dot"></i> جاهزة لمراجعة العميل</span>
@@ -145,8 +176,46 @@
         </div>
       </div>
 
-      <div class="table-responsive" tabindex="0" aria-label="جدول خطط المحتوى قابل للتمرير أفقيًا">
-        <table class="plans-table" :aria-busy="loading">
+      <div class="table-scroll-wrapper" ref="tableScrollWrapper">
+        <!-- أزرار التمرير العائمة على حواف الجدول -->
+        <button
+          v-if="isOverflowing && canScrollRight"
+          type="button"
+          class="edge-scroll-btn btn-right"
+          @click="scrollTable('right')"
+          title="تمرير الجدول لليمين"
+          aria-label="تمرير الجدول لليمين"
+        >
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+
+        <button
+          v-if="isOverflowing && canScrollLeft"
+          type="button"
+          class="edge-scroll-btn btn-left"
+          @click="scrollTable('left')"
+          title="تمرير الجدول لليسار"
+          aria-label="تمرير الجدول لليسار"
+        >
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
+
+        <!-- ظلال أطراف الجدول لتوضيح وجود محتوى مخفي -->
+        <div class="scroll-edge-shadow shadow-right" :class="{ 'is-active': isOverflowing && canScrollRight }"></div>
+        <div class="scroll-edge-shadow shadow-left" :class="{ 'is-active': isOverflowing && canScrollLeft }"></div>
+
+        <div
+          class="table-responsive"
+          ref="tableContainer"
+          tabindex="0"
+          aria-label="جدول خطط المحتوى قابل للتمرير أفقيًا"
+          @mousedown="onTableMouseDown"
+          @mousemove="onTableMouseMove"
+          @mouseup="onTableMouseUp"
+          @wheel="onTableWheel"
+          @scroll="onTableScroll"
+        >
+          <table class="plans-table" :aria-busy="loading">
           <thead>
             <tr>
               <th scope="col">العميل والخطة</th>
@@ -264,6 +333,7 @@
             </tr>
           </tbody>
         </table>
+      </div>
       </div>
     </div>
 
@@ -454,6 +524,22 @@
     </Teleport>
 
 
+    <!-- شريط التمرير الأفقي العائم الذكي (Sticky Floating Mirror Scrollbar) -->
+    <Teleport to="body">
+      <div
+        v-show="showFloatingScrollbar"
+        class="floating-sticky-scrollbar"
+        :style="floatingScrollbarStyle"
+        ref="floatingScrollbarTrack"
+        @scroll="onFloatingScroll"
+        dir="rtl"
+        title="شريط تمرير أفقي عائم - اسحب للتحرك بالجدول"
+        aria-label="شريط تمرير أفقي عائم"
+      >
+        <div class="floating-scrollbar-spacer" :style="{ width: tableScrollWidth + 'px' }"></div>
+      </div>
+    </Teleport>
+
     <transition name="toast"><div v-if="toastMessage" class="toast-message" role="status" aria-live="polite">{{ toastMessage }}</div></transition>
   </section>
 </template>
@@ -561,6 +647,183 @@ const rejectNotes = ref('');
 const selectedHistoryPlan = ref(null);
 const selectedRejections = ref([]);
 const selectedFollowUpPlan = ref(null);
+
+// --- أدوات التمرير الأفقي الذكي وسحب الماوس (Horizontal Scroll & Pan) ---
+const tableContainer = ref(null);
+const floatingScrollbarTrack = ref(null);
+const showFloatingScrollbar = ref(false);
+const isOverflowing = ref(false);
+const canScrollRight = ref(false);
+const canScrollLeft = ref(false);
+const tableScrollWidth = ref(0);
+const tableRect = reactive({ left: 0, width: 0 });
+
+let isSyncingFromTable = false;
+let isSyncingFromFloating = false;
+let resizeObserver = null;
+
+// حالة السحب بالماوس
+let isMouseDown = false;
+let dragStartX = 0;
+let dragStartScrollLeft = 0;
+let hasDraggedDistance = false;
+
+const isAnyModalOpen = computed(() => {
+  return showManagerModal.value ||
+    showDetailsModal.value ||
+    showRejectModal.value ||
+    showHistoryModal.value ||
+    showRejectionsModal.value ||
+    showFollowUpsModal.value ||
+    showDeliverySuccessModal.value ||
+    showCreationSuccessModal.value ||
+    showReferencesModal.value ||
+    showWaPromptModal.value ||
+    showDuplicateModal.value ||
+    showImageViewer.value;
+});
+
+const updateScrollState = () => {
+  if (!tableContainer.value || isAnyModalOpen.value) {
+    showFloatingScrollbar.value = false;
+    if (!tableContainer.value) {
+      isOverflowing.value = false;
+      canScrollRight.value = false;
+      canScrollLeft.value = false;
+    }
+    return;
+  }
+
+  const el = tableContainer.value;
+  const maxScroll = el.scrollWidth - el.clientWidth;
+  tableScrollWidth.value = el.scrollWidth;
+
+  if (maxScroll <= 5) {
+    isOverflowing.value = false;
+    canScrollRight.value = false;
+    canScrollLeft.value = false;
+    showFloatingScrollbar.value = false;
+    return;
+  }
+
+  isOverflowing.value = true;
+
+  // في نظام RTL: 0 في أقصى اليمين، وتصبح القيمة سالبة كلما تمررنا لليسار
+  const absScroll = Math.abs(el.scrollLeft);
+  canScrollRight.value = absScroll > 5;
+  canScrollLeft.value = absScroll < maxScroll - 5;
+
+  // فحص موضع شريط التمرير العائم المتزامن
+  const rect = el.getBoundingClientRect();
+  const windowHeight = window.innerHeight;
+
+  // يظهر الشريط العائم عندما يكون الجدول معروضاً في الشاشة ولكن أسفله خارج حدود الشاشة السفلية
+  const isTableInView = rect.top < windowHeight - 40 && rect.bottom > 120;
+  const isBottomOffscreen = rect.bottom > windowHeight + 15;
+
+  showFloatingScrollbar.value = isTableInView && isBottomOffscreen;
+
+  if (showFloatingScrollbar.value) {
+    tableRect.left = Math.max(0, rect.left);
+    tableRect.width = rect.width;
+
+    if (floatingScrollbarTrack.value && !isSyncingFromFloating) {
+      isSyncingFromTable = true;
+      floatingScrollbarTrack.value.scrollLeft = el.scrollLeft;
+      requestAnimationFrame(() => {
+        isSyncingFromTable = false;
+      });
+    }
+  }
+};
+
+const floatingScrollbarStyle = computed(() => {
+  return {
+    left: `${tableRect.left}px`,
+    width: `${tableRect.width}px`
+  };
+});
+
+const onFloatingScroll = () => {
+  if (isSyncingFromTable) return;
+  if (!tableContainer.value || !floatingScrollbarTrack.value) return;
+  isSyncingFromFloating = true;
+  tableContainer.value.scrollLeft = floatingScrollbarTrack.value.scrollLeft;
+  requestAnimationFrame(() => {
+    isSyncingFromFloating = false;
+    updateScrollState();
+  });
+};
+
+const onTableScroll = () => {
+  if (!tableContainer.value) return;
+  const el = tableContainer.value;
+  const maxScroll = el.scrollWidth - el.clientWidth;
+  const absScroll = Math.abs(el.scrollLeft);
+  canScrollRight.value = absScroll > 5;
+  canScrollLeft.value = absScroll < maxScroll - 5;
+
+  if (isSyncingFromFloating) return;
+  if (floatingScrollbarTrack.value) {
+    isSyncingFromTable = true;
+    floatingScrollbarTrack.value.scrollLeft = el.scrollLeft;
+    requestAnimationFrame(() => {
+      isSyncingFromTable = false;
+    });
+  }
+};
+
+const scrollTable = (direction) => {
+  if (!tableContainer.value) return;
+  const amount = 380;
+  // في نظام RTL: الحركة لليسار بالسالب ولليمين بالموجب
+  const delta = direction === 'left' ? -amount : amount;
+  tableContainer.value.scrollBy({ left: delta, behavior: 'smooth' });
+};
+
+// السحب والإفلات بالماوس (Mouse Drag & Pan)
+const onTableMouseDown = (e) => {
+  if (!tableContainer.value || e.button !== 0) return;
+
+  const targetTag = e.target.tagName?.toLowerCase();
+  if (['input', 'select', 'button', 'textarea', 'a', 'label'].includes(targetTag)) return;
+  if (e.target.closest('button, a, input, select, textarea, label, .modal-overlay, .wa-quick-btn, .action, .confirm-btn, .details-btn, .history-btn, .ref-links-btn, .followup-btn')) return;
+
+  isMouseDown = true;
+  hasDraggedDistance = false;
+  dragStartX = e.pageX;
+  dragStartScrollLeft = tableContainer.value.scrollLeft;
+};
+
+const onTableMouseMove = (e) => {
+  if (!isMouseDown || !tableContainer.value) return;
+  const deltaX = e.pageX - dragStartX;
+  if (Math.abs(deltaX) > 4) {
+    hasDraggedDistance = true;
+    tableContainer.value.classList.add('table-is-dragging');
+    e.preventDefault();
+  }
+  if (hasDraggedDistance) {
+    tableContainer.value.scrollLeft = dragStartScrollLeft - deltaX;
+  }
+};
+
+const onTableMouseUp = () => {
+  if (!isMouseDown) return;
+  isMouseDown = false;
+  if (tableContainer.value) {
+    tableContainer.value.classList.remove('table-is-dragging');
+  }
+};
+
+const onTableWheel = (e) => {
+  if (!tableContainer.value) return;
+  // إذا ضغط المستخدم على Shift أثناء تدوير العجلة، يتم تحويل التمرير العمودي إلى تمرير أفقي
+  if (e.shiftKey) {
+    e.preventDefault();
+    tableContainer.value.scrollLeft += e.deltaY * 1.2;
+  }
+};
 
 const showDuplicateModal = ref(false);
 const planToDuplicate = ref(null);
@@ -986,12 +1249,49 @@ watch(showManagerModal, async (open) => {
   }
 })
 
-onMounted(() => { fetchPlans(); fetchResources(); })
+watch(() => plans.value, async () => {
+  await nextTick();
+  updateScrollState();
+}, { deep: false });
+
+watch(() => loading.value, async () => {
+  await nextTick();
+  updateScrollState();
+});
+
+watch(isAnyModalOpen, () => {
+  updateScrollState();
+});
+
+onMounted(() => {
+  fetchPlans();
+  fetchResources();
+  window.addEventListener('scroll', updateScrollState, { passive: true });
+  window.addEventListener('resize', updateScrollState, { passive: true });
+  window.addEventListener('mouseup', onTableMouseUp);
+  window.addEventListener('blur', onTableMouseUp);
+
+  if (window.ResizeObserver && tableContainer.value) {
+    resizeObserver = new ResizeObserver(() => {
+      updateScrollState();
+    });
+    resizeObserver.observe(tableContainer.value);
+  }
+  nextTick(() => updateScrollState());
+});
 
 onBeforeUnmount(() => {
-  window.clearTimeout(toastTimer)
-  document.body.classList.remove('modal-is-open')
-})
+  window.clearTimeout(toastTimer);
+  document.body.classList.remove('modal-is-open');
+  window.removeEventListener('scroll', updateScrollState);
+  window.removeEventListener('resize', updateScrollState);
+  window.removeEventListener('mouseup', onTableMouseUp);
+  window.removeEventListener('blur', onTableMouseUp);
+  if (resizeObserver) {
+    resizeObserver.disconnect();
+    resizeObserver = null;
+  }
+});
 </script>
 
 <style scoped>
@@ -1152,8 +1452,106 @@ onBeforeUnmount(() => {
 .legend { flex-wrap: wrap; gap: 9px 14px; font-size: 12px !important; line-height: 1.5; }
 
 /* Keep horizontal scrolling limited to the complex table. */
-.table-responsive { overflow-x: auto; overflow-y: visible; overscroll-behavior-inline: contain; scrollbar-width: thin; }
+.table-scroll-wrapper { position: relative; width: 100%; }
+.table-responsive {
+  overflow-x: auto;
+  overflow-y: visible;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(125, 232, 220, 0.4) rgba(10, 16, 47, 0.4);
+  cursor: grab;
+  position: relative;
+}
+.table-responsive:active { cursor: grabbing; }
+.table-responsive.table-is-dragging { cursor: grabbing !important; user-select: none !important; }
+.table-responsive.table-is-dragging table { pointer-events: none; }
+.table-responsive::-webkit-scrollbar { height: 10px; }
+.table-responsive::-webkit-scrollbar-track { background: rgba(10, 16, 47, 0.4); border-radius: 6px; }
+.table-responsive::-webkit-scrollbar-thumb { background: rgba(125, 232, 220, 0.35); border-radius: 6px; border: 2px solid rgba(10, 16, 47, 0.4); }
+.table-responsive::-webkit-scrollbar-thumb:hover { background: #7de8dc; }
+
+/* أزرار وظلال التمرير المتقدمة */
+.scroll-edge-shadow { position: absolute; top: 0; bottom: 0; width: 36px; pointer-events: none; z-index: 5; opacity: 0; transition: opacity 0.3s ease; }
+.scroll-edge-shadow.shadow-right { right: 0; background: linear-gradient(to left, rgba(15, 22, 61, 0.95), transparent); }
+.scroll-edge-shadow.shadow-left { left: 0; background: linear-gradient(to right, rgba(15, 22, 61, 0.95), transparent); }
+.scroll-edge-shadow.is-active { opacity: 1; }
+
+.edge-scroll-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid rgba(125, 232, 220, 0.35);
+  background: rgba(18, 26, 68, 0.92);
+  backdrop-filter: blur(8px);
+  color: #7de8dc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0.9;
+}
+.edge-scroll-btn:hover {
+  opacity: 1;
+  transform: translateY(-50%) scale(1.12);
+  background: rgba(28, 38, 92, 0.98);
+  border-color: #7de8dc;
+  box-shadow: 0 6px 22px rgba(125, 232, 220, 0.35);
+}
+.edge-scroll-btn.btn-right { right: 12px; }
+.edge-scroll-btn.btn-left { left: 12px; }
+
+.table-scroll-tools { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.drag-hint { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: #92a4de; background: rgba(125, 232, 220, 0.08); border: 1px solid rgba(125, 232, 220, 0.18); padding: 4px 10px; border-radius: 8px; }
+.hint-icon { font-size: 13px; line-height: 1; }
+.quick-nav-group { display: inline-flex; gap: 6px; }
+.quick-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  background: rgba(22, 32, 80, 0.8);
+  border: 1px solid rgba(137, 153, 226, 0.22);
+  border-radius: 8px;
+  color: #d9ddf5;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s ease;
+  font-family: inherit;
+}
+.quick-nav-btn:hover:not(:disabled) { background: rgba(125, 232, 220, 0.15); border-color: #7de8dc; color: #7de8dc; transform: translateY(-1px); }
+.quick-nav-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+:global(.floating-sticky-scrollbar) {
+  position: fixed;
+  bottom: 12px;
+  height: 14px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: rgba(10, 16, 47, 0.88);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(125, 232, 220, 0.28);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), 0 0 12px rgba(125, 232, 220, 0.15);
+  z-index: 95;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  scrollbar-width: thin;
+  scrollbar-color: #7de8dc rgba(15, 22, 61, 0.6);
+}
+:global(.floating-sticky-scrollbar::-webkit-scrollbar) { height: 10px; }
+:global(.floating-sticky-scrollbar::-webkit-scrollbar-track) { background: rgba(15, 22, 61, 0.6); border-radius: 6px; margin: 0 4px; }
+:global(.floating-sticky-scrollbar::-webkit-scrollbar-thumb) { background: linear-gradient(90deg, #7de8dc, #b28aff); border-radius: 6px; border: 2px solid rgba(15, 22, 61, 0.6); }
+:global(.floating-sticky-scrollbar::-webkit-scrollbar-thumb:hover) { background: linear-gradient(90deg, #95efe5, #c49eff); box-shadow: 0 0 8px rgba(125, 232, 220, 0.5); }
+:global(.floating-scrollbar-spacer) { height: 1px; }
+
 .plans-table { min-width: 1280px; }
+.plans-table a, .plans-table button, .plans-table .action, .plans-table input, .plans-table select { cursor: pointer; pointer-events: auto; }
 .plans-table th { font-size: 13px !important; line-height: 1.5; white-space: nowrap; }
 .plans-table td { font-size: 14px !important; line-height: 1.6; }
 .plan-cell { min-width: 175px; }
@@ -1217,6 +1615,8 @@ onBeforeUnmount(() => {
   .summary-strip { grid-template-columns: 1fr 1fr; }
   .sync-status { grid-column: 1 / -1; }
   .card-heading { align-items: flex-start; flex-direction: column; padding: 20px 15px 17px; }
+  .table-scroll-tools { width: 100%; justify-content: space-between; margin-top: 5px; }
+  .edge-scroll-btn { display: none; }
   .legend { width: 100%; gap: 8px 12px; }
   .plans-table th, .plans-table td { padding-right: 14px; padding-left: 14px; }
   .modal-overlay {  padding: 12px;     inset: 0 !important; z-index: 9999 !important; }

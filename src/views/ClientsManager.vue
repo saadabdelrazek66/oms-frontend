@@ -379,30 +379,58 @@
                 ＋ إضافة منصة
               </button>
             </div>
-            <div v-for="(link, index) in form.social_links" :key="'s' + index" class="dynamic-row">
-              <input
-                v-model="link.platform"
-                type="text"
-                placeholder="اسم المنصة"
-                required
-                style="flex: 1"
-              />
-              <input
-                v-model="link.url"
-                type="url"
-                placeholder="https://..."
-                required
-                dir="ltr"
-                style="flex: 2"
-              />
-              <button
-                type="button"
-                class="remove-btn"
-                @click="removeSocialLink(index)"
-                title="حذف المنصة"
-              >
-                ×
-              </button>
+            <div
+              v-for="(link, index) in form.social_links"
+              :key="'s' + index"
+              class="social-link-wrapper"
+            >
+              <div class="dynamic-row">
+                <select
+                  v-model="link.platform"
+                  class="platform-select"
+                  required
+                  style="flex: 1; min-width: 150px"
+                >
+                  <option value="" disabled>اختر المنصة...</option>
+                  <option
+                    v-for="p in socialPlatformOptions"
+                    :key="p.value"
+                    :value="p.value"
+                  >
+                    {{ p.label }}
+                  </option>
+                  <option
+                    v-if="link.platform && !socialPlatformOptions.some((p) => p.value === link.platform)"
+                    :value="link.platform"
+                  >
+                    {{ link.platform }}
+                  </option>
+                </select>
+                <input
+                  v-model="link.url"
+                  type="url"
+                  placeholder="https://..."
+                  required
+                  dir="ltr"
+                  style="flex: 2"
+                  :class="{ 'input-has-error': getSocialLinkError(link) }"
+                  @blur="handleSocialUrlBlur(link)"
+                />
+                <button
+                  type="button"
+                  class="remove-btn"
+                  @click="removeSocialLink(index)"
+                  title="حذف المنصة"
+                >
+                  ×
+                </button>
+              </div>
+              <transition name="slide-fade">
+                <div v-if="getSocialLinkError(link)" class="social-validation-warning">
+                  <span class="warning-icon">⚠️</span>
+                  <span class="warning-text">{{ getSocialLinkError(link) }}</span>
+                </div>
+              </transition>
             </div>
             <span v-if="!form.social_links.length" class="empty-hint"
               >لم يتم إضافة منصات تواصل.</span
@@ -780,6 +808,126 @@ const removeEmail = (index) => {
   }
 }
 
+const socialPlatformOptions = [
+  { value: 'Facebook', label: 'Facebook (فيسبوك)' },
+  { value: 'Instagram', label: 'Instagram (إنستغرام)' },
+  { value: 'Twitter/X', label: 'Twitter / X (تويتر)' },
+  { value: 'LinkedIn', label: 'LinkedIn (لينكد إن)' },
+  { value: 'TikTok', label: 'TikTok (تيك توك)' },
+  { value: 'Snapchat', label: 'Snapchat (سناب شات)' },
+  { value: 'YouTube', label: 'YouTube (يوتيوب)' },
+  { value: 'Pinterest', label: 'Pinterest (بينترست)' },
+  { value: 'Threads', label: 'Threads (ثريدز)' },
+  { value: 'Telegram', label: 'Telegram (تيليجرام)' },
+  { value: 'WhatsApp', label: 'WhatsApp (واتساب)' },
+  { value: 'Website', label: 'Website (موقع إلكتروني)' },
+  { value: 'Other', label: 'أخرى (Other)' },
+]
+
+const normalizePlatform = (platform) => {
+  if (!platform) return ''
+  const p = platform.trim().toLowerCase()
+  if (['فيسبوك', 'facebook', 'fb'].includes(p)) return 'Facebook'
+  if (['إنستغرام', 'انستغرام', 'انستجرام', 'instagram', 'insta'].includes(p)) return 'Instagram'
+  if (['تويتر', 'إكس', 'اكس', 'twitter', 'x', 'twitter/x'].includes(p)) return 'Twitter/X'
+  if (['لينكد إن', 'لينكد ان', 'لينكدان', 'linkedin'].includes(p)) return 'LinkedIn'
+  if (['تيك توك', 'تيكتوك', 'tiktok'].includes(p)) return 'TikTok'
+  if (['سناب شات', 'سناب', 'snapchat'].includes(p)) return 'Snapchat'
+  if (['يوتيوب', 'youtube', 'yt'].includes(p)) return 'YouTube'
+  if (['بينترست', 'pinterest'].includes(p)) return 'Pinterest'
+  if (['ثريدز', 'threads'].includes(p)) return 'Threads'
+  if (['تيليجرام', 'تليجرام', 'telegram'].includes(p)) return 'Telegram'
+  if (['واتساب', 'واتس', 'whatsapp'].includes(p)) return 'WhatsApp'
+  if (['موقع', 'موقع إلكتروني', 'موقع الكتروني', 'website', 'web'].includes(p)) return 'Website'
+  return platform
+}
+
+const getSocialLinkError = (link) => {
+  if (!link || !link.url || !link.url.trim() || !link.platform) return ''
+
+  // إذا كانت المنصة موقع إلكتروني أو أخرى، فلا توجد قيود على الرابط
+  if (link.platform === 'Website' || link.platform === 'Other') {
+    return ''
+  }
+
+  const rawUrl = link.url.trim().toLowerCase()
+
+  const platformRules = {
+    Facebook: {
+      name: 'Facebook (فيسبوك)',
+      domains: ['facebook.com', 'fb.com', 'fb.watch', 'm.facebook.com'],
+    },
+    Instagram: {
+      name: 'Instagram (إنستغرام)',
+      domains: ['instagram.com', 'instagr.am'],
+    },
+    'Twitter/X': {
+      name: 'Twitter / X (تويتر)',
+      domains: ['twitter.com', 'x.com', 't.co'],
+    },
+    LinkedIn: {
+      name: 'LinkedIn (لينكد إن)',
+      domains: ['linkedin.com'],
+    },
+    TikTok: {
+      name: 'TikTok (تيك توك)',
+      domains: ['tiktok.com', 'vm.tiktok.com'],
+    },
+    Snapchat: {
+      name: 'Snapchat (سناب شات)',
+      domains: ['snapchat.com'],
+    },
+    YouTube: {
+      name: 'YouTube (يوتيوب)',
+      domains: ['youtube.com', 'youtu.be'],
+    },
+    Pinterest: {
+      name: 'Pinterest (بينترست)',
+      domains: ['pinterest.com', 'pin.it'],
+    },
+    Threads: {
+      name: 'Threads (ثريدز)',
+      domains: ['threads.net'],
+    },
+    Telegram: {
+      name: 'Telegram (تيليجرام)',
+      domains: ['t.me', 'telegram.me', 'telegram.org'],
+    },
+    WhatsApp: {
+      name: 'WhatsApp (واتساب)',
+      domains: ['wa.me', 'whatsapp.com', 'api.whatsapp.com'],
+    },
+  }
+
+  // 1. فحص ما إذا كان الرابط المدخل يخص منصة أخرى معروفة غير المنصة المختارة
+  for (const [key, rule] of Object.entries(platformRules)) {
+    if (key !== link.platform && rule.domains.some((d) => rawUrl.includes(d))) {
+      const selectedName = platformRules[link.platform]?.name || link.platform
+      return `⚠️ الرابط المدخل يخص منصة ${rule.name} وليس منصة ${selectedName}!`
+    }
+  }
+
+  // 2. التحقق من أن الرابط ينتمي لنطاق المنصة المختارة
+  const currentRule = platformRules[link.platform]
+  if (currentRule) {
+    const isDomainMatch = currentRule.domains.some((d) => rawUrl.includes(d))
+    if (!isDomainMatch && (rawUrl.includes('.') || rawUrl.startsWith('http'))) {
+      return `⚠️ الرابط المدخل لا ينتمي لنطاق منصة ${currentRule.name}.`
+    }
+  }
+
+  return ''
+}
+
+const handleSocialUrlBlur = (link) => {
+  if (link && link.url && link.url.trim()) {
+    const u = link.url.trim()
+    if (!/^https?:\/\//i.test(u)) {
+      link.url = 'https://' + u
+    }
+  }
+}
+
 const addSocialLink = () => form.social_links.push({ platform: '', url: '' })
 const addDriveLink = () => form.drive_links.push({ title: '', url: '' })
 const removeDriveLink = (index) => { if(window.confirm('تأكيد الحذف؟')) form.drive_links.splice(index, 1) }
@@ -830,7 +978,12 @@ const openModal = (client) => {
       bank_account: client.bank_account || '',
       instapay: client.instapay || '',
       wallet: client.wallet || '',
-      social_links: client.social_links ? JSON.parse(JSON.stringify(client.social_links)) : [],
+      social_links: client.social_links
+        ? client.social_links.map((link) => ({
+            platform: normalizePlatform(link.platform),
+            url: link.url || '',
+          }))
+        : [],
       drive_links: client.drive_links ? JSON.parse(JSON.stringify(client.drive_links)) : [],
       contacts: client.contacts ? JSON.parse(JSON.stringify(client.contacts)) : [],
     })
@@ -857,6 +1010,14 @@ const saveClient = async () => {
     showToast('عذراً، لا تمتلك الصلاحية لحفظ بيانات العميل')
     return
   }
+
+  // فحص أخطاء روابط السوشيال ميديا قبل الحفظ
+  const invalidLink = form.social_links.find((link) => Boolean(getSocialLinkError(link)))
+  if (invalidLink) {
+    showToast(`⚠️ يرجى تصحيح رابط ${invalidLink.platform || 'المنصة'} غير المتطابق قبل الحفظ`)
+    return
+  }
+
   saving.value = true
   try {
     // إرسال البيانات للباك إند، الـ Validation سيتكفل بالباقي
@@ -1433,6 +1594,7 @@ onBeforeUnmount(() => {
 .form-group input,
 .form-group select,
 .dynamic-row input,
+.dynamic-row select,
 .contact-row input,
 .contact-row select {
   width: 100%;
@@ -1451,6 +1613,7 @@ onBeforeUnmount(() => {
 .form-group input:focus,
 .form-group select:focus,
 .dynamic-row input:focus,
+.dynamic-row select:focus,
 .contact-row input:focus,
 .contact-row select:focus {
   border-color: #76e8de;
@@ -2021,6 +2184,66 @@ onBeforeUnmount(() => {
 .drive-link-card:hover {
   background: rgba(14, 21, 62, 0.7);
   border-color: rgba(125, 232, 220, 0.4);
+}
+
+.social-link-wrapper {
+  margin-bottom: 12px;
+}
+.social-link-wrapper .dynamic-row {
+  margin-bottom: 0;
+}
+.platform-select {
+  cursor: pointer;
+  background-color: rgba(6, 11, 37, 0.46) !important;
+  color: #eef0ff !important;
+}
+.platform-select option {
+  background-color: #0c1233 !important;
+  color: #edf0ff !important;
+  padding: 8px;
+}
+.input-has-error {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25) !important;
+  background: rgba(239, 68, 68, 0.06) !important;
+}
+.social-validation-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+  font-size: 12px;
+  font-weight: 600;
+  animation: warning-slide-in 0.25s ease-out;
+}
+.social-validation-warning .warning-icon {
+  font-size: 14px;
+}
+@keyframes warning-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.slide-fade-enter-active {
+  transition: all 0.25s ease-out;
+}
+.slide-fade-leave-active {
+  transition: all 0.2s cubic-bezier(1, 0.5, 0.8, 1);
+}
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+  transform: translateY(-6px);
+  opacity: 0;
 }
 
 </style>

@@ -1,7 +1,7 @@
 <template>
   <section class="spreadsheet-page" dir="rtl">
     <div class="page-topline">
-      <div>
+      <div class="topline-info">
         <div class="breadcrumbs">
           <router-link to="/plan-contents">محتويات الخطط</router-link>
           <span>/</span>
@@ -10,6 +10,25 @@
         <h2>مصنع المحتوى (Spreadsheet)</h2>
         <p>تعديل فوري، تعبئة سريعة، وحفظ تلقائي لجميع خلايا الخطة.</p>
       </div>
+
+      <!-- تنبيه المنشورات العاجلة في المساحة البيضاء العلوية -->
+      <div v-if="urgentPosts.length > 0" class="urgent-top-banner" @click="scrollToUrgent" title="اضغط للانتقال إلى المنشورات العاجلة">
+        <div class="urgent-banner-icon">
+          <span class="beacon-pulse"></span>
+          🚨
+        </div>
+        <div class="urgent-banner-text">
+          <span class="urgent-banner-badge">{{ urgentPosts.length }}</span>
+          <span class="urgent-banner-label">
+            يوجد <strong>{{ urgentText }}</strong> بحاجة لمتابعة عاجلة
+          </span>
+        </div>
+        <button type="button" class="urgent-jump-btn" @click.stop="scrollToUrgent" title="التمرير إلى المنشور العاجل التالي">
+          <span>انتقال</span>
+          <span class="jump-arrow">⬇️</span>
+        </button>
+      </div>
+
       <div class="header-actions">
         <span v-if="saving" class="saving-indicator">
           <i class="spinner"></i> جارٍ الحفظ...
@@ -33,9 +52,9 @@
       <table class="spreadsheet-table">
         <thead>
           <tr>
-            <th :colspan="isMediaBuyer ? 3 : 5" class="group-header red-group">حالة المنشور</th>
+            <th :colspan="isDesignerOrEditor ? 2 : (isMediaBuyer ? 3 : 5)" class="group-header red-group">حالة المنشور</th>
             <th v-if="!isMediaBuyer" colspan="6" class="group-header admin-group">الإدارة والتكليف والمراجعة</th>
-            <th colspan="4" class="group-header dark-red-group">موقف التمويل</th>
+            <th v-if="!isDesignerOrEditor" colspan="4" class="group-header dark-red-group">موقف التمويل</th>
             <th v-if="!isMediaBuyer" colspan="8" class="group-header blue-group">محتوى المنشور</th>
             <th colspan="1" class="group-header light-blue-group">التسليم</th>
             <th colspan="1" class="group-header pink-group">ملاحظات</th>
@@ -43,10 +62,10 @@
           </tr>
           <tr>
             <th class="sub-th red-th">تاريخ النشر المخطط</th>
-            <th v-if="!isMediaBuyer" class="sub-th red-th">النشر الفعلي</th>
-            <th class="sub-th red-th">توقيت النشر</th>
+            <th v-if="!isMediaBuyer && !isDesignerOrEditor" class="sub-th red-th">النشر الفعلي</th>
+            <th v-if="!isDesignerOrEditor" class="sub-th red-th">توقيت النشر</th>
             <th v-if="!isMediaBuyer" class="sub-th red-th">منصة النشر</th>
-            <th class="sub-th red-th">روابط النشر</th>
+            <th v-if="!isDesignerOrEditor" class="sub-th red-th">روابط النشر</th>
 
             <th v-if="!isMediaBuyer" class="sub-th admin-th">المنفذ</th>
             <th v-if="!isMediaBuyer" class="sub-th admin-th">بدء التنفيذ</th>
@@ -55,10 +74,10 @@
             <th v-if="!isMediaBuyer" class="sub-th admin-th">مراجعة القسم</th>
             <th v-if="!isMediaBuyer" class="sub-th admin-th" style="background: #cfd8dc;">اعتماد المدير</th>
 
-            <th class="sub-th dark-red-th">منصة الإعلان</th>
-            <th class="sub-th dark-red-th">حالة التمويل</th>
-            <th class="sub-th dark-red-th">تكلفة التمويل ($)</th>
-            <th class="sub-th dark-red-th">أيام التمويل</th>
+            <th v-if="!isDesignerOrEditor" class="sub-th dark-red-th">منصة الإعلان</th>
+            <th v-if="!isDesignerOrEditor" class="sub-th dark-red-th">حالة التمويل</th>
+            <th v-if="!isDesignerOrEditor" class="sub-th dark-red-th">تكلفة التمويل ($)</th>
+            <th v-if="!isDesignerOrEditor" class="sub-th dark-red-th">أيام التمويل</th>
 
             <th v-if="!isMediaBuyer" class="sub-th blue-th">نوع المنشور</th>
             <th v-if="!isMediaBuyer" class="sub-th blue-th">الهدف</th>
@@ -75,10 +94,10 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-if="posts.length === 0">
-            <td :colspan="isMediaBuyer ? 9 : 26" class="text-center py-4 muted">لا توجد منشورات. قم بإضافة منشور جديد.</td>
+          <tr v-if="filteredPosts.length === 0">
+            <td :colspan="isMediaBuyer ? 9 : (isDesignerOrEditor ? 18 : 26)" class="text-center py-4 muted">لا توجد منشورات. قم بإضافة منشور جديد.</td>
           </tr>
-          <tr v-for="(post, index) in posts" :key="post.id" class="post-row" :class="{ 'urgent-row': post.is_urgent }">
+          <tr v-for="(post, index) in filteredPosts" :key="post.id" :id="'post-row-' + post.id" class="post-row" :class="{ 'urgent-row': post.is_urgent }">
             
             <!-- 2. حالة المنشور وموعد النشر الذكي -->
             <td class="readonly-cell position-relative" :class="getDeadlineStatus(currentPlan?.start_date || post.created_at, post.target_date, post.actual_publish_status).class + '-border'">
@@ -98,7 +117,7 @@
               </div>
             </td>
 
-            <td v-if="!isMediaBuyer">
+            <td v-if="!isMediaBuyer && !isDesignerOrEditor">
               <div class="lock-wrapper">
                 <select v-model="post.actual_publish_status" @change="handlePublishStatusChange(post, $event)" :class="post.actual_publish_status === 'لم يتم' ? 'text-red' : 'text-green'" :disabled="!canEditPublishAndNotes(post) || isFieldDisabled(post, 'actual_publish_status')">
                   <option value="لم يتم">لم يتم</option>
@@ -107,7 +126,7 @@
                 <span v-if="hasLockIcon(post, 'actual_publish_status')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'actual_publish_status')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
               </div>
             </td>
-            <td>
+            <td v-if="!isDesignerOrEditor">
               <div class="lock-wrapper">
                 <input type="text" v-model="post.publishing_time" @blur="autoSave(post, 'publishing_time')" placeholder="--:--" dir="ltr" :disabled="!canEditFields(post) || isFieldDisabled(post, 'publishing_time')" />
                 <span v-if="hasLockIcon(post, 'publishing_time')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'publishing_time')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
@@ -132,17 +151,20 @@
                 <span v-if="hasLockIcon(post, 'publishing_platform')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'publishing_platform')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
               </div>
             </td>
-            <td class="text-center">
-              <div v-if="post.published_links && Object.keys(post.published_links).length > 0" class="published-links-preview">
+            <td v-if="!isDesignerOrEditor" class="text-center">
+              <div v-if="hasPublishedLinks(post)" class="published-links-preview">
                 <a v-for="(link, platform) in post.published_links" :key="platform" 
                    v-show="link" :href="link" target="_blank" class="platform-link" :title="platform">
                   🔗 {{ platform }}
                 </a>
                 <button v-if="canEditLinks(post)" class="icon-btn edit-links" @click="openLinksModal(post, false)" title="تعديل الروابط">✏️</button>
               </div>
-              <button v-else class="secondary-btn small-btn" @click="openLinksModal(post, false)">
-                + إضافة روابط
-              </button>
+              <template v-else>
+                <button v-if="canEditLinks(post)" class="secondary-btn small-btn" @click="openLinksModal(post, false)">
+                  + إضافة روابط
+                </button>
+                <span v-else class="muted" style="font-size: 11px;">لا توجد روابط</span>
+              </template>
             </td>
 
             <!-- 1. الإدارة والتكليف -->
@@ -271,7 +293,7 @@
               </button>
             </td>
 
-            <td>
+            <td v-if="!isDesignerOrEditor">
               <div class="lock-wrapper">
                 <CustomMultiSelect
                   v-model="post.ad_platform"
@@ -288,7 +310,7 @@
                 <span v-if="hasLockIcon(post, 'ad_platform')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'ad_platform')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
               </div>
             </td>
-            <td>
+            <td v-if="!isDesignerOrEditor">
               <div class="lock-wrapper">
                 <select v-model="post.finance_status" @change="autoSave(post, 'finance_status')" :disabled="!canEditFields(post) || isFieldDisabled(post, 'finance_status')">
                   <option value="غير ممول">غير ممول</option>
@@ -297,7 +319,7 @@
                 <span v-if="hasLockIcon(post, 'finance_status')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'finance_status')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
               </div>
             </td>
-            <td>
+            <td v-if="!isDesignerOrEditor">
               <div class="lock-wrapper">
                 <input 
                   type="number" 
@@ -311,7 +333,7 @@
                 <span v-if="hasLockIcon(post, 'finance_cost')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'finance_cost')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
               </div>
             </td>
-            <td>
+            <td v-if="!isDesignerOrEditor">
               <div class="lock-wrapper">
                 <input 
                   type="number" 
@@ -448,7 +470,18 @@
                 >تسجيل التسليم</button>
               </div>
             </td>
-            <td><textarea v-model="post.notes" @blur="autoSave(post, 'notes')" rows="2" placeholder="..." :disabled="!canEditPublishAndNotes(post)"></textarea></td>
+            <td>
+              <div class="lock-wrapper">
+                <textarea 
+                  v-model="post.notes" 
+                  @blur="autoSave(post, 'notes')" 
+                  rows="2" 
+                  placeholder="..." 
+                  :disabled="!canEditNotes(post) || isFieldDisabled(post, 'notes')"
+                ></textarea>
+                <span v-if="hasLockIcon(post, 'notes')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'notes')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
+              </div>
+            </td>
             <td v-if="isManager" class="text-center">
               <button 
                 class="icon-btn delete-btn" 
@@ -780,7 +813,7 @@
                     <div v-else class="no-data">لم يتم تسليم ملفات بعد</div>
                   </div>
                   
-                  <div class="link-group" v-if="selectedPostForView.published_links && Object.keys(selectedPostForView.published_links).length">
+                  <div class="link-group" v-if="hasPublishedLinks(selectedPostForView)">
                     <span class="group-label">تم النشر على (Live Links)</span>
                     <div class="premium-links-container">
                       <a v-for="(link, platform) in selectedPostForView.published_links" :key="platform" v-show="link" :href="link" target="_blank" class="premium-btn-link live-link">
@@ -809,7 +842,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
 import api from '../axios';
 import { VueDatePicker } from '@vuepic/vue-datepicker';
@@ -834,8 +867,71 @@ const posts = ref([]);
 const allUsers = ref([]);
 const currentUser = ref(getStoredUser());
 const currentPlan = ref(null);
+const isPlanResponsible = ref(false);
 
-const isMediaBuyer = computed(() => currentUser.value?.job_title === 'Media Buyer');
+const isMediaBuyer = computed(() => {
+  return !isPlanResponsible.value && currentUser.value?.job_title === 'Media Buyer';
+});
+
+const isDesignerOrEditor = computed(() => {
+  return !isPlanResponsible.value && ['Graphic Designer', 'Video Editor'].includes(currentUser.value?.job_title);
+});
+
+const filteredPosts = computed(() => {
+  // 1. المدير أو مسئول الخطة: يرى كل الصفوف
+  if (currentUser.value?.role === 'manager' || isPlanResponsible.value) {
+    return posts.value;
+  }
+  
+  // 2. الميديا باير: يرى فقط المنشورات الممولة
+  if (currentUser.value?.job_title === 'Media Buyer') {
+    return posts.value.filter(post => post.finance_status === 'ممول');
+  }
+  
+  // 3. باقي الموظفين (مصمم، مونتير، الخ): يرون فقط المنشورات التي تخصهم
+  const currentUserId = currentUser.value?.id;
+  return posts.value.filter(post => {
+    const isDesigner = post.designer_id == currentUserId;
+    // التأكد من أن reviewer_ids مصفوفة وتحتوي على الـ id
+    const isReviewer = Array.isArray(post.reviewer_ids) && post.reviewer_ids.some(id => String(id) === String(currentUserId));
+    
+    return isDesigner || isReviewer;
+  });
+});
+
+// المنشورات العاجلة والتنبيه العلوي
+const currentUrgentIndex = ref(0);
+const urgentPosts = computed(() => {
+  return filteredPosts.value.filter(p => Boolean(p.is_urgent));
+});
+
+const urgentText = computed(() => {
+  const c = urgentPosts.value.length;
+  if (c === 1) return 'منشور عاجل واحد';
+  if (c === 2) return 'منشوران عاجلان';
+  if (c >= 3 && c <= 10) return `${c} منشورات عاجلة`;
+  return `${c} منشوراً عاجلاً`;
+});
+
+const scrollToUrgent = () => {
+  if (!urgentPosts.value.length) return;
+  
+  if (currentUrgentIndex.value >= urgentPosts.value.length) {
+    currentUrgentIndex.value = 0;
+  }
+  
+  const targetPost = urgentPosts.value[currentUrgentIndex.value];
+  const el = document.getElementById(`post-row-${targetPost.id}`);
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('urgent-highlight-pulse');
+    setTimeout(() => {
+      el.classList.remove('urgent-highlight-pulse');
+    }, 2500);
+  }
+  
+  currentUrgentIndex.value = (currentUrgentIndex.value + 1) % urgentPosts.value.length;
+};
 
 const planStartDate = computed(() => {
   if (!currentPlan.value || !currentPlan.value.start_date) return null;
@@ -859,6 +955,28 @@ const closeViewModal = () => {
   isViewModalOpen.value = false;
   selectedPostForView.value = null;
 };
+
+const checkAndOpenQueryPost = () => {
+  const targetPostId = route.query.postId || route.query.viewPost || route.query.post_id;
+  if (!targetPostId || !posts.value.length) return;
+  
+  const foundPost = posts.value.find(p => String(p.id) === String(targetPostId));
+  if (foundPost) {
+    openViewModal(foundPost);
+    nextTick(() => {
+      const rowEl = document.getElementById(`post-row-${foundPost.id}`);
+      if (rowEl) {
+        rowEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        rowEl.classList.add('urgent-highlight-pulse');
+        setTimeout(() => rowEl.classList.remove('urgent-highlight-pulse'), 3000);
+      }
+    });
+  }
+};
+
+watch(() => route.query.postId, () => {
+  checkAndOpenQueryPost();
+});
 
 const getUserName = (id) => {
   if (!id) return 'غير محدد';
@@ -913,8 +1031,6 @@ const newRowDate = ref('');
 const newRowIsUrgent = ref(false);
 const addingRow = ref(false);
 
-const isPlanResponsible = ref(false);
-
 const rejectModalPost = ref(null);
 const rejectReason = ref('');
 const activeReviewType = ref(''); 
@@ -933,6 +1049,7 @@ const tempLinks = ref({});
 const pendingPublishStatus = ref(false);
 
 const openLinksModal = (post, fromPublishAction = false) => {
+  if (isMediaBuyer.value) return;
   currentPostForLinks.value = post;
   pendingPublishStatus.value = fromPublishAction;
   tempLinks.value = {};
@@ -953,12 +1070,19 @@ const openLinksModal = (post, fromPublishAction = false) => {
   showLinksModal.value = true;
 };
 
+const hasPublishedLinks = (post) => {
+  if (!post || !post.published_links) return false;
+  return Object.values(post.published_links).some(link => link && String(link).trim() !== '');
+};
+
 const canEditLinks = (post) => {
-  const hasLinks = post.published_links && Object.values(post.published_links).some(link => link && String(link).trim() !== '');
+  if (isMediaBuyer.value) return false;
+  const hasLinks = hasPublishedLinks(post);
   return !hasLinks || isManager.value; 
 };
 
 const savePublishedLinks = async () => {
+  if (isMediaBuyer.value) return;
   const post = currentPostForLinks.value;
   
   let platforms = [];
@@ -1070,6 +1194,29 @@ const canEditPublishAndNotes = (post) => {
   if (isPlanResponsible.value) return true;
   
   return canEditFields(post);
+};
+
+const canEditNotes = (post) => {
+  if (!currentUser.value) return false;
+  if (isManager.value) return true;
+  if (isPlanResponsible.value) return true;
+
+  const currentUserId = String(currentUser.value.id);
+
+  // 1. إذا كان الموظف هو المنفذ المسند إليه المنشور
+  const isExecutor = post.designer_id != null && String(post.designer_id) === currentUserId;
+
+  // 2. إذا كان الموظف أحد المراجعين المسند إليهم المنشور
+  let isReviewer = false;
+  if (post.reviewer_ids) {
+    if (Array.isArray(post.reviewer_ids)) {
+      isReviewer = post.reviewer_ids.some(id => String(id) === currentUserId);
+    } else {
+      isReviewer = String(post.reviewer_ids) === currentUserId;
+    }
+  }
+
+  return isExecutor || isReviewer;
 };
 
 const canEditDelivery = (post) => {
@@ -1312,6 +1459,9 @@ const fetchPosts = async () => {
     showToast('تعذر تحميل بيانات اللوحة.');
   } finally {
     loading.value = false;
+    nextTick(() => {
+      checkAndOpenQueryPost();
+    });
   }
 };
 
@@ -1346,7 +1496,12 @@ const deletePost = async (post, index) => {
 
   try {
     await api.delete(`/plan-posts/${post.id}`);
-    posts.value.splice(index, 1);
+    const idx = posts.value.findIndex(p => p.id === post.id);
+    if (idx !== -1) {
+      posts.value.splice(idx, 1);
+    } else {
+      posts.value.splice(index, 1);
+    }
     if (typeof showToast === 'function') {
       showToast('تم حذف الصف بنجاح 🗑️');
     }
@@ -2345,6 +2500,131 @@ input:disabled, select:disabled, textarea:disabled, .custom-multiselect.disabled
   0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
   70% { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0); }
   100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+/* تنبيه المنشورات العاجلة في الشريط العلوي */
+.urgent-top-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(135deg, #fff5f5 0%, #fee2e2 100%);
+  border: 1.5px solid #ef4444;
+  border-radius: 30px;
+  padding: 6px 16px;
+  box-shadow: 0 3px 12px rgba(239, 68, 68, 0.15), 0 0 0 1px rgba(239, 68, 68, 0.08);
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: banner-pulse 3s infinite ease-in-out;
+}
+
+.urgent-top-banner:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(239, 68, 68, 0.25);
+  background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%);
+}
+
+.urgent-banner-icon {
+  position: relative;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.beacon-pulse {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.4);
+  animation: beacon-wave 2s infinite;
+  z-index: 0;
+}
+
+@keyframes beacon-wave {
+  0% { transform: scale(0.6); opacity: 0.8; }
+  100% { transform: scale(1.7); opacity: 0; }
+}
+
+@keyframes banner-pulse {
+  0% { border-color: rgba(239, 68, 68, 0.6); box-shadow: 0 3px 12px rgba(239, 68, 68, 0.12); }
+  50% { border-color: rgba(220, 38, 38, 1); box-shadow: 0 4px 16px rgba(239, 68, 68, 0.25); }
+  100% { border-color: rgba(239, 68, 68, 0.6); box-shadow: 0 3px 12px rgba(239, 68, 68, 0.12); }
+}
+
+.urgent-banner-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #991b1b;
+  font-weight: 600;
+}
+
+.urgent-banner-badge {
+  background: #dc2626;
+  color: #fff;
+  padding: 1px 9px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 800;
+  box-shadow: 0 2px 4px rgba(220, 38, 38, 0.3);
+}
+
+.urgent-banner-label strong {
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+.urgent-jump-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #dc2626;
+  color: #fff;
+  border: none;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.25);
+}
+
+.urgent-jump-btn:hover {
+  background: #b91c1c;
+  transform: scale(1.04);
+}
+
+.urgent-jump-btn .jump-arrow {
+  font-size: 11px;
+  animation: bounce-down 1.5s infinite;
+}
+
+@keyframes bounce-down {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(2px); }
+}
+
+/* تأثير التمييز عند الانتقال إلى المنشور العاجل */
+.urgent-highlight-pulse td {
+  background-color: rgba(254, 202, 202, 0.6) !important;
+  transition: background-color 0.4s ease;
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.6) inset !important;
+}
+
+@media (max-width: 900px) {
+  .page-topline {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .urgent-top-banner {
+    order: 3;
+    width: 100%;
+    justify-content: space-between;
+  }
 }
 
 </style>

@@ -112,7 +112,7 @@ const router = createRouter({
 })
 
 // Navigation Guard
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   const token = localStorage.getItem('token')
   const role = localStorage.getItem('role')
 
@@ -132,16 +132,16 @@ router.beforeEach((to, from, next) => {
   // التحقق إذا كان المسار أو أي من آبائه يحتاج تسجيل دخول
   if (to.matched.some((record) => record.meta.requiresAuth)) {
     if (!token) {
-      return next('/') // طرده لصفحة الدخول
+      return '/' // طرده لصفحة الدخول
     }
 
     // فحص مسار العملاء: السماح للمدير أو Account Manager أو Sales
     if (to.matched.some((record) => record.meta.canManageAccounts) || to.path === '/manager/clients' || to.path === '/clients') {
       const allowed = canManageAccounts(user) || (user && (user.role === 'manager' || user.job_title === 'Account Manager' || user.job_title === 'Sales'))
       if (allowed) {
-        return next()
+        return
       } else {
-        return role === 'manager' ? next('/manager/dashboard') : next('/employee/dashboard')
+        return role === 'manager' ? '/manager/dashboard' : '/employee/dashboard'
       }
     }
 
@@ -149,25 +149,23 @@ router.beforeEach((to, from, next) => {
     if (to.matched.some((record) => record.meta.canManagePlans) || to.path === '/content-plans') {
       const allowed = canManagePlans(user) || (user && (user.role === 'manager' || user.job_title === 'Account Manager'))
       if (allowed) {
-        return next()
+        return
       } else {
-        return role === 'manager' ? next('/manager/dashboard') : next('/my-tasks')
+        return role === 'manager' ? '/manager/dashboard' : '/my-tasks'
       }
     }
 
     // التحقق من الصلاحيات بناءً على الدور
     if (to.meta.role && to.meta.role !== role) {
       // توجيهه للوحة المناسبة لدوره
-      return role === 'manager' ? next('/manager/dashboard') : next('/employee/dashboard')
+      return role === 'manager' ? '/manager/dashboard' : '/employee/dashboard'
     }
   } else {
     // لو رايح لصفحة تسجيل الدخول وهو مسجل دخول بالفعل
     if (token && to.path === '/') {
-      return role === 'manager' ? next('/manager/dashboard') : next('/employee/dashboard')
+      return role === 'manager' ? '/manager/dashboard' : '/employee/dashboard'
     }
   }
-
-  next()
 })
 
 export default router

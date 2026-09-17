@@ -125,7 +125,19 @@
                 
                 <div class="task-footer">
                   <div class="due-date-smart" :title="'تاريخ الإنشاء: ' + formatDate(element.created_at)">
-                    <span>🕒 {{ formatDate(element.due_date) || 'بدون موعد' }}</span>
+                    <div class="due-date-row">
+                      <span>🕒 {{ formatDate(element.due_date) || 'بدون موعد' }}</span>
+                      <!-- العداد التنازلي الحي -->
+                      <span 
+                        v-if="element.due_date && element.status !== 'completed'"
+                        class="countdown-pill" 
+                        :class="'countdown-' + getRemainingTime(element.due_date).status"
+                        :title="'الوقت المتبقي حتى التسليم'"
+                      >
+                        <span class="countdown-dot"></span>
+                        <span class="countdown-text">⏳ {{ getRemainingTime(element.due_date).text }}</span>
+                      </span>
+                    </div>
                     <span class="sla-msg">{{ getDeadlineStatus(element.created_at, element.due_date, element.status).message }}</span>
                   </div>
                   <div class="assignee-avatar" :title="'المسؤول: ' + (element.assignee?.name || 'غير محدد')">
@@ -191,8 +203,8 @@
 
             <div class="form-grid">
               <div class="form-group">
-                <label>تاريخ الاستحقاق (Deadline)</label>
-                <input v-model="taskForm.due_date" type="date" :disabled="!isManager" />
+                <label>تاريخ ووقت الاستحقاق (Deadline)</label>
+                <input v-model="taskForm.due_date" type="datetime-local" :disabled="!isManager" />
                 <!-- رسالة مساعدة تظهر للمدير ليتذكر إطار المشروع -->
                 <small v-if="isManager" class="muted mt-1" style="display:block; font-size: 10px;">يجب أن يكون بين {{ project?.start_date }} و {{ project?.end_date }}</small>
               </div>
@@ -298,13 +310,17 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from 'vue';
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import draggable from 'vuedraggable';
 import api from '../axios';
 
 // استيراد المحرك الذكي
 import { getDeadlineStatus } from '../utils/timeHelper';
+
+// توقيت مرجعي مركزي يتحدث كل دقيقة للعداد التنازلي
+const currentTime = ref(new Date().getTime());
+let timerInterval = null;
 
 const route = useRoute();
 const project = ref(null);
@@ -441,8 +457,48 @@ const taskForm = reactive({
 
 const showToast = (msg) => { toastMessage.value = msg; clearTimeout(toastTimer); toastTimer = setTimeout(() => toastMessage.value = '', 4000); };
 const getInitials = (name) => name ? name.trim().split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase() : '';
-const truncate = (text, len) => text.length > len ? text.substring(0, len) + '...' : text;
-const formatDate = (date) => date ? new Date(date).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' }) : '';
+const truncate = (text, len) => (text && text.length > len) ? text.substring(0, len) + '...' : (text || '');
+const formatDate = (date) => {
+  if (!date) return '';
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '';
+  const dateStr = d.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
+  const hasTime = String(date).includes(':');
+  if (hasTime) {
+    const timeStr = d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+    return `${dateStr} (${timeStr})`;
+  }
+  return dateStr;
+};
+
+const getRemainingTime = (dueDate) => {
+  if (!dueDate) return { text: 'غير محدد', status: 'normal' };
+
+  const due = new Date(dueDate).getTime();
+  const now = currentTime.value;
+  const diff = due - now;
+
+  if (diff < 0) {
+    return { text: 'متأخر', status: 'danger' }; // أحمر
+  }
+
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+  let text = '';
+  if (days > 0) text += `${days} يوم `;
+  if (hours > 0) text += `${hours} ساعة `;
+  if (days === 0 && minutes > 0) text += `${minutes} دقيقة`;
+  
+  if (text === '') text = 'أقل من دقيقة';
+
+  // تحديد الحالة اللونية
+  let status = 'normal'; // أخضر أو رمادي
+  if (days === 0) status = 'warning'; // برتقالي إذا كان التسليم اليوم
+
+  return { text: text.trim(), status };
+};
 
 const getPriorityLabel = (p) => {
   const labels = { low: 'منخفضة', medium: 'متوسطة', high: 'عالية', urgent: 'عاجلة' };
@@ -551,8 +607,13 @@ const openTaskModal = (task = null) => {
     isEditingTask.value = true; editTaskId.value = task.id;
     Object.assign(taskForm, {
       title: task.title, description: task.description || '', status: task.status,
-      priority: task.priority, due_date: task.due_date || '', assigned_to: task.assigned_to || ''
+      priority: task.priority, due_date: '', assigned_to: task.assigned_to || ''
     });
+
+    if (task.due_date) {
+      // تحويل المسافة إلى T وقص الثواني ليقبلها حقل الإدخال
+      taskForm.due_date = task.due_date.replace(' ', 'T').substring(0, 16);
+    }
   } else {
     isEditingTask.value = false; editTaskId.value = null;
     Object.assign(taskForm, { title: '', description: '', status: 'todo', priority: 'medium', due_date: '', assigned_to: '' });
@@ -565,12 +626,17 @@ const closeTaskModal = () => { showTaskModal.value = false; };
 const saveTask = async () => {
   savingTask.value = true;
   try {
+    const payload = {
+      ...taskForm,
+      due_date: taskForm.due_date ? taskForm.due_date : null
+    };
+
     let res;
     if (isEditingTask.value) {
-      res = await api.put(`/tasks/${editTaskId.value}`, taskForm);
+      res = await api.put(`/tasks/${editTaskId.value}`, payload);
       showToast('تم التحديث بنجاح');
     } else {
-      res = await api.post(`/projects/${project.value.id}/tasks`, taskForm);
+      res = await api.post(`/projects/${project.value.id}/tasks`, payload);
       showToast('تمت إضافة المهمة للوحة');
     }
     
@@ -602,6 +668,13 @@ const deleteTask = async (taskId) => {
 
 onMounted(() => {
   fetchProjectData();
+  timerInterval = setInterval(() => {
+    currentTime.value = new Date().getTime();
+  }, 60000); // تحديث كل 60 ثانية
+});
+
+onUnmounted(() => {
+  if (timerInterval) clearInterval(timerInterval);
 });
 </script>
 
@@ -700,7 +773,65 @@ onMounted(() => {
   100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }
 }
 
-.due-date-smart { display: flex; flex-direction: column; gap: 3px; font-size: 10px; color: #7c87b5; }
+.due-date-smart { display: flex; flex-direction: column; gap: 4px; font-size: 10px; color: #7c87b5; }
+.due-date-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.countdown-pill { 
+  display: inline-flex; 
+  align-items: center; 
+  gap: 4px; 
+  padding: 2px 7px; 
+  border-radius: 6px; 
+  font-size: 9px; 
+  font-weight: 700; 
+  line-height: 1.2;
+  transition: all 0.3s ease;
+}
+.countdown-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* status === 'danger' -> أحمر */
+.countdown-danger {
+  background: rgba(239, 68, 68, 0.18);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+.countdown-danger .countdown-dot {
+  background: #ef4444;
+  box-shadow: 0 0 6px #ef4444;
+  animation: countdown-pulse-anim 1.5s infinite;
+}
+
+/* status === 'warning' -> برتقالي/أصفر */
+.countdown-warning {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fcd34d;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+.countdown-warning .countdown-dot {
+  background: #f59e0b;
+  box-shadow: 0 0 6px #f59e0b;
+}
+
+/* status === 'normal' -> أخضر طبيعي أو زمردي هادئ */
+.countdown-normal {
+  background: rgba(16, 185, 129, 0.15);
+  color: #6ee7b7;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+.countdown-normal .countdown-dot {
+  background: #10b981;
+}
+
+@keyframes countdown-pulse-anim {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  50% { transform: scale(1.3); opacity: 1; }
+  100% { transform: scale(0.9); opacity: 0.8; }
+}
+
 .sla-msg { font-size: 9px; font-weight: bold; }
 
 .task-card.dl-completed .sla-msg { color: #7de8dc; }

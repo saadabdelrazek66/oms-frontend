@@ -144,22 +144,37 @@ select {
 }
 
 .sidebar-container {
-  flex: 0 0 286px;
-  position: sticky;
+  position: fixed;
   top: 0;
+  right: 0;
+  bottom: 0;
   z-index: 50;
   width: 286px;
   height: 100vh;
+  height: 100dvh;
+  max-height: 100vh;
+  max-height: 100dvh;
   overflow: hidden;
-  transition: width .28s ease, flex-basis .28s ease;
+  transition: transform .28s ease, width .28s ease;
+  transform: translate3d(0, 0, 0);
+}
+
+.sidebar-container.open {
+  transform: translate3d(0, 0, 0);
+}
+
+.sidebar-container:not(.open) {
+  transform: translate3d(105%, 0, 0);
+  pointer-events: none;
 }
 
 .sidebar-container > .sidebar {
   height: 100%;
-  min-height: 100vh;
+  max-height: 100%;
 }
 
 .main-content {
+  margin-right: 286px;
   min-width: 0;
   min-height: 100vh;
   flex: 1 1 auto;
@@ -168,6 +183,11 @@ select {
   background:
     radial-gradient(circle at 86% 0%, rgba(91, 61, 180, .12), transparent 32%),
     #0a1030;
+  transition: margin-right .28s ease;
+}
+
+.sidebar-container:not(.open) + .main-content {
+  margin-right: 0;
 }
 
 .main-content > .navbar {
@@ -230,6 +250,10 @@ select {
     display: block;
   }
 
+  .main-content {
+    margin-right: 0 !important;
+  }
+
   .sidebar-container {
     position: fixed;
     inset: 0 0 0 auto;
@@ -246,6 +270,11 @@ select {
     transform: translate3d(0, 0, 0);
   }
 
+  .sidebar-container:not(.open) {
+    transform: translate3d(105%, 0, 0);
+    pointer-events: none;
+  }
+
   .sidebar-container > .sidebar {
     min-height: 100%;
     height: 100%;
@@ -257,19 +286,18 @@ select {
   }
 }
 
-.sidebar-container:not(.open) {
-  width: 0;
-  flex-basis: 0;
-  overflow: hidden;
-  pointer-events: none;
+/* Keep every page modal above both the Sidebar and its mobile overlay. */
+.modal-overlay,
+.details-overlay {
+  z-index: 1000 !important;
 }
 
-/* Keep every page modal above both the Sidebar and its mobile overlay. */
-:global(.modal-overlay),
-:global(.details-overlay),
-:global(.image-viewer-overlay),
-:global(.toast-message) {
-  z-index: 1000 !important;
+.image-viewer-overlay {
+  z-index: 999999 !important;
+}
+
+.toast-message {
+  z-index: 1000000 !important;
 }
 
 @media (max-width: 760px) {

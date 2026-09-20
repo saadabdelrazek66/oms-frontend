@@ -1,6 +1,14 @@
 <template>
   <aside class="sidebar" dir="rtl" aria-label="القائمة الجانبية">
-    <div class="brand">
+    <!-- خلفية التأثيرات الضوئية المعزولة عن التمرير لمنع تمدد المساحة الفارغة -->
+    <div class="sidebar-glow-bg" aria-hidden="true">
+      <div class="glow-orb glow-top"></div>
+      <div class="glow-orb glow-bottom"></div>
+    </div>
+
+    <!-- الحاوية الداخلية المرنة لحل مشكلة الفراغ السفلي -->
+    <div class="sidebar-inner">
+      <div class="brand">
       <router-link to="/" class="brand-link" title="Octo Media">
         <div class="brand-icon" aria-hidden="true">
           <img src="/logo.png" alt="Octo Media" class="brand-logo-img" />
@@ -67,6 +75,22 @@
           </svg>
         </span>
         <span class="text">مساحة العمل</span>
+      </router-link>
+
+      <!-- رابط المهام السريعة -->
+      <router-link to="/quick-tasks" class="nav-item">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+        </svg>
+        <span>المهام السريعة</span><em>Q</em>
       </router-link>
 
       <router-link v-if="role === 'manager'" class="nav-item" to="/manager/departments">
@@ -225,12 +249,13 @@
       <a href="#" @click.prevent><span class="quick-icon orange">?</span> المساعدة والدعم</a>
     </div>
 
-    <div class="sidebar-bottom">
-      <div class="ocean-tip">
-        <span aria-hidden="true">✧</span>
-        <div>
-          <strong>نصيحة اليوم</strong>
-          <p>أنجز مهامك بتركيز، خطوة واحدة في كل مرة.</p>
+      <div class="sidebar-bottom">
+        <div class="ocean-tip">
+          <span aria-hidden="true">✧</span>
+          <div>
+            <strong>نصيحة اليوم</strong>
+            <p>أنجز مهامك بتركيز، خطوة واحدة في كل مرة.</p>
+          </div>
         </div>
       </div>
     </div>
@@ -313,31 +338,48 @@ const logout = () => {
 
 .sidebar {
   width: 100%;
-  min-height: 100%;
   height: 100%;
-  display: flex;
-  flex-direction: column;
-  padding: max(27px, env(safe-area-inset-top)) 18px max(20px, env(safe-area-inset-bottom));
   position: relative;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
-  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(145, 160, 231, 0.25) transparent;
   color: #e9ebff;
   background: linear-gradient(180deg, #11163d 0%, #0c1231 68%, #0b102b 100%);
   border-left: 1px solid rgba(145, 160, 231, 0.16);
   font-family: 'Cairo', sans-serif;
 }
 
-.sidebar::before,
-.sidebar::after {
-  content: '';
-  position: absolute;
-  pointer-events: none;
-  border-radius: 50%;
+.sidebar::-webkit-scrollbar {
+  width: 5px;
+}
+.sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidebar::-webkit-scrollbar-thumb {
+  background: rgba(145, 160, 231, 0.22);
+  border-radius: 10px;
+}
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(125, 232, 220, 0.45);
 }
 
-.sidebar::before {
+.sidebar-glow-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.glow-orb {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.glow-top {
   width: 240px;
   height: 240px;
   left: -155px;
@@ -347,7 +389,7 @@ const logout = () => {
   filter: blur(40px);
 }
 
-.sidebar::after {
+.glow-bottom {
   width: 180px;
   height: 180px;
   right: -130px;
@@ -355,6 +397,15 @@ const logout = () => {
   background: #43d9cf;
   opacity: 0.08;
   filter: blur(35px);
+}
+
+.sidebar-inner {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: max(22px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom));
+  position: relative;
+  z-index: 1;
 }
 
 .brand,
@@ -467,8 +518,8 @@ const logout = () => {
   align-items: center;
   gap: 10px;
   min-width: 0;
-  margin: 39px 0 32px;
-  padding: 12px 11px;
+  margin: 22px 0 20px;
+  padding: 11px;
   border: 1px solid rgba(143, 157, 226, 0.14);
   border-radius: 15px;
   background: rgba(34, 41, 92, 0.52);
@@ -537,7 +588,7 @@ const logout = () => {
 }
 
 .workspace-label {
-  margin-top: 32px;
+  margin-top: 22px;
 }
 
 .nav-list,
@@ -753,17 +804,17 @@ const logout = () => {
 }
 
 @media (max-height: 680px) and (max-width: 760px) {
-  .sidebar {
+  .sidebar-inner {
     padding-top: max(16px, env(safe-area-inset-top));
   }
 
   .profile-card {
-    margin-top: 20px;
-    margin-bottom: 20px;
+    margin-top: 14px;
+    margin-bottom: 14px;
   }
 
   .workspace-label {
-    margin-top: 20px;
+    margin-top: 14px;
   }
 }
 

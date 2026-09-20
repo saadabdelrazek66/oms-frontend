@@ -98,6 +98,12 @@ const router = createRouter({
           props: true,
         },
         {
+          path: '/quick-tasks',
+          name: 'QuickTasksBoard',
+          component: () => import('../views/QuickTasksBoard.vue'),
+          meta: { title: 'المهام السريعة' },
+        },
+        {
           path: '/system-logs',
           name: 'SystemLogs',
           component: SystemLogs,

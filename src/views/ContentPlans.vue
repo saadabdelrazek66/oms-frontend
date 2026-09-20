@@ -135,39 +135,66 @@
 
     <div class="plans-card">
       <div class="card-heading">
-        <div><h3>الخطط الحالية <span>{{ plans.length }}</span></h3><p>حالة التسليم والمراجعة</p></div>
+        <div class="heading-title-group">
+          <h3>الخطط الحالية <span>{{ plans.length }}</span></h3>
+          <p>متابعة دورات الإنتاج، المراجعة، ومواعيد التسليم</p>
+        </div>
 
-        <!-- أدوات التمرير السريع ومعلومات السحب بالماوس -->
-        <div class="table-scroll-tools" v-if="isOverflowing">
-          <span class="drag-hint">
-            <span class="hint-icon">🖐️</span>
-            <span>اسحب بالماوس أو Shift + العجلة</span>
-          </span>
-          <div class="quick-nav-group">
-            <button
-              type="button"
-              class="quick-nav-btn"
-              :disabled="!canScrollRight"
-              @click="scrollTable('right')"
-              title="تمرير الجدول لليمين"
-              aria-label="تمرير الجدول لليمين"
+        <div class="heading-actions-bar">
+          <!-- أزرار تبديل نمط العرض (كروت / جدول) -->
+          <div class="view-switcher">
+            <button 
+              type="button" 
+              class="switcher-btn" 
+              :class="{ active: viewMode === 'cards' }" 
+              @click="setViewMode('cards')"
+              title="عرض الكروت المنظمة (حديث ومبهر)"
             >
-              <span>▶</span> لليمين
+              <span>🔲</span> الكروت
             </button>
-            <button
-              type="button"
-              class="quick-nav-btn"
-              :disabled="!canScrollLeft"
-              @click="scrollTable('left')"
-              title="تمرير الجدول لليسار"
-              aria-label="تمرير الجدول لليسار"
+            <button 
+              type="button" 
+              class="switcher-btn" 
+              :class="{ active: viewMode === 'table' }" 
+              @click="setViewMode('table')"
+              title="عرض الجدول الممتد"
             >
-              لليسار <span>◀</span>
+              <span>📑</span> الجدول
             </button>
+          </div>
+
+          <!-- أدوات التمرير السريع للجدول (تظهر فقط في وضع الجدول عند وجود Overflow) -->
+          <div class="table-scroll-tools" v-if="viewMode === 'table' && isOverflowing">
+            <span class="drag-hint">
+              <span class="hint-icon">🖐️</span>
+              <span>اسحب بالماوس أو Shift + العجلة</span>
+            </span>
+            <div class="quick-nav-group">
+              <button
+                type="button"
+                class="quick-nav-btn"
+                :disabled="!canScrollRight"
+                @click="scrollTable('right')"
+                title="تمرير الجدول لليمين"
+                aria-label="تمرير الجدول لليمين"
+              >
+                <span>▶</span> لليمين
+              </button>
+              <button
+                type="button"
+                class="quick-nav-btn"
+                :disabled="!canScrollLeft"
+                @click="scrollTable('left')"
+                title="تمرير الجدول لليسار"
+                aria-label="تمرير الجدول لليسار"
+              >
+                لليسار <span>◀</span>
+              </button>
+            </div>
           </div>
         </div>
 
-        <div class="legend">
+        <div class="legend" v-if="viewMode === 'table'">
           <span><i class="green-dot"></i> مكتملة</span>
           <span><i class="blue-dot"></i> جاهزة لمراجعة العميل</span>
           <span><i class="purple-dot"></i> قيد المراجعة</span>
@@ -176,164 +203,396 @@
         </div>
       </div>
 
-      <div class="table-scroll-wrapper" ref="tableScrollWrapper">
-        <!-- أزرار التمرير العائمة على حواف الجدول -->
-        <button
-          v-if="isOverflowing && canScrollRight"
-          type="button"
-          class="edge-scroll-btn btn-right"
-          @click="scrollTable('right')"
-          title="تمرير الجدول لليمين"
-          aria-label="تمرير الجدول لليمين"
-        >
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-        </button>
+      <!-- ============================================== -->
+      <!-- 1. عرض الكروت المنظمة والحديثة (Cards View) -->
+      <!-- ============================================== -->
+      <div v-if="viewMode === 'cards'" class="cards-view-container">
+        <div v-if="loading" class="state-cell">
+          <span class="spinner"></span> جارٍ تحميل خطط المحتوى...
+        </div>
+        <div v-else-if="plans.length === 0" class="state-cell">
+          لا توجد خطط مسجلة حاليًا تطابق الفلاتر المحددة.
+        </div>
+        <div v-else class="plans-grid">
+          <div 
+            v-for="plan in plans" 
+            :key="plan.id" 
+            class="plan-card"
+            :class="['plan-card-' + plan.status, { 'is-delayed': isPlanDelayed(plan) }]"
+          >
+            <!-- شريط التوهج العلوي الديناميكي -->
+            <div class="card-accent-bar" :class="'accent-' + plan.status"></div>
 
-        <button
-          v-if="isOverflowing && canScrollLeft"
-          type="button"
-          class="edge-scroll-btn btn-left"
-          @click="scrollTable('left')"
-          title="تمرير الجدول لليسار"
-          aria-label="تمرير الجدول لليسار"
-        >
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-        </button>
-
-        <!-- ظلال أطراف الجدول لتوضيح وجود محتوى مخفي -->
-        <div class="scroll-edge-shadow shadow-right" :class="{ 'is-active': isOverflowing && canScrollRight }"></div>
-        <div class="scroll-edge-shadow shadow-left" :class="{ 'is-active': isOverflowing && canScrollLeft }"></div>
-
-        <div
-          class="table-responsive"
-          ref="tableContainer"
-          tabindex="0"
-          aria-label="جدول خطط المحتوى قابل للتمرير أفقيًا"
-          @mousedown="onTableMouseDown"
-          @mousemove="onTableMouseMove"
-          @mouseup="onTableMouseUp"
-          @wheel="onTableWheel"
-          @scroll="onTableScroll"
-        >
-          <table class="plans-table" :aria-busy="loading">
-          <thead>
-            <tr>
-              <th scope="col">العميل والخطة</th>
-              <th scope="col">المسؤول</th>
-              <th scope="col">المراجع الداخلي</th>
-              <th scope="col">القائم بالخطة (المنفذ)</th>
-              <th scope="col">التسليم النهائي</th>
-              <th scope="col">المراجعة وحالة الخطة</th>
-              <th scope="col">الروابط والمتابعة</th>
-              <th v-if="user && (user.role === 'manager' || user.job_title === 'Account Manager')">إدارة</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-if="loading"><td :colspan="(user && (user.role === 'manager' || user.job_title === 'Account Manager')) ? 8 : 7" class="state-cell"><span class="spinner"></span> جارٍ التحميل...</td></tr>
-            <tr v-else-if="plans.length === 0"><td :colspan="(user && (user.role === 'manager' || user.job_title === 'Account Manager')) ? 8 : 7" class="state-cell">لا توجد خطط مسجلة حاليًا</td></tr>
-            <tr v-for="plan in plans" v-else :key="plan.id">
-              <td>
-                <div class="plan-cell">
-                  <div class="plan-avatar">{{ getInitials(plan.client?.name || '؟') }}</div>
-                  <div><strong>{{ plan.client?.name || 'عميل محذوف' }}</strong><span>{{ plan.plan_type }}</span></div>
+            <!-- رأس الكارت: معلومات العميل والحالة والإجراءات الإدارية -->
+            <div class="card-header-row">
+              <div class="client-meta-group">
+                <div class="client-avatar-badge">{{ getInitials(plan.client?.name || '؟') }}</div>
+                <div class="client-title-block">
+                  <div class="client-title-line">
+                    <h3 class="client-heading" :title="plan.client?.name">{{ plan.client?.name || 'عميل محذوف' }}</h3>
+                    <span class="plan-type-tag">{{ plan.plan_type }}</span>
+                  </div>
+                  <div class="plan-date-range" v-if="plan.start_date || plan.end_date">
+                    <span class="range-icon">📅</span>
+                    <span class="range-text">{{ formatShortDate(plan.start_date) }} ⭢ {{ formatShortDate(plan.end_date) }}</span>
+                  </div>
                 </div>
-              </td>
-              <td><span class="people-cell">{{ getRoleNames(plan.users, 'responsible') }}</span></td>
-              <td><span v-if="plan.requires_review" class="people-cell">{{ getRoleNames(plan.users, 'reviewer') }}</span><span v-else class="muted">—</span></td>
-              <td><span class="people-cell">{{ getRoleNames(plan.users, 'executor') }}</span></td>
-              
-              <td>
-                <div class="milestone">
-                  <span class="date">{{ formatDate(plan.planned_delivery_date) }}</span>
-                  
-                  <div class="sla-indicator" v-if="plan.planned_delivery_date">
-                    <span class="sla-msg" :class="getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_delivery_date, plan.status).class + '-text'">
-                      {{ getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_delivery_date, plan.status).message }}
-                    </span>
-                    <div class="sla-progress-bg" v-if="plan.status !== 'completed'">
-                      <div class="sla-progress-fill" :class="getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_delivery_date, plan.status).class + '-bg'" :style="{ width: getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_delivery_date, plan.status).percentage + '%' }"></div>
-                    </div>
-                  </div>
+              </div>
 
-                  <div v-if="plan.status === 'completed'" class="status-badge status-green mt-2">
-                    <i></i> تم التسليم <small>{{ formatDate(plan.actual_delivery_date) }}</small>
-                  </div>
-                  <button v-else-if="isUserResponsible(plan) && (plan.status === 'reviewed' || (!plan.requires_review && (plan.status === 'pending' || plan.status === 'rejected')))" class="confirm-btn mt-2" type="button" :disabled="actionLoading === `delivery-${plan.id}`" @click="submitFinalDelivery(plan)">
-                    {{ actionLoading === `delivery-${plan.id}` ? 'جارٍ...' : 'تأكيد التسليم النهائي' }}
+              <div class="card-top-right">
+                <!-- شارة الحالة مع نقطة نابضة -->
+                <div :class="['card-status-badge', getPlanStatusInfo(plan.status).class]">
+                  <span class="pulse-indicator"></span>
+                  <span>{{ getPlanStatusInfo(plan.status).text }}</span>
+                </div>
+
+                <!-- أدوات الإدارة للمدير السريعة -->
+                <div class="admin-quick-actions" v-if="user && (user.role === 'manager' || user.job_title === 'Account Manager')">
+                  <button 
+                    v-if="plan.status !== 'completed'"
+                    class="quick-icon-btn wa-btn" 
+                    type="button" 
+                    title="تنبيه واتساب الذكي"
+                    aria-label="تنبيه واتساب"
+                    @click="smartNotify(plan)"
+                  >
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
                   </button>
-                  <span v-else class="muted mt-2 d-block">بانتظار إنهاء الدورة</span>
+                  <button class="quick-icon-btn duplicate" type="button" title="استنساخ كقالب" @click="openDuplicateModal(plan)">⎘</button>
+                  <button class="quick-icon-btn edit" type="button" title="تعديل الخطة" @click="openManagerModal(plan)">✎</button>
+                  <button class="quick-icon-btn delete" type="button" title="حذف الخطة" @click="deletePlan(plan.id)">⌫</button>
                 </div>
-              </td>
-              
-              <td>
-                <div class="milestone" style="min-width: 175px;">
-                  <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span v-if="plan.requires_review" class="date">{{ formatDate(plan.planned_review_date) }}</span>
-                    <span v-else class="muted mb-1" style="display:block;">— لا تتطلب مراجعة —</span>
-                    
-                    <button v-if="isManager && plan.status !== 'completed'" title="تنبيه واتساب الذكي" aria-label="إرسال تنبيه واتساب ذكي" class="wa-quick-btn" type="button" @click="smartNotify(plan)">
-                      <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
-                    </button>
+              </div>
+            </div>
+
+            <!-- صف الأدوار وفريق العمل -->
+            <div class="team-roles-panel">
+              <div class="team-role-item" :title="'المسؤول: ' + (getRoleNames(plan.users, 'responsible') || 'غير محدد')">
+                <span class="role-icon-crown">👑</span>
+                <div class="role-data">
+                  <span class="role-name-caption">المسؤول</span>
+                  <span class="role-user-val">{{ getRoleNames(plan.users, 'responsible') || '—' }}</span>
+                </div>
+              </div>
+
+              <div class="team-role-item" :title="plan.requires_review ? ('المراجع: ' + (getRoleNames(plan.users, 'reviewer') || 'غير محدد')) : 'لا تتطلب مراجعة'">
+                <span class="role-icon-eye">👁️</span>
+                <div class="role-data">
+                  <span class="role-name-caption">المراجع</span>
+                  <span class="role-user-val" v-if="plan.requires_review">{{ getRoleNames(plan.users, 'reviewer') || '—' }}</span>
+                  <span class="role-user-val muted" v-else>بدون مراجعة</span>
+                </div>
+              </div>
+
+              <div class="team-role-item" :title="'المنفذين: ' + (getRoleNames(plan.users, 'executor') || 'غير محدد')">
+                <span class="role-icon-bolt">⚡</span>
+                <div class="role-data">
+                  <span class="role-name-caption">المنفذين</span>
+                  <span class="role-user-val">{{ getRoleNames(plan.users, 'executor') || '—' }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- شبكة معالم الإنجاز والـ SLA المزدوجة -->
+            <div class="milestones-card-grid">
+              <!-- 1. المراجعة الداخلية (المرحلة الأولى) -->
+              <div class="milestone-card-block review-block">
+                <div class="block-top">
+                  <span class="block-label">🔍 المراجعة الداخلية</span>
+                  <span class="block-date" v-if="plan.requires_review">{{ formatDate(plan.planned_review_date) }}</span>
+                  <span class="block-date muted" v-else>— غير مطلوبة —</span>
+                </div>
+
+                <div class="sla-indicator" v-if="plan.requires_review && plan.planned_review_date">
+                  <span class="sla-msg" :class="getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).class + '-text'">
+                    {{ getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).message }}
+                  </span>
+                  <div class="sla-progress-bg" v-if="!['reviewed', 'completed'].includes(plan.status)">
+                    <div class="sla-progress-fill" :class="getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).class + '-bg'" :style="{ width: getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).percentage + '%' }"></div>
                   </div>
-                  
-                  <div class="sla-indicator mb-2" v-if="plan.requires_review && plan.planned_review_date">
-                    <span class="sla-msg" :class="getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status).class + '-text'">
-                      {{ getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status).message }}
-                    </span>
-                    <div class="sla-progress-bg" v-if="!['reviewed', 'completed'].includes(plan.status)">
-                      <div class="sla-progress-fill" :class="getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status).class + '-bg'" :style="{ width: getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status).percentage + '%' }"></div>
-                    </div>
+                </div>
+                <div v-else-if="!plan.requires_review" class="no-review-placeholder">
+                  لا تتطلب مراجعة داخلية
+                </div>
+
+                <div class="block-action-slot">
+                  <!-- زر إرسال للمراجعة الداخلية للمسؤول أو الـ Account Manager أو المدير -->
+                  <div v-if="isUserResponsible(plan) && plan.requires_review && (plan.status === 'pending' || plan.status === 'rejected')">
+                    <button class="confirm-btn review full-w-btn" type="button" :disabled="actionLoading === `submit-review-${plan.id}`" @click="submitForReview(plan)">
+                      {{ actionLoading === `submit-review-${plan.id}` ? 'جارٍ...' : 'إرسال للمراجعة الداخلية 📤' }}
+                    </button>
                   </div>
 
-                  <div v-if="isUserResponsible(plan) && plan.requires_review && (plan.status === 'pending' || plan.status === 'rejected')" class="mt-1 mb-1">
-                    <button class="confirm-btn review" type="button" :disabled="actionLoading === `submit-review-${plan.id}`" @click="submitForReview(plan)">
-                      {{ actionLoading === `submit-review-${plan.id}` ? 'جارٍ...' : 'إرسال للمراجعة الداخلية' }}
-                    </button>
-                  </div>
-                  
-                  <div v-if="isUserReviewer(plan) && plan.status === 'under_review'" class="review-actions mt-1 mb-1">
+                  <!-- أزرار القبول والرفض للمراجع أو المدير -->
+                  <div v-if="isUserReviewer(plan) && plan.status === 'under_review'" class="review-btn-duo">
                     <button class="confirm-btn accept-btn" :disabled="actionLoading === `approve-${plan.id}`" @click="approvePlan(plan)">قبول ✅</button>
                     <button class="confirm-btn reject-btn" :disabled="actionLoading === `reject-${plan.id}`" @click="openRejectModal(plan)">رفض ❌</button>
                   </div>
-
-                  <div :class="['status-badge', getPlanStatusInfo(plan.status).class]">
-                    <i></i>{{ getPlanStatusInfo(plan.status).text }}
-                    <small v-if="plan.requires_review && (plan.status === 'reviewed' || plan.status === 'completed')">{{ formatDate(plan.actual_review_date) }}</small>
+                  <!-- شارة واضحة إذا كانت الخطة قيد المراجعة ولمن ليس لديه صلاحية مراجعة -->
+                  <div v-else-if="plan.status === 'under_review'" class="status-badge status-yellow full-w-badge text-center" style="justify-content:center;">
+                    <i></i> قيد المراجعة الداخلية حالياً
                   </div>
 
-                  <div v-if="plan.status === 'rejected'" class="mt-2">
-                    <button class="reject-reasons-btn" type="button" @click="openRejectionsModal(plan)">عرض أسباب الرفض 📄</button>
+                  <div v-if="plan.status === 'rejected'">
+                    <button class="reject-reasons-btn full-w-btn mt-1" type="button" @click="openRejectionsModal(plan)">عرض أسباب الرفض 📄</button>
+                  </div>
+
+                  <span v-if="plan.requires_review && (plan.status === 'reviewed' || plan.status === 'completed')" class="review-done-badge">
+                    تمت المراجعة: {{ formatDate(plan.actual_review_date) }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- 2. التسليم النهائي (المرحلة الثانية) -->
+              <div class="milestone-card-block delivery-block">
+                <div class="block-top">
+                  <span class="block-label">🏁 التسليم النهائي</span>
+                  <span class="block-date">{{ formatDate(plan.planned_delivery_date) }}</span>
+                </div>
+
+                <div class="sla-indicator" v-if="plan.planned_delivery_date">
+                  <span class="sla-msg" :class="getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_delivery_date, plan.status, currentTime).class + '-text'">
+                    {{ getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_delivery_date, plan.status, currentTime).message }}
+                  </span>
+                  <div class="sla-progress-bg" v-if="plan.status !== 'completed'">
+                    <div class="sla-progress-fill" :class="getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_delivery_date, plan.status, currentTime).class + '-bg'" :style="{ width: getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_delivery_date, plan.status, currentTime).percentage + '%' }"></div>
                   </div>
                 </div>
-              </td>
-              
-              <td class="details-cell">
-                <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-start;">
-                  <button class="followup-btn" type="button" 
-                          :disabled="plan.requires_review && !['reviewed', 'completed'].includes(plan.status)"
-                          :title="plan.requires_review && !['reviewed', 'completed'].includes(plan.status) ? 'غير متاح قبل انتهاء المراجعة الداخلية' : ''"
-                          @click="openFollowUpsModal(plan)">
-                    متابعة العميل 💬 ({{ getFollowUps(plan).length }})
+
+                <div class="block-action-slot">
+                  <div v-if="plan.status === 'completed'" class="status-badge status-green">
+                    <i></i> تم التسليم <small>{{ formatDate(plan.actual_delivery_date) }}</small>
+                  </div>
+                  <button 
+                    v-else-if="isUserResponsible(plan) && (plan.status === 'reviewed' || (!plan.requires_review && (plan.status === 'pending' || plan.status === 'rejected')))" 
+                    class="confirm-btn full-w-btn" 
+                    type="button" 
+                    :disabled="actionLoading === `delivery-${plan.id}`" 
+                    @click="submitFinalDelivery(plan)"
+                  >
+                    {{ actionLoading === `delivery-${plan.id}` ? 'جارٍ...' : 'تأكيد التسليم النهائي ✅' }}
                   </button>
-                  <button v-if="plan.reference_links && plan.reference_links.length > 0" class="ref-links-btn" type="button" @click="openReferencesModal(plan)">
-                    المراجع المساعدة 🔗 ({{ plan.reference_links.length }})
-                  </button>
-                  <button v-if="getReviewHistories(plan).length > 0" @click="openHistoryModal(plan)" class="history-btn">سجل الحركات 📋</button>
-                  <button class="details-btn" type="button" @click="openDetailsModal(plan)">تحديث الرابط/الملاحظات</button>
+                  <span v-else-if="plan.requires_review && !['reviewed', 'completed'].includes(plan.status)" class="muted-slot-text">بانتظار إنهاء المراجعة</span>
+                  <span v-else class="muted-slot-text">بانتظار إنهاء الدورة</span>
                 </div>
-              </td>
-              
-              <td v-if="user && (user.role === 'manager' || user.job_title === 'Account Manager')">
-                <div class="actions-cell">
-                  <button class="action duplicate" type="button" title="استنساخ كقالب" aria-label="استنساخ الخطة" @click="openDuplicateModal(plan)">⎘</button>
-                  <button class="action edit" type="button" title="تعديل" aria-label="تعديل خطة المحتوى" @click="openManagerModal(plan)">✎</button>
-                  <button class="action delete" type="button" title="حذف" aria-label="حذف خطة المحتوى" @click="deletePlan(plan.id)">⌫</button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+              </div>
+            </div>
+
+            <!-- فوتر الكارت: المتابعات والروابط المساعدة والزر المباشر للوحة -->
+            <div class="card-footer-controls">
+              <div class="card-links-cluster">
+                <button 
+                  class="cluster-btn followup" 
+                  type="button" 
+                  :disabled="plan.requires_review && !['reviewed', 'completed'].includes(plan.status)"
+                  :title="plan.requires_review && !['reviewed', 'completed'].includes(plan.status) ? 'غير متاح قبل انتهاء المراجعة الداخلية' : 'متابعات العميل'"
+                  @click="openFollowUpsModal(plan)"
+                >
+                  <span>💬</span> متابعة العميل ({{ getFollowUps(plan).length }})
+                </button>
+
+                <button 
+                  v-if="plan.reference_links && plan.reference_links.length > 0" 
+                  class="cluster-btn references" 
+                  type="button" 
+                  @click="openReferencesModal(plan)"
+                  title="المراجع المساعدة المرفقة"
+                >
+                  <span>🔗</span> المراجع ({{ plan.reference_links.length }})
+                </button>
+
+                <button 
+                  v-if="getReviewHistories(plan).length > 0" 
+                  class="cluster-btn history" 
+                  type="button" 
+                  @click="openHistoryModal(plan)"
+                  title="سجل حركات واعتمادات الخطة"
+                >
+                  <span>📋</span> سجل الحركات
+                </button>
+
+                <button 
+                  class="cluster-btn details" 
+                  type="button" 
+                  @click="openDetailsModal(plan)"
+                  title="تحديث الرابط النهائي والملاحظات"
+                >
+                  <span>✎</span> الرابط/الملاحظات
+                </button>
+              </div>
+
+              <router-link :to="`/plan-board/${plan.id}`" class="spreadsheet-link-banner">
+                <span>فتح لوحة المحتوى (Spreadsheet)</span>
+                <span class="rocket-icon">🚀</span>
+              </router-link>
+            </div>
+          </div>
+        </div>
       </div>
+
+      <!-- ============================================== -->
+      <!-- 2. عرض الجدول الكلاسيكي (Table View) -->
+      <!-- ============================================== -->
+      <div v-else-if="viewMode === 'table'" class="table-view-container">
+        <div class="table-scroll-wrapper" ref="tableScrollWrapper">
+          <!-- أزرار التمرير العائمة على حواف الجدول -->
+          <button
+            v-if="isOverflowing && canScrollRight"
+            type="button"
+            class="edge-scroll-btn btn-right"
+            @click="scrollTable('right')"
+            title="تمرير الجدول لليمين"
+            aria-label="تمرير الجدول لليمين"
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
+
+          <button
+            v-if="isOverflowing && canScrollLeft"
+            type="button"
+            class="edge-scroll-btn btn-left"
+            @click="scrollTable('left')"
+            title="تمرير الجدول لليسار"
+            aria-label="تمرير الجدول لليسار"
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+
+          <!-- ظلال أطراف الجدول لتوضيح وجود محتوى مخفي -->
+          <div class="scroll-edge-shadow shadow-right" :class="{ 'is-active': isOverflowing && canScrollRight }"></div>
+          <div class="scroll-edge-shadow shadow-left" :class="{ 'is-active': isOverflowing && canScrollLeft }"></div>
+
+          <div
+            class="table-responsive"
+            ref="tableContainer"
+            tabindex="0"
+            aria-label="جدول خطط المحتوى قابل للتمرير أفقيًا"
+            @mousedown="onTableMouseDown"
+            @mousemove="onTableMouseMove"
+            @mouseup="onTableMouseUp"
+            @wheel="onTableWheel"
+            @scroll="onTableScroll"
+          >
+            <table class="plans-table" :aria-busy="loading">
+            <thead>
+              <tr>
+                <th scope="col">العميل والخطة</th>
+                <th scope="col">المسؤول</th>
+                <th scope="col">المراجع الداخلي</th>
+                <th scope="col">القائم بالخطة (المنفذ)</th>
+                <th scope="col">التسليم النهائي</th>
+                <th scope="col">المراجعة وحالة الخطة</th>
+                <th scope="col">الروابط والمتابعة</th>
+                <th v-if="user && (user.role === 'manager' || user.job_title === 'Account Manager')">إدارة</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="loading"><td :colspan="(user && (user.role === 'manager' || user.job_title === 'Account Manager')) ? 8 : 7" class="state-cell"><span class="spinner"></span> جارٍ التحميل...</td></tr>
+              <tr v-else-if="plans.length === 0"><td :colspan="(user && (user.role === 'manager' || user.job_title === 'Account Manager')) ? 8 : 7" class="state-cell">لا توجد خطط مسجلة حاليًا</td></tr>
+              <tr v-for="plan in plans" v-else :key="plan.id">
+                <td>
+                  <div class="plan-cell">
+                    <div class="plan-avatar">{{ getInitials(plan.client?.name || '؟') }}</div>
+                    <div><strong>{{ plan.client?.name || 'عميل محذوف' }}</strong><span>{{ plan.plan_type }}</span></div>
+                  </div>
+                </td>
+                <td><span class="people-cell">{{ getRoleNames(plan.users, 'responsible') }}</span></td>
+                <td><span v-if="plan.requires_review" class="people-cell">{{ getRoleNames(plan.users, 'reviewer') }}</span><span v-else class="muted">—</span></td>
+                <td><span class="people-cell">{{ getRoleNames(plan.users, 'executor') }}</span></td>
+                
+                <td>
+                  <div class="milestone">
+                    <span class="date">{{ formatDate(plan.planned_delivery_date) }}</span>
+                    
+                    <div class="sla-indicator" v-if="plan.planned_delivery_date">
+                      <span class="sla-msg" :class="getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_delivery_date, plan.status, currentTime).class + '-text'">
+                        {{ getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_delivery_date, plan.status, currentTime).message }}
+                      </span>
+                      <div class="sla-progress-bg" v-if="plan.status !== 'completed'">
+                        <div class="sla-progress-fill" :class="getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_delivery_date, plan.status, currentTime).class + '-bg'" :style="{ width: getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_delivery_date, plan.status, currentTime).percentage + '%' }"></div>
+                      </div>
+                    </div>
+
+                    <div v-if="plan.status === 'completed'" class="status-badge status-green mt-2">
+                      <i></i> تم التسليم <small>{{ formatDate(plan.actual_delivery_date) }}</small>
+                    </div>
+                    <button v-else-if="isUserResponsible(plan) && (plan.status === 'reviewed' || (!plan.requires_review && (plan.status === 'pending' || plan.status === 'rejected')))" class="confirm-btn mt-2" type="button" :disabled="actionLoading === `delivery-${plan.id}`" @click="submitFinalDelivery(plan)">
+                      {{ actionLoading === `delivery-${plan.id}` ? 'جارٍ...' : 'تأكيد التسليم النهائي' }}
+                    </button>
+                    <span v-else class="muted mt-2 d-block">بانتظار إنهاء الدورة</span>
+                  </div>
+                </td>
+                
+                <td>
+                  <div class="milestone" style="min-width: 175px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                      <span v-if="plan.requires_review" class="date">{{ formatDate(plan.planned_review_date) }}</span>
+                      <span v-else class="muted mb-1" style="display:block;">— لا تتطلب مراجعة —</span>
+                      
+                      <button v-if="isManager && plan.status !== 'completed'" title="تنبيه واتساب الذكي" aria-label="إرسال تنبيه واتساب ذكي" class="wa-quick-btn" type="button" @click="smartNotify(plan)">
+                        <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+                      </button>
+                    </div>
+                    
+                    <div class="sla-indicator mb-2" v-if="plan.requires_review && plan.planned_review_date">
+                      <span class="sla-msg" :class="getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).class + '-text'">
+                        {{ getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).message }}
+                      </span>
+                      <div class="sla-progress-bg" v-if="!['reviewed', 'completed'].includes(plan.status)">
+                        <div class="sla-progress-fill" :class="getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).class + '-bg'" :style="{ width: getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).percentage + '%' }"></div>
+                      </div>
+                    </div>
+
+                    <div v-if="isUserResponsible(plan) && plan.requires_review && (plan.status === 'pending' || plan.status === 'rejected')" class="mt-1 mb-1">
+                      <button class="confirm-btn review" type="button" :disabled="actionLoading === `submit-review-${plan.id}`" @click="submitForReview(plan)">
+                        {{ actionLoading === `submit-review-${plan.id}` ? 'جارٍ...' : 'إرسال للمراجعة الداخلية' }}
+                      </button>
+                    </div>
+                    
+                    <div v-if="isUserReviewer(plan) && plan.status === 'under_review'" class="review-actions mt-1 mb-1">
+                      <button class="confirm-btn accept-btn" :disabled="actionLoading === `approve-${plan.id}`" @click="approvePlan(plan)">قبول ✅</button>
+                      <button class="confirm-btn reject-btn" :disabled="actionLoading === `reject-${plan.id}`" @click="openRejectModal(plan)">رفض ❌</button>
+                    </div>
+
+                    <div :class="['status-badge', getPlanStatusInfo(plan.status).class]">
+                      <i></i>{{ getPlanStatusInfo(plan.status).text }}
+                      <small v-if="plan.requires_review && (plan.status === 'reviewed' || plan.status === 'completed')">{{ formatDate(plan.actual_review_date) }}</small>
+                    </div>
+
+                    <div v-if="plan.status === 'rejected'" class="mt-2">
+                      <button class="reject-reasons-btn" type="button" @click="openRejectionsModal(plan)">عرض أسباب الرفض 📄</button>
+                    </div>
+                  </div>
+                </td>
+                
+                <td class="details-cell">
+                  <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-start;">
+                    <button class="followup-btn" type="button" 
+                            :disabled="plan.requires_review && !['reviewed', 'completed'].includes(plan.status)"
+                            :title="plan.requires_review && !['reviewed', 'completed'].includes(plan.status) ? 'غير متاح قبل انتهاء المراجعة الداخلية' : ''"
+                            @click="openFollowUpsModal(plan)">
+                      متابعة العميل 💬 ({{ getFollowUps(plan).length }})
+                    </button>
+                    <button v-if="plan.reference_links && plan.reference_links.length > 0" class="ref-links-btn" type="button" @click="openReferencesModal(plan)">
+                      المراجع المساعدة 🔗 ({{ plan.reference_links.length }})
+                    </button>
+                    <button v-if="getReviewHistories(plan).length > 0" @click="openHistoryModal(plan)" class="history-btn">سجل الحركات 📋</button>
+                    <button class="details-btn" type="button" @click="openDetailsModal(plan)">تحديث الرابط/الملاحظات</button>
+                  </div>
+                </td>
+                
+                <td v-if="user && (user.role === 'manager' || user.job_title === 'Account Manager')">
+                  <div class="actions-cell">
+                    <button class="action duplicate" type="button" title="استنساخ كقالب" aria-label="استنساخ الخطة" @click="openDuplicateModal(plan)">⎘</button>
+                    <button class="action edit" type="button" title="تعديل" aria-label="تعديل خطة المحتوى" @click="openManagerModal(plan)">✎</button>
+                    <button class="action delete" type="button" title="حذف" aria-label="حذف خطة المحتوى" @click="deletePlan(plan.id)">⌫</button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        </div>
       </div>
     </div>
 
@@ -388,13 +647,7 @@
     </Teleport>
 
 
-    
-    <Teleport to="body">
-      <div v-if="showImageViewer" class="modal-overlay image-viewer-overlay" role="presentation" @click.self="closeImageViewer">
-      <button class="viewer-close" type="button" @click="closeImageViewer">×</button>
-      <img :src="viewerImageUrl" alt="معاينة الصورة" class="viewer-image" />
-    </div>
-    </Teleport>
+
 
 
     
@@ -444,8 +697,8 @@
               </div>
               <div class="fu-text">{{ followUp.content }}</div>
               
-              <div v-if="followUp.image_url" class="fu-image-container" @click="openImageViewer(followUp.image_url)">
-                <img :src="followUp.image_url" alt="مرفق" class="fu-thumbnail" />
+              <div v-if="followUp.image_path || followUp.image_url" class="fu-image-container" @click="openImageViewer(getFollowUpImageUrl(followUp))">
+                <img :src="getFollowUpImageUrl(followUp)" alt="مرفق" class="fu-thumbnail" />
                 <div class="zoom-overlay"><span>🔍</span></div>
               </div>
 
@@ -473,12 +726,95 @@
 
     
     <Teleport to="body">
-      <div v-if="showWaPromptModal" class="modal-overlay" @click.self="closeWaPrompt"><div class="modal-content delivery-modal" style="width: min(400px, 100%) !important; text-align: center;"><button class="modal-close" type="button" @click="closeWaPrompt">×</button><div class="modal-icon" style="background: linear-gradient(145deg, #25D366, #128C7E); margin: 0 auto 15px; color:#fff;">📱</div><h3 style="color:#25D366;">{{ waPromptTitle }}</h3><p style="margin-bottom: 20px;">{{ waPromptDesc }}</p><a :href="waPromptLink" target="_blank" class="wa-btn-large" style="text-decoration: none;" @click="closeWaPrompt"><span>إرسال التنبيه عبر واتساب</span> <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg></a><div class="modal-actions" style="justify-content:center; margin-top:15px;"><button type="button" class="secondary-btn" @click="closeWaPrompt">تخطي</button></div></div></div>
+      <div v-if="showWaPromptModal" class="modal-overlay" @click.self="closeWaPrompt">
+        <div class="modal-content delivery-modal" style="width: min(450px, 100%) !important; text-align: center;">
+          <button class="modal-close" type="button" @click="closeWaPrompt">×</button>
+          <div class="modal-icon" style="background: linear-gradient(145deg, #25D366, #128C7E); margin: 0 auto 15px; color:#fff;">📱</div>
+          <h3 style="color:#25D366;">{{ waPromptTitle }}</h3>
+          <p style="margin-bottom: 20px;">{{ waPromptDesc }}</p>
+
+          <div v-if="waPromptRecipients && waPromptRecipients.length > 0" style="display:flex; flex-direction:column; gap:10px;">
+            <a 
+              v-for="(rec, idx) in waPromptRecipients" 
+              :key="idx" 
+              :href="rec.link" 
+              target="_blank" 
+              class="wa-btn-large" 
+              style="text-decoration: none;" 
+              @click="closeWaPrompt"
+            >
+              <span>إرسال لـ {{ rec.name }} ({{ rec.role }})</span>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/>
+              </svg>
+            </a>
+          </div>
+
+          <a v-else-if="waPromptLink" :href="waPromptLink" target="_blank" class="wa-btn-large" style="text-decoration: none;" @click="closeWaPrompt">
+            <span>إرسال التنبيه عبر واتساب</span>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/>
+            </svg>
+          </a>
+
+          <div class="modal-actions" style="justify-content:center; margin-top:15px;">
+            <button type="button" class="secondary-btn" @click="closeWaPrompt">تخطي</button>
+          </div>
+        </div>
+      </div>
     </Teleport>
 
     
     <Teleport to="body">
-      <div v-if="showDeliverySuccessModal" class="modal-overlay" @click.self="closeDeliveryModal"><div class="modal-content delivery-modal" role="dialog" style="width: min(500px, 100%) !important; text-align: center;"><button class="modal-close" type="button" @click="closeDeliveryModal">×</button><div class="modal-icon" style="background: linear-gradient(145deg, #70e1d5, #55c8bc); margin: 0 auto 15px;">🎉</div><h3 style="color:#78e4d8;">تم اعتماد وتسليم الخطة بنجاح!</h3><p style="margin-bottom: 20px;">الآن يمكنك إبلاغ العميل بالرابط، وإعطاء إشارة البدء لفريق التنفيذ.</p><div class="wa-actions-container" v-if="deliveredPlan"><a :href="generateWaLink('client_delivery', deliveredPlan)" target="_blank" class="wa-btn-large" style="text-decoration:none;"><span>إبلاغ العميل على واتساب</span> <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M17.472...Z"/></svg></a><div v-if="getExecutors(deliveredPlan).length > 0" class="executors-list mt-3"><h4 style="font-size:11px; color:#aeb6d7; text-align:right; margin-bottom:10px;">إبلاغ المنفذين للبدء:</h4><div style="display:flex; flex-direction:column; gap:8px;"><a v-for="executor in getExecutors(deliveredPlan)" :key="executor.id" :href="generateWaLink('executors_start', deliveredPlan, executor)" target="_blank" class="wa-btn-small" style="text-decoration:none; display:block; text-align:center;">إرسال للمنفذ: {{ executor.name }} 📱</a></div></div><div v-else class="muted mt-3" style="font-size:9px;">لا يوجد منفذين مسجلين في هذه الخطة.</div></div><div class="modal-actions" style="justify-content:center; margin-top:25px;"><button type="button" class="secondary-btn" @click="closeDeliveryModal">إغلاق</button></div></div></div>
+      <div v-if="showDeliverySuccessModal" class="modal-overlay" @click.self="closeDeliveryModal">
+        <div class="modal-content delivery-modal" role="dialog" style="width: min(500px, 100%) !important; text-align: center;">
+          <button class="modal-close" type="button" @click="closeDeliveryModal">×</button>
+          <div class="modal-icon" style="background: linear-gradient(145deg, #70e1d5, #55c8bc); margin: 0 auto 15px;">🎉</div>
+          <h3 style="color:#78e4d8;">تم اعتماد وتسليم الخطة بنجاح!</h3>
+          <p style="margin-bottom: 20px;">الآن يمكنك إبلاغ العميل بالرابط، وإبلاغ الإدارة، وإعطاء إشارة البدء لفريق التنفيذ.</p>
+          <div class="wa-actions-container" v-if="deliveredPlan">
+            <!-- 1. إبلاغ العميل -->
+            <a :href="generateWaLink('client_delivery', deliveredPlan)" target="_blank" class="wa-btn-large" style="text-decoration:none;">
+              <span>إبلاغ العميل على واتساب</span>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/>
+              </svg>
+            </a>
+
+            <!-- 2. إبلاغ المدير بالتسليم النهائي -->
+            <div v-if="getManagers().length > 0" class="managers-list mt-3">
+              <h4 style="font-size:11px; color:#aeb6d7; text-align:right; margin-bottom:8px;">إبلاغ الإدارة / المدير بالتسليم:</h4>
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                <a 
+                  v-for="mgr in getManagers()" 
+                  :key="'mgr_'+mgr.id" 
+                  :href="generateWaLink('manager_delivery', deliveredPlan, mgr)" 
+                  target="_blank" 
+                  class="wa-btn-manager" 
+                  style="text-decoration:none;"
+                >
+                  <span>📋 إرسال تنبيه للمدير: {{ mgr.name }}</span>
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/>
+                  </svg>
+                </a>
+              </div>
+            </div>
+
+            <!-- 3. إبلاغ المنفذين -->
+            <div v-if="getExecutors(deliveredPlan).length > 0" class="executors-list mt-3">
+              <h4 style="font-size:11px; color:#aeb6d7; text-align:right; margin-bottom:10px;">إبلاغ المنفذين للبدء:</h4>
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                <a v-for="executor in getExecutors(deliveredPlan)" :key="executor.id" :href="generateWaLink('executors_start', deliveredPlan, executor)" target="_blank" class="wa-btn-small" style="text-decoration:none; display:block; text-align:center;">إرسال للمنفذ: {{ executor.name }} 📱</a>
+              </div>
+            </div>
+            <div v-else class="muted mt-3" style="font-size:9px;">لا يوجد منفذين مسجلين في هذه الخطة.</div>
+          </div>
+          <div class="modal-actions" style="justify-content:center; margin-top:25px;">
+            <button type="button" class="secondary-btn" @click="closeDeliveryModal">إغلاق</button>
+          </div>
+        </div>
+      </div>
     </Teleport>
 
     
@@ -540,6 +876,33 @@
       </div>
     </Teleport>
 
+    <!-- Image Preview Lightbox (Teleported to Body at end to be on top of all modals) -->
+    <Teleport to="body">
+      <div
+        v-if="showImageViewer"
+        class="image-viewer-overlay"
+        role="dialog"
+        aria-modal="true"
+        style="position: fixed !important; inset: 0 !important; z-index: 999999 !important; display: flex !important; align-items: center !important; justify-content: center !important; background: rgba(3, 6, 23, 0.94) !important; backdrop-filter: blur(14px) !important; -webkit-backdrop-filter: blur(14px) !important;"
+        @click.self="closeImageViewer"
+      >
+        <button
+          class="viewer-close"
+          type="button"
+          @click="closeImageViewer"
+          aria-label="إغلاق معاينة الصورة"
+          style="position: absolute !important; top: 24px !important; right: 28px !important; z-index: 1000000 !important;"
+        >×</button>
+        <img
+          :src="viewerImageUrl"
+          alt="معاينة الصورة"
+          class="viewer-image"
+          style="max-width: 90vw !important; max-height: 88vh !important; object-fit: contain !important; z-index: 999999 !important; position: relative !important;"
+          @error="onViewerImageError"
+        />
+      </div>
+    </Teleport>
+
     <transition name="toast"><div v-if="toastMessage" class="toast-message" role="status" aria-live="polite">{{ toastMessage }}</div></transition>
   </section>
 </template>
@@ -571,17 +934,52 @@ const currentUser = getUserData();
 const currentUserId = ref(currentUser.id || parseInt(localStorage.getItem('user_id') || 0));
 
 const userRole = ref(localStorage.getItem('role') || 'employee'); 
-const isManager = computed(() => userRole.value === 'manager');
+const isManager = computed(() => userRole.value === 'manager' || user.value?.role === 'manager');
 const user = ref(currentUser);
 
-const isUserResponsible = (plan) => { if (isManager.value) return true; return plan.users?.some(u => u.id === currentUserId.value && u.pivot.task_role === 'responsible'); };
-const isUserReviewer = (plan) => { if (isManager.value) return true; return plan.users?.some(u => u.id === currentUserId.value && u.pivot.task_role === 'reviewer'); };
+const isUserResponsible = (plan) => { 
+  if (isManager.value || user.value?.role === 'manager' || user.value?.job_title === 'Account Manager') return true; 
+  if (!plan || !plan.users) return false;
+  const uid = Number(currentUserId.value) || Number(user.value?.id);
+  return plan.users.some(u => Number(u.id) === uid && u.pivot?.task_role === 'responsible'); 
+};
+const isUserReviewer = (plan) => { 
+  if (isManager.value || user.value?.role === 'manager') return true; 
+  if (!plan || !plan.users) return false;
+  const uid = Number(currentUserId.value) || Number(user.value?.id);
+  return plan.users.some(u => Number(u.id) === uid && u.pivot?.task_role === 'reviewer'); 
+};
 const getExecutors = (plan) => { if (!plan || !plan.users) return []; return plan.users.filter(u => u.pivot?.task_role === 'executor'); };
 const getResponsibles = (plan) => { if (!plan || !plan.users) return []; return plan.users.filter(u => u.pivot?.task_role === 'responsible'); }; 
 
 
 const showAdvancedFilters = ref(false);
 const toggleAdvancedFilters = () => showAdvancedFilters.value = !showAdvancedFilters.value;
+
+// توقيت مرجعي مركزي يتحدث دورياً لتحديث العداد التنازلي الحي
+const currentTime = ref(Date.now());
+let countdownInterval = null;
+
+// نمط العرض (كروت أو جدول) مع حفظ تفضيل المستخدم
+const viewMode = ref(localStorage.getItem('content_plans_view_mode') || 'cards');
+const setViewMode = (mode) => {
+  viewMode.value = mode;
+  localStorage.setItem('content_plans_view_mode', mode);
+  if (mode === 'table') {
+    nextTick(() => updateScrollState());
+  }
+};
+
+const formatShortDate = (dateStr) => {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
+const isPlanDelayed = (plan) => {
+  return plan.status === 'rejected' || getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_delivery_date, plan.status, currentTime.value).isOverdue;
+};
 
 const filters = reactive({
   search: '', client_id: '', plan_type: '', status: '', employee_id: '',
@@ -628,10 +1026,42 @@ const showDeliverySuccessModal = ref(false);
 const showCreationSuccessModal = ref(false); 
 const showReferencesModal = ref(false); 
 
+const baseUrl = api.defaults.baseURL ? api.defaults.baseURL.replace(/\/api\/?$/, '') : '';
+
 const showImageViewer = ref(false);
 const viewerImageUrl = ref('');
-const openImageViewer = (url) => { viewerImageUrl.value = url; showImageViewer.value = true; };
-const closeImageViewer = () => { showImageViewer.value = false; viewerImageUrl.value = ''; };
+const openImageViewer = (url) => { 
+  if (!url) {
+    showToast('لا توجد صورة للمعاينة');
+    return;
+  }
+  viewerImageUrl.value = url; 
+  showImageViewer.value = true; 
+};
+const closeImageViewer = () => { 
+  showImageViewer.value = false; 
+  viewerImageUrl.value = ''; 
+};
+const onViewerImageError = () => {
+  showToast('تعذر عرض الصورة، يرجى التأكد من مسار الملف');
+};
+const handleViewerKeyDown = (e) => {
+  if (e.key === 'Escape' && showImageViewer.value) {
+    closeImageViewer();
+    e.stopPropagation();
+  }
+};
+
+const getFollowUpImageUrl = (followUp) => {
+  if (!followUp) return '';
+  const path = followUp.image_path || followUp.image_url;
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('blob:') || path.startsWith('data:')) {
+    return path;
+  }
+  const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+  return `${baseUrl}/${cleanPath}`;
+};
 
 const deliveredPlan = ref(null);
 const createdPlan = ref(null); 
@@ -641,6 +1071,9 @@ const showWaPromptModal = ref(false);
 const waPromptTitle = ref('');
 const waPromptDesc = ref('');
 const waPromptLink = ref('');
+const waPromptRecipients = ref([]);
+const currentDetailsPlan = ref(null);
+const originalDetails = reactive({ final_link: '', notes: '' });
 
 const isEditing = ref(false); 
 const rejectNotes = ref('');
@@ -928,7 +1361,7 @@ const editFollowUp = (item) => {
   editingFollowUpId.value = item.id;
   followUpForm.content = item.content;
   followUpForm.image = null; 
-  imagePreview.value = item.image_url || null;
+  imagePreview.value = getFollowUpImageUrl(item) || null;
 };
 const saveFollowUp = async () => { 
   if (!followUpForm.content.trim()) return; 
@@ -987,7 +1420,7 @@ const underReviewCount = computed(() => plans.value.filter(plan => plan.status =
 
 // استخدام اللوجيك الذكي لحساب المتأخرات
 const delayedCount = computed(() => plans.value.filter(plan => {
-  return plan.status === 'rejected' || getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_delivery_date, plan.status).isOverdue;
+  return plan.status === 'rejected' || getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_delivery_date, plan.status, currentTime.value).isOverdue;
 }).length);
 
 const fetchPlans = async () => { 
@@ -1020,7 +1453,40 @@ const fetchPlans = async () => {
     loading.value = false; 
   } 
 };
-const fetchResources = async () => { if (isManager.value || user.value?.job_title === 'Account Manager') { try { const [resUsers, resClients] = await Promise.all([api.get('/users?per_page=100'), api.get('/clients?per_page=100')]); allUsers.value = resUsers.data.data || []; allClients.value = resClients.data.data || []; } catch (error) {} } };
+const fetchResources = async () => { 
+  try {
+    const resUsers = await api.get('/users?per_page=100');
+    allUsers.value = resUsers.data.data || resUsers.data || [];
+  } catch (error) {
+    console.error('Error fetching users:', error);
+  }
+
+  if (isManager.value || user.value?.job_title === 'Account Manager') { 
+    try { 
+      const resClients = await api.get('/clients?per_page=100'); 
+      allClients.value = resClients.data.data || resClients.data || []; 
+    } catch (error) {
+      console.error('Error fetching clients:', error);
+    } 
+  } 
+};
+
+const getPlanDisplayName = (plan) => {
+  if (!plan) return 'خطة غير محددة';
+  if (plan.name && String(plan.name).trim()) return plan.name.trim();
+  if (plan.title && String(plan.title).trim()) return plan.title.trim();
+  if (plan.plan_name && String(plan.plan_name).trim()) return plan.plan_name.trim();
+  if (plan.plan_type && plan.client?.name) {
+    return `${plan.plan_type} - ${plan.client.name}`;
+  }
+  if (plan.plan_type) return `خطة ${plan.plan_type}`;
+  return `خطة ${plan.client?.name || ('#' + plan.id)}`;
+};
+
+const getManagers = () => {
+  if (!allUsers.value || allUsers.value.length === 0) return [];
+  return allUsers.value.filter(u => u.role === 'manager');
+};
 
 const formatPhone = (phone) => {
   if (!phone) return null;
@@ -1066,6 +1532,26 @@ const generateWaLink = (type, plan, specificUser = null) => {
       phone = plan.client?.phone;
       message = `${systemPrefix}مرحباً بك عميلنا العزيز (*${plan.client?.name || ''}*)،\nتم اعتماد خطة العمل الخاصة بك بنجاح.\nيمكنك الاطلاع عليها من الرابط التالي:\n${plan.final_link || '---'}\n\nنسعد بخدمتكم.`;
       break;
+    case 'manager_delivery':
+      targetUser = targetUser || getManagers()[0];
+      const deliveryPlanName = getPlanDisplayName(plan);
+      message = `${systemPrefix}مرحباً ${targetUser?.name || 'يا مدير'}،\n` +
+                `✅ تم التسليم النهائي لخطة العميل (*${plan.client?.name || ''}*) بنجاح.\n\n` +
+                `📌 *اسم الخطة:* ${deliveryPlanName}\n` +
+                `🔗 *رابط التسليم النهائي:* ${plan.final_link || 'لم يُحدد'}\n` +
+                (plan.notes ? `📝 *الملاحظات:* ${plan.notes}\n` : '') +
+                `\nتم اعتماد الخطة وتسليمها للعميل بنجاح.`;
+      break;
+    case 'manager_details_updated':
+      targetUser = targetUser || getManagers()[0];
+      const updatePlanName = getPlanDisplayName(plan);
+      message = `${systemPrefix}مرحباً ${targetUser?.name || 'يا مدير'}،\n` +
+                `📢 تم تحديث تفاصيل التسليم لخطة العميل (*${plan.client?.name || ''}*):\n\n` +
+                `📌 *اسم الخطة:* ${updatePlanName}\n` +
+                `🔗 *رابط البلان المحدث:* ${plan.final_link || 'لم يُحدد'}\n` +
+                `📝 *الملاحظات المحدثة:* ${plan.notes || 'لا توجد'}\n\n` +
+                `يرجى الاطلاع على التحديث عبر النظام.`;
+      break;
     case 'executors_start':
       message = `${systemPrefix}مرحباً ${targetUser?.name || ''}،\nتم اعتماد وتسليم خطة العميل (*${plan.client?.name || ''}*).\nيرجى البدء في مهام التنفيذ الخاصة بك.\nرابط الخطة: ${plan.final_link || '---'}`;
       break;
@@ -1081,15 +1567,20 @@ const generateWaLink = (type, plan, specificUser = null) => {
   return `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`;
 };
 
-const triggerWaPrompt = (title, desc, type, plan) => {
-  const link = generateWaLink(type, plan);
+const triggerWaPrompt = (title, desc, type, plan, specificUser = null) => {
+  const link = generateWaLink(type, plan, specificUser);
   if (!link) { showToast('رقم الهاتف غير مسجل أو غير صالح للشخص المستهدف.'); return; }
   waPromptTitle.value = title;
   waPromptDesc.value = desc;
   waPromptLink.value = link;
+  waPromptRecipients.value = [];
   showWaPromptModal.value = true;
 };
-const closeWaPrompt = () => { showWaPromptModal.value = false; };
+const closeWaPrompt = () => { 
+  showWaPromptModal.value = false; 
+  waPromptRecipients.value = [];
+  waPromptLink.value = '';
+};
 
 const smartNotify = (plan) => {
   if (plan.status === 'pending' || plan.status === 'rejected') { triggerWaPrompt('تنبيه بالتأخير', 'تنبيه المسؤول عن الخطة بضرورة الإنجاز.', 'plan_delayed', plan); } 
@@ -1139,7 +1630,7 @@ const submitFinalDelivery = async (plan) => {
     await api.post(`/content-plans/${plan.id}/final-delivery`); 
     showToast('تم التسليم بنجاح'); 
     await fetchPlans(); 
-    deliveredPlan.value = plans.value.find(p => p.id === plan.id);
+    deliveredPlan.value = plans.value.find(p => p.id === plan.id) || plan;
     showDeliverySuccessModal.value = true;
   } catch (error) {} finally { actionLoading.value = ''; }
 };
@@ -1226,9 +1717,71 @@ const saveManagerPlan = async () => {
 
 const deletePlan = async (id) => { if (user.value?.role !== 'manager' && user.value?.job_title !== 'Account Manager') { showToast('عذراً، لا تمتلك الصلاحية لحذف الخطط'); return; } if (!window.confirm('تأكيد الحذف؟')) return; try { await api.delete(`/content-plans/${id}`); showToast('تم الحذف'); await fetchPlans(); } catch (error) {} };
 
-const openDetailsModal = (plan) => { editId.value = plan.id; detailsForm.final_link = plan.final_link || ''; detailsForm.notes = plan.notes || ''; showDetailsModal.value = true; };
-const closeDetailsModal = () => { showDetailsModal.value = false; };
-const saveDetails = async () => { saving.value = true; try { await api.put(`/content-plans/${editId.value}/details`, detailsForm); closeDetailsModal(); showToast('تم التحديث'); await fetchPlans(); } catch (error) {} finally { saving.value = false; } };
+const openDetailsModal = (plan) => { 
+  editId.value = plan.id; 
+  currentDetailsPlan.value = plan;
+  detailsForm.final_link = plan.final_link || ''; 
+  detailsForm.notes = plan.notes || ''; 
+  originalDetails.final_link = (plan.final_link || '').trim();
+  originalDetails.notes = (plan.notes || '').trim();
+  showDetailsModal.value = true; 
+};
+const closeDetailsModal = () => { 
+  showDetailsModal.value = false; 
+  currentDetailsPlan.value = null;
+};
+const saveDetails = async () => { 
+  const newLink = (detailsForm.final_link || '').trim();
+  const newNotes = (detailsForm.notes || '').trim();
+  const isLinkChanged = newLink !== originalDetails.final_link;
+  const isNotesChanged = newNotes !== originalDetails.notes;
+  const hasRealChanges = isLinkChanged || isNotesChanged;
+
+  saving.value = true; 
+  try { 
+    await api.put(`/content-plans/${editId.value}/details`, detailsForm); 
+    const targetPlan = currentDetailsPlan.value;
+    if (targetPlan) {
+      targetPlan.final_link = detailsForm.final_link;
+      targetPlan.notes = detailsForm.notes;
+    }
+    closeDetailsModal(); 
+    showToast('تم التحديث بنجاح'); 
+    await fetchPlans(); 
+
+    // إذا كانت هناك بيانات محدثة بالفعل، نجهز رسالة ونبلغ المدير
+    if (hasRealChanges && targetPlan) {
+      const managers = getManagers();
+      if (managers.length === 1) {
+        triggerWaPrompt(
+          'تحديث تفاصيل الخطة',
+          `تم حفظ التحديثات بنجاح. يمكنك إبلاغ المدير (${managers[0].name}) بالتفاصيل المحدثة عبر واتساب:`,
+          'manager_details_updated',
+          targetPlan,
+          managers[0]
+        );
+      } else if (managers.length > 1) {
+        const recipients = managers.map(mgr => ({
+          name: mgr.name,
+          role: 'مدير',
+          link: generateWaLink('manager_details_updated', targetPlan, mgr)
+        })).filter(r => !!r.link);
+
+        if (recipients.length > 0) {
+          waPromptTitle.value = 'تحديث تفاصيل الخطة';
+          waPromptDesc.value = 'تم حفظ التحديثات بنجاح. يمكنك إبلاغ المدير بالتفاصيل المحدثة عبر واتساب:';
+          waPromptRecipients.value = recipients;
+          waPromptLink.value = recipients[0].link;
+          showWaPromptModal.value = true;
+        }
+      }
+    }
+  } catch (error) {
+    showToast('حدث خطأ أثناء حفظ التفاصيل');
+  } finally { 
+    saving.value = false; 
+  } 
+};
 
 const openRejectModal = (plan) => { editId.value = plan.id; rejectNotes.value = ''; showRejectModal.value = true; };
 const closeRejectModal = () => { showRejectModal.value = false; editId.value = null; };
@@ -1278,10 +1831,22 @@ onMounted(() => {
     resizeObserver.observe(tableContainer.value);
   }
   nextTick(() => updateScrollState());
+
+  // تشغيل المؤقت الحي كل 30 ثانية لتحديث العداد التنازلي
+  countdownInterval = setInterval(() => {
+    currentTime.value = Date.now();
+  }, 30000);
+
+  window.addEventListener('keydown', handleViewerKeyDown);
 });
 
 onBeforeUnmount(() => {
   window.clearTimeout(toastTimer);
+  window.removeEventListener('keydown', handleViewerKeyDown);
+  if (countdownInterval) {
+    clearInterval(countdownInterval);
+    countdownInterval = null;
+  }
   document.body.classList.remove('modal-is-open');
   window.removeEventListener('scroll', updateScrollState);
   window.removeEventListener('resize', updateScrollState);
@@ -1313,6 +1878,8 @@ onBeforeUnmount(() => {
 .wa-btn-large:hover { transform: translateY(-2px); box-shadow:0 6px 20px rgba(37,211,102,.3); }
 .wa-btn-small { padding:8px 12px; border:1px solid rgba(37,211,102,.3); border-radius:8px; background:rgba(37,211,102,.05); color:#25D366; font-size:10px; font-family:inherit; cursor:pointer; transition:.2s; }
 .wa-btn-small:hover { background:rgba(37,211,102,.15); }
+.wa-btn-manager { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 11px 14px; border: 1px solid rgba(178, 138, 255, 0.35); border-radius: 10px; background: linear-gradient(110deg, rgba(125, 232, 220, 0.15), rgba(178, 138, 255, 0.2)); color: #7de8dc; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; transition: .2s ease; box-shadow: 0 4px 15px rgba(125, 232, 220, 0.1); }
+.wa-btn-manager:hover { transform: translateY(-2px); background: linear-gradient(110deg, #7de8dc, #b28aff); color: #0b1132; border-color: transparent; box-shadow: 0 6px 20px rgba(125, 232, 220, 0.3); }
 
 .reject-reasons-btn { display:inline-block; margin-top:6px; padding:5px 8px; border:1px dashed rgba(255,103,139,.4); border-radius:6px; color:#ff9bad; background:rgba(255,103,139,.08); font-size:9px; cursor:pointer; transition:.2s; } .reject-reasons-btn:hover { background:rgba(255,103,139,.15); }
 
@@ -1379,10 +1946,71 @@ onBeforeUnmount(() => {
 .fu-image-container:hover .zoom-overlay { opacity: 1; }
 
 /* Full Screen Image Viewer Modal */
-.image-viewer-overlay { background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); z-index: 999; display: grid; place-items: center; padding: 20px; }
-.viewer-close { position: absolute; top: 20px; right: 25px; background: rgba(255,255,255,0.1); border: none; color: #fff; font-size: 35px; width: 50px; height: 50px; border-radius: 50%; cursor: pointer; transition: 0.2s; display: grid; place-items: center; z-index: 1000; }
-.viewer-close:hover { background: #ff9bad; color: #12183f; transform: scale(1.1); }
-.viewer-image { max-width: 100%; max-height: 90vh; border-radius: 12px; box-shadow: 0 15px 40px rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.1); }
+.image-viewer-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(3, 6, 23, 0.94) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  z-index: 999999 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 24px !important;
+}
+.viewer-close {
+  position: absolute !important;
+  top: 24px !important;
+  right: 28px !important;
+  background: rgba(255, 255, 255, 0.15) !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  color: #fff !important;
+  font-size: 32px !important;
+  width: 50px !important;
+  height: 50px !important;
+  border-radius: 50% !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 1000000 !important;
+  line-height: 1 !important;
+}
+.viewer-close:hover {
+  background: #ff5e7e !important;
+  border-color: #ff5e7e !important;
+  color: #fff !important;
+  transform: scale(1.1) rotate(90deg) !important;
+}
+.viewer-image {
+  max-width: 90vw !important;
+  max-height: 88vh !important;
+  object-fit: contain !important;
+  border-radius: 12px !important;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.85) !important;
+  border: 2px solid rgba(255, 255, 255, 0.18) !important;
+  z-index: 999999 !important;
+  position: relative !important;
+  animation: zoomInImage 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+@keyframes zoomInImage {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
 
 .toast-message { position:fixed; left:25px; bottom:25px; z-index:200; padding:12px 17px; border:1px solid rgba(116,232,220,.22); border-radius:10px; color:#bdf7f0; background:#182552; box-shadow:0 12px 30px rgba(0,0,0,.25); font-size:11px; }.toast-enter-active,.toast-leave-active { transition:.25s; }.toast-enter-from,.toast-leave-to { opacity:0; transform:translateY(10px); } @keyframes spin { to { transform:rotate(360deg); } }
 
@@ -1408,9 +2036,462 @@ onBeforeUnmount(() => {
 .sla-indicator { display: flex; flex-direction: column; gap: 2px; margin-top: 5px; }
 .sla-progress-bg { height: 4px; background: rgba(137, 153, 226, 0.1); border-radius: 2px; overflow: hidden; width: 100%; margin-top: 2px; }
 .sla-progress-fill { height: 100%; transition: width 0.3s ease; }
-.sla-msg { font-size: 10px; font-weight: bold; display: block; }
+.sla-msg { font-size: 10px; font-weight: bold; display: block; line-height: 1.4; }
 @keyframes pulse-text { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 .d-block { display: block; }
+
+/* ---------------------------------------------------
+   أنماط شبكة الكروت المنظمة الحديثة (Cards Layout)
+--------------------------------------------------- */
+.cards-view-container {
+  width: 100%;
+}
+
+.heading-title-group h3 span {
+  margin-right: 6px;
+  padding: 2px 8px;
+  border-radius: 7px;
+  color: #7de8dc;
+  background: rgba(89, 220, 207, 0.12);
+  font-size: 10px;
+}
+
+.heading-actions-bar {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.view-switcher {
+  display: inline-flex;
+  background: rgba(10, 16, 47, 0.65);
+  padding: 3px;
+  border-radius: 10px;
+  border: 1px solid rgba(137, 153, 226, 0.18);
+  gap: 3px;
+}
+
+.switcher-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 13px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: #8390be;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.switcher-btn.active {
+  background: linear-gradient(110deg, #7de8dc, #b28aff);
+  color: #12183f;
+  box-shadow: 0 2px 10px rgba(125, 232, 220, 0.28);
+}
+
+.switcher-btn:hover:not(.active) {
+  color: #fff;
+  background: rgba(137, 153, 226, 0.1);
+}
+
+.plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(390px, 1fr));
+  gap: 22px;
+  padding: 22px;
+}
+
+.plan-card {
+  background: linear-gradient(160deg, rgba(20, 27, 72, 0.75), rgba(11, 17, 49, 0.85));
+  border: 1px solid rgba(137, 153, 226, 0.16);
+  border-radius: 18px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(4, 7, 27, 0.35);
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  backdrop-filter: blur(12px);
+}
+
+.plan-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(125, 232, 220, 0.38);
+  box-shadow: 0 16px 40px rgba(4, 7, 27, 0.5), 0 0 20px rgba(125, 232, 220, 0.08);
+}
+
+/* شريط الإضاءة العلوي */
+.card-accent-bar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 4px;
+  background: rgba(137, 153, 226, 0.3);
+}
+.accent-completed { background: linear-gradient(90deg, #10b981, #06b6d4); }
+.accent-reviewed { background: linear-gradient(90deg, #3b82f6, #06b6d4); }
+.accent-under_review { background: linear-gradient(90deg, #8b5cf6, #ec4899); }
+.accent-rejected { background: linear-gradient(90deg, #ef4444, #f59e0b); }
+.accent-pending { background: linear-gradient(90deg, #6366f1, #3b82f6); }
+
+/* رأس الكارت */
+.card-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.client-meta-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.client-avatar-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #7de8dc, #b28aff);
+  color: #12183f;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 14px;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(125, 232, 220, 0.22);
+}
+
+.client-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.client-title-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.client-heading {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: #f1f4ff;
+  line-height: 1.3;
+}
+
+.plan-type-tag {
+  font-size: 10px;
+  font-weight: 700;
+  color: #7de8dc;
+  background: rgba(125, 232, 220, 0.12);
+  border: 1px solid rgba(125, 232, 220, 0.25);
+  padding: 2px 7px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.plan-date-range {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #8894c2;
+  font-size: 10px;
+}
+
+.range-icon {
+  font-size: 11px;
+}
+
+.card-top-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.card-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.pulse-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+  animation: pulse-dot 1.8s infinite;
+}
+
+@keyframes pulse-dot {
+  0% { transform: scale(0.9); opacity: 0.7; }
+  50% { transform: scale(1.4); opacity: 1; }
+  100% { transform: scale(0.9); opacity: 0.7; }
+}
+
+.admin-quick-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.quick-icon-btn {
+  width: 27px;
+  height: 27px;
+  border-radius: 7px;
+  border: 1px solid rgba(137, 153, 226, 0.15);
+  background: rgba(10, 16, 47, 0.5);
+  color: #929ec7;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.quick-icon-btn:hover {
+  color: #fff;
+  border-color: #7de8dc;
+  background: rgba(125, 232, 220, 0.15);
+  transform: translateY(-1px);
+}
+
+.quick-icon-btn.wa-btn {
+  color: #25d366;
+  border-color: rgba(37, 211, 102, 0.3);
+}
+
+.quick-icon-btn.wa-btn:hover {
+  background: rgba(37, 211, 102, 0.15);
+  border-color: #25d366;
+}
+
+.quick-icon-btn.delete:hover {
+  color: #ff8e9e;
+  border-color: #ff4757;
+  background: rgba(255, 71, 87, 0.15);
+}
+
+/* صف الأدوار وفريق العمل */
+.team-roles-panel {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  background: rgba(8, 13, 38, 0.55);
+  padding: 9px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(137, 153, 226, 0.1);
+}
+
+.team-role-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.role-data {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.role-name-caption {
+  font-size: 8.5px;
+  color: #717da8;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.role-user-val {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #dbe2ff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* شبكة معالم الإنجاز */
+.milestones-card-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.milestone-card-block {
+  background: rgba(10, 16, 47, 0.55);
+  border: 1px solid rgba(137, 153, 226, 0.12);
+  border-radius: 12px;
+  padding: 11px 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 115px;
+}
+
+.block-top {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.block-label {
+  font-size: 10px;
+  font-weight: 800;
+  color: #c9d2f5;
+}
+
+.block-date {
+  font-size: 9.5px;
+  color: #8b97c6;
+  direction: ltr;
+  text-align: right;
+}
+
+.block-action-slot {
+  margin-top: 4px;
+}
+
+.full-w-btn {
+  width: 100% !important;
+  text-align: center;
+  justify-content: center;
+  font-size: 10px !important;
+  padding: 6px 10px !important;
+}
+
+.muted-slot-text {
+  font-size: 9.5px;
+  color: #616c96;
+  display: block;
+}
+
+.no-review-placeholder {
+  font-size: 9.5px;
+  color: #6c78a4;
+  padding: 6px 0;
+}
+
+.review-btn-duo {
+  display: flex;
+  gap: 6px;
+}
+.review-btn-duo button {
+  flex: 1;
+  font-size: 9.5px;
+  padding: 5px 8px;
+}
+
+.review-done-badge {
+  font-size: 9px;
+  color: #7de8dc;
+  display: block;
+}
+
+/* فوتر الكارت */
+.card-footer-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 1px dashed rgba(137, 153, 226, 0.14);
+  padding-top: 12px;
+  margin-top: 2px;
+}
+
+.card-links-cluster {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.cluster-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border-radius: 7px;
+  background: rgba(137, 153, 226, 0.08);
+  border: 1px solid rgba(137, 153, 226, 0.16);
+  color: #aeb9e3;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cluster-btn:hover:not(:disabled) {
+  color: #fff;
+  background: rgba(125, 232, 220, 0.14);
+  border-color: rgba(125, 232, 220, 0.35);
+  transform: translateY(-1px);
+}
+
+.cluster-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.spreadsheet-link-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: linear-gradient(110deg, rgba(125, 232, 220, 0.12), rgba(178, 138, 255, 0.12));
+  border: 1px solid rgba(125, 232, 220, 0.28);
+  border-radius: 9px;
+  color: #7de8dc;
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 800;
+  transition: all 0.2s ease;
+}
+
+.spreadsheet-link-banner:hover {
+  background: linear-gradient(110deg, #7de8dc, #b28aff);
+  color: #12183f;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(125, 232, 220, 0.25);
+}
+
+@media (max-width: 900px) {
+  .plans-grid {
+    grid-template-columns: 1fr;
+    padding: 15px;
+    gap: 16px;
+  }
+  .team-roles-panel {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .milestones-card-grid {
+    grid-template-columns: 1fr;
+  }
+}
 
 @media (max-width:720px) { .page-topline { align-items:flex-start; flex-direction:column; }.page-topline h2 { font-size:24px; }.primary-btn { width:100%; }.summary-strip { grid-template-columns:1fr 1fr; }.sync-status { grid-column:1 / -1; }.card-heading { padding-right:15px; padding-left:15px; }.legend { display:none; }.plans-table th,.plans-table td { padding-right:14px; padding-left:14px; }.modal-overlay {  padding:12px;     inset: 0 !important; z-index: 9999 !important; }.modal-content { max-height:calc(100vh - 82px); padding:23px 18px; }.form-grid,.form-grid-3 { grid-template-columns:1fr; gap:0; }.form-group.toggle-group { flex-direction:column !important; align-items:flex-start; margin-top:0; margin-bottom:15px; } .modal-actions { margin-top:5px; } }
 
@@ -1598,7 +2679,8 @@ onBeforeUnmount(() => {
 .upload-btn { min-height: 44px; display: inline-flex; align-items: center; padding-inline: 12px; font-size: 13px !important; }
 .remove-image-btn { width: 28px; height: 28px; font-size: 16px; }
 .fu-btn { min-height: 38px; padding: 6px 10px; font-size: 12px !important; }
-.viewer-close { width: 52px; height: 52px; }
+.viewer-close { width: 52px; height: 52px; z-index: 1000000 !important; }
+.image-viewer-overlay { z-index: 999999 !important; }
 .toast-message { max-width: min(420px, calc(100vw - 40px)); padding: 14px 18px; font-size: 14px !important; line-height: 1.6; }
 
 .modal-close:focus-visible, button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, .table-responsive:focus-visible { outline: 2px solid #79e6db; outline-offset: 2px; }

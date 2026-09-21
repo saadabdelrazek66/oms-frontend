@@ -192,7 +192,33 @@
             </div>
             <p v-if="departmentsList.length === 0" class="muted-cell no-departments">لا توجد أقسام مسجلة حالياً.</p>
           </div>
-          <div class="form-group full"><label for="user-password">كلمة المرور</label><input id="user-password" v-model="form.password" type="password" :required="!isEditing" :placeholder="isEditing ? 'اتركه فارغًا للاحتفاظ بالحالية' : 'أدخل كلمة مرور قوية'" /></div>
+          <div class="form-group full">
+            <label for="user-password">كلمة المرور <span v-if="!isEditing" class="text-red">*</span></label>
+            <div class="password-input-wrap">
+              <input 
+                id="user-password" 
+                v-model="form.password" 
+                :type="showPassword ? 'text' : 'password'" 
+                :required="!isEditing" 
+                :placeholder="isEditing ? 'اتركه فارغًا للاحتفاظ بالحالية' : 'أدخل كلمة مرور قوية'" 
+              />
+              <button 
+                type="button" 
+                class="password-toggle-btn" 
+                :aria-label="showPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'" 
+                :title="showPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'"
+                @click="showPassword = !showPassword"
+              >
+                <svg v-if="!showPassword" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6Z" />
+                  <circle cx="12" cy="12" r="2.5" />
+                </svg>
+                <svg v-else viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M3 3l18 18M10.6 6.2A10.8 10.8 0 0 1 12 6c6 0 9.5 6 9.5 6a17 17 0 0 1-3.2 3.7M6.1 6.8C3.8 8.4 2.5 12 2.5 12s3.5 6 9.5 6c1.5 0 2.8-.3 4-.8" />
+                </svg>
+              </button>
+            </div>
+          </div>
           <div class="form-group full"><label for="user-phone">رقم الهاتف <span class="text-red">*</span></label><input id="user-phone" v-model="form.phone" type="text" placeholder="01xxxxxxxx" required /></div>
           <div class="form-group full"><label for="user-work-type">نظام العمل <span class="text-red">*</span></label><select id="user-work-type" v-model="form.work_type" required><option value="remote">عن بعد</option><option value="onsite">من الشركة</option><option value="per_task">بالتاسك</option><option value="commission">بالعمولة</option></select></div>
           <div class="modal-actions"><button type="button" class="secondary-btn" @click="closeModal">إلغاء</button><button type="submit" class="primary-btn" :disabled="saving">{{ saving ? 'جارٍ الحفظ...' : 'حفظ البيانات' }}</button></div>
@@ -217,6 +243,7 @@ const saving = ref(false)
 const showModal = ref(false)
 const isEditing = ref(false)
 const editId = ref(null)
+const showPassword = ref(false)
 const toastMessage = ref('')
 const modalCloseButton = ref(null)
 let filterTimer = null
@@ -337,6 +364,7 @@ const fetchDepartmentsList = async () => {
 const resetForm = () => Object.assign(form, { name: '', job_title: '', email: '', password: '', phone: '', role: 'employee', work_type: 'onsite', primary_department_id: '', additional_department_ids: [] })
 
 const openModal = (user = null) => {
+  showPassword.value = false
   isEditing.value = Boolean(user)
   editId.value = user?.id || null
 
@@ -370,6 +398,7 @@ const openModal = (user = null) => {
 
 const closeModal = () => {
   showModal.value = false
+  showPassword.value = false
   resetForm()
 }
 
@@ -544,6 +573,11 @@ onBeforeUnmount(() => {
 .form-group input::placeholder { color: #7783ad; opacity: 1; }
 .form-group input:focus, .form-group select:focus { border-color: #76e8de; box-shadow: 0 0 0 3px rgba(118,232,222,.1); }
 .text-red { color: #ff9bad; }
+.password-input-wrap { position: relative; display: flex; align-items: center; width: 100%; }
+.password-input-wrap input { padding-left: 44px; }
+.password-toggle-btn { position: absolute; left: 6px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: 8px; background: transparent; color: #8490bd; cursor: pointer; transition: color .2s ease, background-color .2s ease; }
+.password-toggle-btn:hover { color: #76e8de; background: rgba(118, 232, 222, .1); }
+.password-toggle-btn svg { display: block; }
 .checkbox-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; margin-top: 5px; padding: 13px; border: 1px solid rgba(145,160,230,.15); border-radius: 10px; background: rgba(6,11,37,.25); }
 .custom-cb { min-width: 0; display: flex; align-items: center; gap: 9px; min-height: 38px; cursor: pointer; }
 .custom-cb.disabled { opacity: .4; cursor: not-allowed; }
@@ -556,7 +590,7 @@ onBeforeUnmount(() => {
 
 .toast-message { position: fixed; left: max(20px, env(safe-area-inset-left)); bottom: max(20px, env(safe-area-inset-bottom)); z-index: 200; max-width: min(420px, calc(100vw - 40px)); padding: 14px 18px; border: 1px solid rgba(116,232,220,.22); border-radius: 10px; color: #c8faf5; background: #182552; box-shadow: 0 12px 30px rgba(0,0,0,.25); font-size: 14px; line-height: 1.6; }
 
-.modal-close:focus-visible, .primary-btn:focus-visible, .secondary-btn:focus-visible, .action:focus-visible, .contact-btn:focus-visible, .pagination button:focus-visible, .table-responsive:focus-visible, .form-group input:focus-visible, .form-group select:focus-visible, .custom-cb input:focus-visible { outline: 2px solid #79e6db; outline-offset: 2px; }
+.modal-close:focus-visible, .primary-btn:focus-visible, .secondary-btn:focus-visible, .action:focus-visible, .contact-btn:focus-visible, .pagination button:focus-visible, .table-responsive:focus-visible, .form-group input:focus-visible, .form-group select:focus-visible, .custom-cb input:focus-visible, .password-toggle-btn:focus-visible { outline: 2px solid #79e6db; outline-offset: 2px; }
 .toast-enter-active, .toast-leave-active { transition: opacity .25s ease, transform .25s ease; }
 .toast-enter-from, .toast-leave-to { opacity: 0; transform: translateY(10px); }
 @keyframes spin { to { transform: rotate(360deg); } }

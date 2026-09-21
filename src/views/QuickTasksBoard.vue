@@ -7,7 +7,7 @@
         <h2>المهام السريعة</h2>
         <p>تابع، استمع، وأنجز مهام فريقك السريعة والتوجيهات الصوتية بكل سهولة.</p>
       </div>
-      <button class="primary-btn" type="button" @click="openCreateModal">
+      <button v-if="isManagerUser" class="primary-btn" type="button" @click="openCreateModal">
         <span aria-hidden="true">＋</span>
         إضافة مهمة جديدة
       </button>
@@ -105,29 +105,29 @@
             <div 
               v-for="task in filteredTasks" 
               :key="task.id" 
-              class="bg-gradient-to-br from-[#141b48]/90 to-[#0b1131]/95 backdrop-blur-xl rounded-3xl p-6 border border-[#8999e2]/15 shadow-[0_10px_30px_rgba(4,7,27,0.35)] hover:shadow-[0_16px_40px_rgba(4,7,27,0.5),0_0_20px_rgba(125,232,220,0.1)] hover:border-[#7de8dc]/30 transition-all duration-300 flex flex-col group relative overflow-hidden hover:-translate-y-1.5 cursor-pointer"
+              class="bg-gradient-to-b from-[#131b4b]/95 via-[#0e143b]/95 to-[#080d29]/95 backdrop-blur-xl rounded-[1.85rem] p-5 sm:p-6 border border-[#8999e2]/18 shadow-[0_12px_36px_rgba(0,0,0,0.45)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.65),0_0_30px_rgba(125,232,220,0.15)] hover:border-[#7de8dc]/45 transition-all duration-300 flex flex-col group relative overflow-hidden hover:-translate-y-1.5 cursor-pointer"
               @click="openTaskDetails(task)"
             >
-              <!-- شريط علوي ملون أنيق -->
-              <div class="absolute top-0 left-0 right-0 h-1.5 transition-all duration-300 opacity-60 group-hover:opacity-100" :class="getStatusColor(task.status).border"></div>
+              <!-- شريط علوي وتوهج محيطي -->
+              <div class="absolute top-0 left-0 right-0 h-1 transition-all duration-300 opacity-75 group-hover:opacity-100" :class="getStatusColor(task.status).border"></div>
+              <div class="absolute -top-12 -right-12 w-28 h-28 rounded-full blur-2xl opacity-10 group-hover:opacity-25 transition-opacity pointer-events-none bg-[#7de8dc]"></div>
 
-              <!-- رأس الكارت -->
-              <div class="flex justify-between items-start mb-5 mt-1">
-                <div>
-                  <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors shadow-sm" :class="getStatusColor(task.status).badge">
-                    <span class="w-1.5 h-1.5 rounded-full shadow-[0_0_5px_currentColor] animate-pulse-slow" :class="getStatusColor(task.status).dot"></span>
-                    {{ getStatusColor(task.status).text }}
-                  </span>
-                </div>
+              <!-- رأس الكارت: الحالة + أزرار التعديل والحذف + المنفذ -->
+              <div class="flex justify-between items-center mb-4 mt-0.5">
+                <!-- شارة الحالة -->
+                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black border transition-all shadow-sm backdrop-blur-md" :class="getStatusColor(task.status).badge">
+                  <span class="w-2 h-2 rounded-full shadow-[0_0_8px_currentColor] animate-pulse" :class="getStatusColor(task.status).dot"></span>
+                  {{ getStatusColor(task.status).text }}
+                </span>
                 
                 <!-- أزرار الإجراءات السريعة والموظف المنفذ -->
                 <div class="flex items-center gap-2">
-                  <!-- أزرار التعديل والحذف للكارت -->
+                  <!-- أزرار التعديل والحذف للكارت للمدير -->
                   <div v-if="canModifyTask(task)" class="flex items-center gap-1 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity" @click.stop>
                     <button 
                       type="button" 
                       @click.stop="openEditModal(task)" 
-                      class="w-7 h-7 rounded-lg bg-[#141b48]/90 hover:bg-[#7de8dc]/20 text-[#8390be] hover:text-[#7de8dc] border border-[#8999e2]/20 flex items-center justify-center transition-all cursor-pointer"
+                      class="w-7 h-7 rounded-xl bg-[#141c4d]/90 hover:bg-[#7de8dc]/20 text-[#8390be] hover:text-[#7de8dc] border border-[#8999e2]/25 flex items-center justify-center transition-all cursor-pointer"
                       title="تعديل المهمة"
                     >
                       <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
@@ -135,7 +135,7 @@
                     <button 
                       type="button" 
                       @click.stop="confirmDeleteTask(task)" 
-                      class="w-7 h-7 rounded-lg bg-[#141b48]/90 hover:bg-[#ff4757]/20 text-[#8390be] hover:text-[#ff4757] border border-[#8999e2]/20 flex items-center justify-center transition-all cursor-pointer"
+                      class="w-7 h-7 rounded-xl bg-[#141c4d]/90 hover:bg-[#ff4757]/20 text-[#8390be] hover:text-[#ff4757] border border-[#8999e2]/25 flex items-center justify-center transition-all cursor-pointer"
                       title="حذف المهمة"
                     >
                       <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
@@ -143,8 +143,8 @@
                   </div>
 
                   <!-- الموظف المنفذ -->
-                  <div class="flex -space-x-2 space-x-reverse" title="المنفذ">
-                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1d265a] to-[#0a102f] border border-[#8999e2]/30 flex items-center justify-center text-xs font-black text-[#dbe2ff] shadow-md transform group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
+                  <div class="flex items-center gap-1.5" :title="`المُكلَّف: ${task.assignee_name || 'غير محدد'}`">
+                    <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#1b265d] to-[#0c143d] border border-[#8999e2]/30 flex items-center justify-center text-xs font-black text-[#7de8dc] shadow-md group-hover:border-[#7de8dc]/50 group-hover:scale-105 transition-all duration-300">
                       {{ getInitials(task.assignee_name) }}
                     </div>
                   </div>
@@ -152,27 +152,31 @@
               </div>
 
               <!-- العنوان والوصف -->
-              <div class="flex-1">
-                <h3 class="text-lg font-extrabold text-[#f1f4ff] mb-2 line-clamp-1 group-hover:text-[#7de8dc] transition-colors" :title="task.title">{{ task.title || 'توجيه صوتي' }}</h3>
-                <p v-if="task.description" class="text-sm text-[#8390be] line-clamp-2 mb-4 leading-relaxed">{{ task.description }}</p>
+              <div class="flex-1 flex flex-col justify-start">
+                <h4 class="text-[17px] font-black text-[#f1f4ff] mb-2 line-clamp-1 group-hover:text-[#7de8dc] transition-colors leading-snug" :title="task.title">
+                  {{ task.title || 'توجيه سريع' }}
+                </h4>
+                <p v-if="task.description" class="text-xs sm:text-[13px] text-[#8696cb] line-clamp-2 mb-3.5 leading-relaxed font-medium">
+                  {{ task.description }}
+                </p>
                 
-                <!-- مشغل الصوت الأنيق -->
-                <div v-if="task.voice_record_url" class="bg-[#0a102f]/50 rounded-2xl p-2 border border-[#8999e2]/10 mb-4 group-hover:border-[#7de8dc]/20 group-hover:bg-[#141b48]/60 transition-colors" @click.stop>
-                  <audio :src="task.voice_record_url" controls class="w-full h-9 rounded-lg opacity-80 hover:opacity-100 transition-opacity" style="filter: invert(0.9) hue-rotate(180deg);"></audio>
+                <!-- مشغل الصوت الفاخر والموجات التفاعلية -->
+                <div v-if="task.voice_record_url" class="mb-4 mt-auto" @click.stop>
+                  <AudioVoicePlayer :src="task.voice_record_url" variant="card" theme="teal" />
                 </div>
               </div>
 
-              <!-- العداد التنازلي والفوتر -->
-              <div class="mt-4 pt-4 border-t border-dashed border-[#8999e2]/20 flex items-center justify-between">
-                <div class="flex items-center gap-2 bg-[#0a102f]/40 px-3 py-1.5 rounded-xl border border-[#8999e2]/5 group-hover:bg-[#141b48]/80 transition-colors">
-                  <svg class="w-4 h-4 text-[#6e79a9]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                  <span class="text-xs font-bold tracking-wide" :class="getCountdown(task.deadline).colorClass">
+              <!-- العداد التنازلي والفوتر الفاخر -->
+              <div class="mt-2 pt-3.5 border-t border-[#8999e2]/15 flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2 bg-[#090f33]/80 px-3 py-1.5 rounded-xl border border-[#8999e2]/12 group-hover:border-[#8999e2]/25 transition-colors">
+                  <svg class="w-3.5 h-3.5 text-[#7de8dc] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                  <span class="text-xs font-extrabold tracking-wide" :class="getCountdown(task.deadline).colorClass">
                     {{ getCountdown(task.deadline).text }}
                   </span>
                 </div>
                 
-                <div class="w-9 h-9 rounded-full bg-[#182552] text-[#8390be] flex items-center justify-center group-hover:bg-[#7de8dc] group-hover:text-[#12183f] transition-all shadow-sm group-hover:shadow-[0_0_15px_rgba(125,232,220,0.4)]">
-                  <svg class="w-4 h-4 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                <div class="w-8 h-8 rounded-xl bg-[#141c4d]/80 text-[#8390be] flex items-center justify-center border border-[#8999e2]/20 group-hover:bg-[#7de8dc] group-hover:text-[#0b1131] group-hover:border-[#7de8dc] transition-all duration-300 shadow-sm group-hover:shadow-[0_0_15px_rgba(125,232,220,0.4)] group-hover:translate-x-[-2px]">
+                  <svg class="w-4 h-4 rtl:rotate-180 transition-transform" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path></svg>
                 </div>
               </div>
             </div>
@@ -198,7 +202,7 @@
     <!-- نافذة إضافة مهمة سريعة -->
     <Teleport to="body">
       <Transition name="modal-fade">
-        <div v-if="showCreateModal" class="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-[#080d26]/80 backdrop-blur-md" @click.self="showCreateModal = false">
+        <div v-if="isManagerUser && showCreateModal" class="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-[#080d26]/80 backdrop-blur-md" @click.self="showCreateModal = false">
           <div class="relative w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-[2rem] shadow-[0_20px_60px_rgba(0,0,0,0.6),0_0_30px_rgba(125,232,220,0.1)] border border-[#8999e2]/20 bg-[#10163a]">
             <CreateQuickTask 
               :users="usersList" 
@@ -225,6 +229,7 @@
             <QuickTaskDetails 
               :task="selectedTask" 
               :currentUser="currentUser" 
+              :users="usersList"
               @taskUpdated="onTaskUpdated" 
               @editTask="openEditModal"
               @deleteTask="confirmDeleteTask"
@@ -250,51 +255,26 @@
       </Transition>
     </Teleport>
 
-    <!-- مودال تأكيد الحذف الفاخر -->
-    <Teleport to="body">
-      <Transition name="modal-fade">
-        <div v-if="showDeleteConfirmModal && taskToDelete" class="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-[#080d26]/85 backdrop-blur-md" @click.self="showDeleteConfirmModal = false">
-          <div class="relative w-full max-w-md rounded-[2rem] bg-[#10163a] border border-[#ff4757]/30 p-6 sm:p-7 shadow-[0_20px_60px_rgba(0,0,0,0.7),0_0_30px_rgba(255,71,87,0.15)] text-center text-[#f1f4ff]" dir="rtl">
-            <div class="w-16 h-16 rounded-2xl bg-[#ff4757]/15 border border-[#ff4757]/30 text-[#ff4757] flex items-center justify-center mx-auto mb-4 shadow-[0_0_20px_rgba(255,71,87,0.2)]">
-              <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-            </div>
+    <!-- مودال تنبيهات الواتساب التفاعلية -->
+    <WhatsAppNotificationModal 
+      v-model:is-open="showWaModal"
+      :event="waModalEvent"
+      :task="waModalTask"
+      :users="usersList"
+    />
 
-            <h3 class="text-xl font-black text-[#f1f4ff] mb-2">تأكيد حذف المهمة السريعة</h3>
-            <p class="text-[#8390be] text-sm leading-relaxed mb-6">
-              هل أنت متأكد من رغبتك في حذف مهمة <strong class="text-[#ff6b7b]">"{{ taskToDelete.title || 'توجيه سريع' }}"</strong>؟ سيتم حذف جميع التسجيلات الصوتية والملاحظات نهائياً ولا يمكن التراجع.
-            </p>
-
-            <div class="flex items-center justify-center gap-3">
-              <button 
-                type="button" 
-                @click="showDeleteConfirmModal = false" 
-                class="px-5 py-2.5 rounded-xl bg-[#141b48]/70 hover:bg-[#1c265c] text-[#8390be] hover:text-[#f1f4ff] font-bold text-sm border border-[#8999e2]/20 transition-all cursor-pointer"
-              >
-                إلغاء
-              </button>
-              <button 
-                type="button" 
-                :disabled="isDeleting"
-                @click="deleteTaskConfirmed" 
-                class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#ff4757] to-[#ff6b7b] hover:brightness-110 text-white font-extrabold text-sm shadow-[0_4px_15px_rgba(255,71,87,0.3)] transition-all flex items-center gap-2 cursor-pointer disabled:opacity-60"
-              >
-                <svg v-if="isDeleting" class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                <span>{{ isDeleting ? 'جاري الحذف...' : 'نعم، احذف المهمة' }}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
   </section>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import api from '@/axios';
+import alertService from '@/services/alertService';
 import CreateQuickTask from '@/components/CreateQuickTask.vue';
 import EditQuickTask from '@/components/EditQuickTask.vue';
 import QuickTaskDetails from '@/views/QuickTaskDetails.vue';
+import WhatsAppNotificationModal from '@/components/WhatsAppNotificationModal.vue';
+import AudioVoicePlayer from '@/components/AudioVoicePlayer.vue';
 
 const props = defineProps({
   users: { type: Array, default: () => [] },
@@ -335,12 +315,22 @@ const showCreateModal = ref(false);
 const showDetailsModal = ref(false);
 const showEditModal = ref(false);
 const taskToEdit = ref(null);
-const showDeleteConfirmModal = ref(false);
-const taskToDelete = ref(null);
-const isDeleting = ref(false);
 const selectedTask = ref(null);
 
+// حالة مودال الواتساب
+const showWaModal = ref(false);
+const waModalEvent = ref('created');
+const waModalTask = ref(null);
+
+const triggerWhatsApp = (event, task) => {
+  if (!task) return;
+  waModalTask.value = task;
+  waModalEvent.value = event;
+  showWaModal.value = true;
+};
+
 const openCreateModal = () => {
+  if (!isManagerUser.value) return;
   showCreateModal.value = true;
   emit('openCreateModal');
 };
@@ -367,29 +357,30 @@ const onTaskEdited = (updatedTask) => {
   emit('taskUpdated', updatedTask);
 };
 
-const confirmDeleteTask = (task) => {
-  taskToDelete.value = task;
-  showDeleteConfirmModal.value = true;
-};
+const confirmDeleteTask = async (task) => {
+  if (!task) return;
+  const isConfirmed = await alertService.confirm({
+    title: 'تأكيد حذف المهمة السريعة',
+    message: `هل أنت متأكد من رغبتك في حذف مهمة "${task.title || 'توجيه سريع'}"؟ سيتم حذف جميع التسجيلات الصوتية والملاحظات نهائياً ولا يمكن التراجع.`,
+    confirmText: 'نعم، احذف المهمة',
+    cancelText: 'إلغاء',
+    type: 'danger'
+  });
 
-const deleteTaskConfirmed = async () => {
-  if (!taskToDelete.value) return;
-  isDeleting.value = true;
+  if (!isConfirmed) return;
+
   try {
-    const deletedId = taskToDelete.value.id;
+    const deletedId = task.id;
     await api.delete(`/quick-tasks/${deletedId}`);
     tasks.value = tasks.value.filter(t => t.id !== deletedId);
     if (selectedTask.value && selectedTask.value.id === deletedId) {
       closeDetailsModal();
     }
-    showDeleteConfirmModal.value = false;
-    taskToDelete.value = null;
     emit('taskDeleted', deletedId);
+    alertService.success('تم حذف المهمة بنجاح 🗑️');
   } catch (error) {
     console.error('Error deleting task:', error);
-    alert(error.response?.data?.message || 'تعذر حذف المهمة.');
-  } finally {
-    isDeleting.value = false;
+    alertService.error(error.response?.data?.message || 'تعذر حذف المهمة.');
   }
 };
 
@@ -408,6 +399,7 @@ const onTaskCreated = (newTask) => {
   showCreateModal.value = false;
   if (newTask) {
     tasks.value.unshift(newTask);
+    triggerWhatsApp('created', newTask);
   } else {
     fetchTasks();
   }

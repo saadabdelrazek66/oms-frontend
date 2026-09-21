@@ -89,7 +89,7 @@
           </div>
           <h4>التفاصيل والتعليمات</h4>
         </div>
-        <p class="task-description-text">{{ task.description }}</p>
+        <p class="task-description-text" v-html="linkifyText(task.description)"></p>
       </div>
 
       <!-- التوجيه الصوتي الأساسي -->
@@ -108,8 +108,8 @@
             <small>استمع إلى التسجيل الصوتي المرفق من صاحب المهمة</small>
           </div>
         </div>
-        <div class="audio-wrap">
-          <audio :src="task.voice_record_url" controls class="custom-audio-player"></audio>
+        <div class="audio-wrap mt-2">
+          <AudioVoicePlayer :src="task.voice_record_url" variant="full" theme="purple" />
         </div>
       </div>
 
@@ -181,22 +181,20 @@
                     إنشاء التوجيه والتكليف 🎯
                   </span>
                 </div>
-                <span class="chat-bubble-time">{{ formatDeadline(task.created_at) || 'البداية' }}</span>
+                <span class="chat-bubble-time" dir="auto">{{ formatTaskCreatedTime(task) }}</span>
               </div>
 
-              <div v-if="task.description" class="chat-bubble-content">
-                {{ task.description }}
-              </div>
+              <div v-if="task.description" class="chat-bubble-content" v-html="linkifyText(task.description)"></div>
 
               <div v-if="task.voice_record_url" class="chat-bubble-audio-box">
-                <div class="flex items-center gap-1.5 mb-1.5 text-xs font-bold text-[#b28aff]">
+                <div class="flex items-center gap-1.5 mb-2 text-xs font-bold text-[#b28aff]">
                   <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
                     <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
                   </svg>
                   <span>التوجيه الصوتي الأصلي</span>
                 </div>
-                <audio :src="task.voice_record_url" controls class="w-full h-8 rounded-lg outline-none"></audio>
+                <AudioVoicePlayer :src="task.voice_record_url" variant="bubble" theme="purple" />
               </div>
             </div>
           </div>
@@ -229,18 +227,16 @@
                     {{ getStatusBadgeInfo(log.status_changed_to).label }}
                   </span>
                 </div>
-                <span class="chat-bubble-time">{{ formatLogTime(log) }}</span>
+                <span class="chat-bubble-time" dir="auto">{{ formatLogTime(log) }}</span>
               </div>
 
               <!-- نص الملاحظة إن وجد -->
-              <div v-if="log.feedback_text" class="chat-bubble-content">
-                {{ log.feedback_text }}
-              </div>
+              <div v-if="log.feedback_text" class="chat-bubble-content" v-html="linkifyText(log.feedback_text)"></div>
 
               <!-- التسجيل الصوتي إن وجد -->
               <div v-if="log.voice_record_url" class="chat-bubble-audio-box">
                 <div 
-                  class="flex items-center gap-1.5 mb-1.5 text-xs font-bold" 
+                  class="flex items-center gap-1.5 mb-2 text-xs font-bold" 
                   :class="isMyMessage(log) ? 'text-[#7de8dc]' : 'text-[#b28aff]'"
                 >
                   <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
@@ -249,7 +245,7 @@
                   </svg>
                   <span>تسجيل صوتي مرفق</span>
                 </div>
-                <audio :src="log.voice_record_url" controls class="w-full h-8 rounded-lg outline-none"></audio>
+                <AudioVoicePlayer :src="log.voice_record_url" variant="bubble" :theme="isMyMessage(log) ? 'teal' : 'purple'" />
               </div>
             </div>
           </div>
@@ -297,12 +293,29 @@
             </div>
 
             <!-- حقل النص -->
-            <textarea
-              v-model="messageText"
-              rows="2"
-              placeholder="اكتب ملاحظات ما تم إنجازه في المهمة (اختياري)..."
-              class="composer-textarea"
-            ></textarea>
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <label class="text-xs font-bold text-[#f1f4ff] flex items-center gap-1.5">
+                  <span>ملاحظات وروابط الإنجاز</span>
+                  <span class="text-[#ff4757] font-bold text-sm">*</span>
+                  <span class="text-[10px] text-[#ff4757] bg-[#ff4757]/10 px-1.5 py-0.5 rounded border border-[#ff4757]/20 font-semibold">إجباري</span>
+                </label>
+                <span class="text-[11px] text-[#7de8dc] flex items-center gap-1 font-medium">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                  </svg>
+                  <span>الروابط قابلة للنقر تلقائياً</span>
+                </span>
+              </div>
+              <textarea
+                v-model="messageText"
+                rows="3"
+                placeholder="اكتب شرح ما تم إنجازه، مع إضافة الروابط (Drive، Figma، موقع المعاينة...) (مطلوب)..."
+                class="composer-textarea"
+                :class="{ 'has-error': submitError && !messageText.trim() }"
+              ></textarea>
+            </div>
 
             <!-- مشغل وتسجيل الصوت بتقنية Web Audio API -->
             <div class="recording-dock">
@@ -375,7 +388,7 @@
                     حذف وإعادة التسجيل
                   </button>
                 </div>
-                <audio :src="feedbackAudioUrl" controls class="w-full h-8 outline-none rounded-lg"></audio>
+                <AudioVoicePlayer :src="feedbackAudioUrl" variant="bubble" theme="teal" />
               </div>
             </div>
 
@@ -410,13 +423,29 @@
               <span class="text-[11px] text-[#8390be]">اختر اعتماد المهمة أو طلب تعديلها</span>
             </div>
 
-            <!-- حقل النص -->
-            <textarea
-              v-model="messageText"
-              rows="2"
-              placeholder="اكتب ملاحظاتك للموظف، أو أسباب طلب التعديل (اختياري)..."
-              class="composer-textarea"
-            ></textarea>
+            <!-- حقل النص للمدير -->
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <label class="text-xs font-bold text-[#f1f4ff] flex items-center gap-1.5">
+                  <span>ملاحظات وتوجيهات الإدارة</span>
+                  <span class="text-[10px] text-[#ffc107] bg-[#ffc107]/10 px-1.5 py-0.5 rounded border border-[#ffc107]/20 font-medium">مطلوبة عند الرفض والتعديل</span>
+                </label>
+                <span class="text-[11px] text-[#7de8dc] flex items-center gap-1 font-medium">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                  </svg>
+                  <span>الروابط قابلة للنقر تلقائياً</span>
+                </span>
+              </div>
+              <textarea
+                v-model="messageText"
+                rows="3"
+                placeholder="اكتب ملاحظاتك وتوجيهاتك للموظف، روابط المعاينة، أو أسباب طلب التعديل..."
+                class="composer-textarea"
+                :class="{ 'has-error': submitError && !messageText.trim() }"
+              ></textarea>
+            </div>
 
             <!-- تسجيل الصوت بتقنية Web Audio API للمدير -->
             <div class="recording-dock">
@@ -487,7 +516,7 @@
                     حذف وإعادة التسجيل
                   </button>
                 </div>
-                <audio :src="feedbackAudioUrl" controls class="w-full h-8 outline-none rounded-lg"></audio>
+                <AudioVoicePlayer :src="feedbackAudioUrl" variant="bubble" theme="teal" />
               </div>
             </div>
 
@@ -560,19 +589,42 @@
         </div>
       </div>
     </div>
+
+    <!-- مودال تنبيهات الواتساب التفاعلية -->
+    <WhatsAppNotificationModal 
+      v-model:is-open="showWaModal"
+      :event="waModalEvent"
+      :task="waModalTask"
+      :users="users"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import api from '@/axios';
+import WhatsAppNotificationModal from '@/components/WhatsAppNotificationModal.vue';
+import AudioVoicePlayer from '@/components/AudioVoicePlayer.vue';
 
 const props = defineProps({
   task: { type: Object, required: true },
-  currentUser: { type: Object, required: true }
+  currentUser: { type: Object, required: true },
+  users: { type: Array, default: () => [] }
 });
 
 const emit = defineEmits(['taskUpdated', 'editTask', 'deleteTask']);
+
+// حالة مودال الواتساب
+const showWaModal = ref(false);
+const waModalEvent = ref('submitted');
+const waModalTask = ref(null);
+
+const triggerWhatsApp = (event, task) => {
+  if (!task) return;
+  waModalTask.value = task;
+  waModalEvent.value = event;
+  showWaModal.value = true;
+};
 
 const isSubmitting = ref(false);
 const submitError = ref('');
@@ -632,15 +684,56 @@ const canReview = computed(() => {
   return isManagerUser.value;
 });
 
-// ترتيب السجل زمنيًا من الأقدم للأحدث (مثل الدردشة الحقيقية)
+// دالة تحليل ومعالجة الطوابع الزمنية بدقة لمختلف الصيغ (ISO / MySQL / Timestamps)
+const parseLogTimestamp = (val) => {
+  if (!val) return null;
+  if (typeof val === 'number') return val;
+  const str = String(val).trim();
+  if (!str || str === 'Invalid Date') return null;
+
+  // إذا كان رقماً خالصاً (timestamp ثواني أو ميلي ثانية)
+  if (/^\d{10,13}$/.test(str)) {
+    const num = Number(str);
+    return str.length === 10 ? num * 1000 : num;
+  }
+
+  // محاولة التحويل القياسي
+  let d = new Date(str);
+  if (!isNaN(d.getTime())) return d.getTime();
+
+  // معالجة صيغة MySQL "YYYY-MM-DD HH:mm:ss"
+  if (str.includes(' ')) {
+    d = new Date(str.replace(' ', 'T'));
+    if (!isNaN(d.getTime())) return d.getTime();
+  }
+
+  return null;
+};
+
+// ترتيب السجل زمنيًا تصاعدياً من الأقدم للأحدث (مثل الدردشة الحقيقية: القديم في الأعلى والجديد في الأسفل)
 const sortedLogs = computed(() => {
-  if (!props.task?.feedback_logs || !Array.isArray(props.task.feedback_logs)) {
+  const list = props.task?.feedback_logs || props.task?.feedbackLogs || props.task?.logs;
+  if (!list || !Array.isArray(list)) {
     return [];
   }
-  return [...props.task.feedback_logs].sort((a, b) => {
-    const timeA = a.created_at ? new Date(a.created_at).getTime() : (Number(a.id) || 0);
-    const timeB = b.created_at ? new Date(b.created_at).getTime() : (Number(b.id) || 0);
-    return timeA - timeB;
+
+  return [...list].sort((a, b) => {
+    // 1. فحص التوقيت الزمني الحقيقي
+    const tA = parseLogTimestamp(a.created_at || a.created_date || a.timestamp);
+    const tB = parseLogTimestamp(b.created_at || b.created_date || b.timestamp);
+
+    if (tA !== null && tB !== null && tA !== tB) {
+      return tA - tB;
+    }
+
+    // 2. إذا تساوى التوقيت أو كان بصيغة نصية نسبية (مثل ago)، نعتمد على المعرف التسلسلي لقاعدة البيانات (id)
+    const idA = Number(a.id);
+    const idB = Number(b.id);
+    if (!isNaN(idA) && !isNaN(idB) && idA !== idB) {
+      return idA - idB;
+    }
+
+    return 0;
   });
 });
 
@@ -687,6 +780,36 @@ const getStatusBadgeInfo = (status) => {
         badgeClass: 'bg-[#8999e2]/15 text-[#a8b5f0] border border-[#8999e2]/25'
       };
   }
+};
+
+// دوال تحويل الروابط في النصوص إلى روابط تفاعلية قابلة للنقر مع الحماية
+const escapeHtml = (text) => {
+  if (!text) return '';
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+};
+
+const linkifyText = (text) => {
+  if (!text) return '';
+  const escaped = escapeHtml(text).replace(/\n/g, '<br>');
+  const urlRegex = /((https?:\/\/|www\.)[^\s<]+)/gi;
+
+  return escaped.replace(urlRegex, (match) => {
+    let url = match;
+    let trailing = '';
+    const punct = /[.,!?:;؟،)\]]+$/;
+    const punctMatch = url.match(punct);
+    if (punctMatch) {
+      trailing = punctMatch[0];
+      url = url.slice(0, -trailing.length);
+    }
+    const href = url.toLowerCase().startsWith('www.') ? `https://${url}` : url;
+    return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="chat-clickable-link" title="فتح الرابط: ${url}"><span>${url}</span><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>${trailing}`;
+  });
 };
 
 // --- تسجيل الصوت بالمايك (Web Audio API + Silent Mic Detection) ---
@@ -913,6 +1036,13 @@ const getAudioExtension = (mimeType) => {
 // 1. إجراء تسليم المهمة للموظف
 const submitTaskAction = async () => {
   if (isSubmitting.value) return;
+
+  // الملاحظات وروابط الإنجاز إجبارية عند التسليم
+  if (!messageText.value?.trim()) {
+    submitError.value = 'يرجى كتابة ملاحظات ما تم إنجازه أو روابط التسليم (الحقل إجباري).';
+    return;
+  }
+
   isSubmitting.value = true;
   submitError.value = '';
 
@@ -931,16 +1061,21 @@ const submitTaskAction = async () => {
     }
 
     const res = await api.post(`/quick-tasks/${props.task.id}/submit`, formData);
+    const updatedData = res.data?.data || res.data || {};
+    const mergedTask = { ...props.task, ...updatedData };
     
     // تصفير الصندوق
     messageText.value = '';
     clearRecording();
 
     // إشعار الأب بالتحديث
-    emit('taskUpdated', res.data?.data || res.data);
+    emit('taskUpdated', mergedTask);
 
     // التمرير التلقائي لأسفل المحادثة
     scrollToBottom(true);
+
+    // فتح مودال إشعار الواتساب للمدير بحدث submitted
+    triggerWhatsApp('submitted', mergedTask);
   } catch (err) {
     console.error('Submit task error:', err);
     submitError.value = err.response?.data?.message || 'تعذر تسليم المهمة، يرجى المحاولة مرة أخرى.';
@@ -952,6 +1087,13 @@ const submitTaskAction = async () => {
 // 2. إجراء قرار المراجعة للمدير (اعتماد أو رفض)
 const reviewTaskAction = async (decisionStatus) => {
   if (isSubmitting.value) return;
+
+  // إذا كان القرار رفض للتعديل، يجب كتابة أسباب الرفض أو تسجيل توجيه صوتي
+  if (decisionStatus === 'rejected' && !messageText.value?.trim() && !audioBlob.value) {
+    submitError.value = 'يرجى كتابة أسباب طلب التعديل وملاحظاتك للموظف أو تسجيل توجيه صوتي.';
+    return;
+  }
+
   isSubmitting.value = true;
   submitError.value = '';
 
@@ -972,16 +1114,22 @@ const reviewTaskAction = async (decisionStatus) => {
     }
 
     const res = await api.post(`/quick-tasks/${props.task.id}/review`, formData);
+    const updatedData = res.data?.data || res.data || {};
+    const mergedTask = { ...props.task, ...updatedData };
 
     // تصفير الصندوق
     messageText.value = '';
     clearRecording();
 
     // إشعار الأب بالتحديث
-    emit('taskUpdated', res.data?.data || res.data);
+    emit('taskUpdated', mergedTask);
 
     // التمرير التلقائي لأسفل المحادثة
     scrollToBottom(true);
+
+    // فتح مودال إشعار الواتساب للموظف (approved أو rejected)
+    const eventType = decisionStatus === 'completed' ? 'approved' : 'rejected';
+    triggerWhatsApp(eventType, mergedTask);
   } catch (err) {
     console.error('Review task error:', err);
     submitError.value = err.response?.data?.message || 'تعذر حفظ القرار، يرجى المحاولة مرة أخرى.';
@@ -1014,6 +1162,12 @@ watch(
   { deep: true }
 );
 
+watch(messageText, (newVal) => {
+  if (newVal?.trim() && submitError.value) {
+    submitError.value = '';
+  }
+});
+
 onUnmounted(() => {
   clearRecording();
 });
@@ -1036,24 +1190,46 @@ const getInitials = (name) => {
 };
 
 const formatDeadline = (dateStr) => {
-  if (!dateStr) return '';
-  try {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-  } catch (e) {
+  if (!dateStr || dateStr === 'Invalid Date') return '';
+  if (typeof dateStr === 'string' && (dateStr.includes('ago') || dateStr.includes('منذ'))) {
     return dateStr;
   }
+  try {
+    const t = parseLogTimestamp(dateStr);
+    if (t !== null) {
+      const d = new Date(t);
+      return d.toLocaleDateString('ar-EG', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+  } catch (e) {}
+
+  return String(dateStr);
+};
+
+const formatTaskCreatedTime = (taskObj) => {
+  if (!taskObj) return 'بداية التكليف';
+  if (taskObj.created_at_human) return taskObj.created_at_human;
+  const raw = taskObj.created_at || taskObj.created_date;
+  if (raw) {
+    const formatted = formatDeadline(raw);
+    if (formatted && formatted !== 'Invalid Date') return formatted;
+  }
+  return 'بداية التكليف';
 };
 
 const formatLogTime = (log) => {
-  if (log?.created_at_human) return log.created_at_human;
-  if (!log?.created_at) return 'الآن';
-  try {
-    const d = new Date(log.created_at);
-    return d.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-  } catch (e) {
-    return log.created_at;
+  if (!log) return '';
+  if (log.created_at_human) return log.created_at_human;
+  const raw = log.created_at || log.created_date;
+  if (raw) {
+    const formatted = formatDeadline(raw);
+    if (formatted && formatted !== 'Invalid Date') return formatted;
   }
+  return 'الآن';
 };
 </script>
 
@@ -1571,6 +1747,45 @@ const formatLogTime = (log) => {
 .composer-textarea:focus {
   border-color: #7de8dc;
   box-shadow: 0 0 0 3px rgba(125, 232, 220, 0.15);
+}
+
+.composer-textarea.has-error {
+  border-color: #ff4757 !important;
+  box-shadow: 0 0 0 3px rgba(255, 71, 87, 0.25) !important;
+  background: rgba(255, 71, 87, 0.06) !important;
+}
+
+:deep(.chat-clickable-link) {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #7de8dc !important;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+  word-break: break-all;
+  direction: ltr;
+  unicode-bidi: embed;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(125, 232, 220, 0.1);
+  border: 1px solid rgba(125, 232, 220, 0.25);
+  transition: all 0.2s ease;
+  vertical-align: middle;
+}
+
+:deep(.chat-clickable-link:hover) {
+  color: #ffffff !important;
+  background: rgba(125, 232, 220, 0.22);
+  border-color: rgba(125, 232, 220, 0.5);
+  box-shadow: 0 0 12px rgba(125, 232, 220, 0.35);
+  transform: translateY(-1px);
+}
+
+:deep(.chat-clickable-link svg) {
+  flex-shrink: 0;
+  opacity: 0.85;
 }
 
 .recording-dock {

@@ -97,6 +97,51 @@
       </div>
 
       <!-- ========================================== -->
+      <!-- 3. إحصائيات المهام السريعة (Quick Tasks Stats) -->
+      <!-- ========================================== -->
+      <div v-if="dashboardData.stats?.quick_tasks" class="stats-section mb-4">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <h3 class="section-title mb-0">⚡ إحصائيات المهام السريعة</h3>
+          <router-link to="/quick-tasks" class="view-all-link">
+            لوحة المهام السريعة ↗
+          </router-link>
+        </div>
+        <div class="stats-grid">
+          <article class="stat-card teal-card">
+            <div class="stat-info">
+              <small>إجمالي المهام السريعة</small>
+              <strong>{{ dashboardData.stats.quick_tasks.total ?? 0 }}</strong>
+            </div>
+            <div class="stat-icon">⚡</div>
+          </article>
+          
+          <article class="stat-card green-card">
+            <div class="stat-info">
+              <small>المهام المنجزة</small>
+              <strong>{{ dashboardData.stats.quick_tasks.completed ?? 0 }}</strong>
+            </div>
+            <div class="stat-icon">✅</div>
+          </article>
+          
+          <article class="stat-card purple-card">
+            <div class="stat-info">
+              <small>قيد التنفيذ والمتابعة</small>
+              <strong>{{ dashboardData.stats.quick_tasks.pending ?? 0 }}</strong>
+            </div>
+            <div class="stat-icon">⏳</div>
+          </article>
+          
+          <article class="stat-card" :class="(dashboardData.stats.quick_tasks.overdue || 0) > 0 ? 'red-card pulse-danger' : 'gray-card'">
+            <div class="stat-info">
+              <small>المهام المتأخرة</small>
+              <strong>{{ dashboardData.stats.quick_tasks.overdue ?? 0 }}</strong>
+            </div>
+            <div class="stat-icon">🚨</div>
+          </article>
+        </div>
+      </div>
+
+      <!-- ========================================== -->
       <!-- 3. مؤشرات الأداء (KPIs)                      -->
       <!-- ========================================== -->
       <div class="kpi-grid mt-4">
@@ -148,6 +193,31 @@
           <div v-else class="empty-kpi">
             <div class="empty-icon">✨</div>
             <p>لا توجد منشورات خطط مطلوبة منك هذا الشهر حتى الآن.</p>
+          </div>
+        </div>
+
+        <!-- KPI: المهام السريعة -->
+        <div v-if="dashboardData.kpi?.quick_tasks" class="glass-card kpi-section">
+          <h3 class="card-title">⚡ أداء المهام السريعة (الشهر الحالي)</h3>
+          
+          <template v-if="dashboardData.kpi.quick_tasks.total_this_month > 0">
+            <div class="circular-progress-wrapper">
+              <svg viewBox="0 0 36 36" class="circular-chart">
+                <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                <path class="circle circle-teal" :stroke-dasharray="`${dashboardData.kpi.quick_tasks.completion_rate}, 100`" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                <text x="18" y="20.35" class="percentage">{{ dashboardData.kpi.quick_tasks.completion_rate }}%</text>
+              </svg>
+            </div>
+            <p class="kpi-desc text-center mt-3">
+              لقد أنجزت <strong class="text-teal">{{ dashboardData.kpi.quick_tasks.completion_rate }}%</strong> من المهام السريعة هذا الشهر.
+              <br>
+              <span class="muted text-sm">(إجمالي مهام هذا الشهر: {{ dashboardData.kpi.quick_tasks.total_this_month }})</span>
+            </p>
+          </template>
+          
+          <div v-else class="empty-kpi">
+            <div class="empty-icon">⚡</div>
+            <p>لا توجد مهام سريعة مطلوبة منك هذا الشهر حتى الآن.</p>
           </div>
         </div>
 
@@ -235,6 +305,58 @@
           </div>
         </div>
 
+        <!-- قسم المهام السريعة العاجلة -->
+        <div class="glass-card priorities-section">
+          <div class="card-header">
+            <div class="d-flex align-items-center gap-2">
+              <h3 class="card-title">⚡ مهام سريعة عاجلة</h3>
+              <span class="badge badge-teal">{{ (dashboardData.priorities?.upcoming_quick_tasks || []).length }} مهام</span>
+            </div>
+            <router-link to="/quick-tasks" class="view-all-link">
+              عرض كل المهام السريعة ↗
+            </router-link>
+          </div>
+          <div class="items-list">
+            <div v-if="!dashboardData.priorities?.upcoming_quick_tasks || dashboardData.priorities.upcoming_quick_tasks.length === 0" class="muted text-center py-4">
+              لا توجد مهام سريعة عاجلة حالياً 🎉
+            </div>
+            
+            <div v-for="task in dashboardData.priorities.upcoming_quick_tasks" :key="task.id" 
+                 class="priority-item" 
+                 :class="getDeadlineStatus(task.created_at, task.deadline, task.status).class + '-border'">
+              
+              <div class="item-header">
+                <div class="title-with-badge">
+                  <strong>{{ task.title && task.title.trim() ? task.title : '🎙️ توجيه صوتي' }}</strong>
+                  <span v-if="isUrgent(task)" class="urgent-tag">عاجل ⚠️</span>
+                </div>
+                <span class="project-tag manager-tag" :title="task.creator?.name ? `بواسطة ${task.creator.name}` : 'المدير'">
+                  👤 {{ task.creator?.name || 'المدير' }}
+                </span>
+              </div>
+
+              <!-- تاريخ الاستحقاق المنسق -->
+              <div class="deadline-row mt-2">
+                <span class="deadline-label" :class="{ 'text-danger': isUrgent(task) }">
+                  📅 {{ formatQuickTaskDeadline(task.deadline) }}
+                </span>
+              </div>
+              
+              <div class="item-footer mt-2">
+                <div class="sla-indicator">
+                  <span class="sla-msg" :class="getDeadlineStatus(task.created_at, task.deadline, task.status).class + '-text'">
+                    🕒 {{ getDeadlineStatus(task.created_at, task.deadline, task.status).message }}
+                  </span>
+                  <div class="sla-progress-bg">
+                    <div class="sla-progress-fill" :class="getDeadlineStatus(task.created_at, task.deadline, task.status).class + '-bg'" :style="{ width: getDeadlineStatus(task.created_at, task.deadline, task.status).percentage + '%' }"></div>
+                  </div>
+                </div>
+                <router-link to="/quick-tasks" class="action-link action-teal">عرض المهمة ↗</router-link>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   </section>
@@ -272,6 +394,55 @@ const parsePlatforms = (platformData) => {
     return platformData;
   }
   return platformData;
+};
+
+const formatQuickTaskDeadline = (deadlineStr) => {
+  if (!deadlineStr) return 'بدون موعد محدد';
+  try {
+    const date = new Date(String(deadlineStr).replace(' ', 'T'));
+    if (isNaN(date.getTime())) return deadlineStr;
+
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+    
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const isTomorrow = date.toDateString() === tomorrow.toDateString();
+
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const isYesterday = date.toDateString() === yesterday.toDateString();
+
+    const timeOptions = { hour: '2-digit', minute: '2-digit', hour12: true };
+    const timeFormatted = date.toLocaleTimeString('ar-EG', timeOptions);
+
+    if (isToday) {
+      return `اليوم ${timeFormatted}`;
+    } else if (isTomorrow) {
+      return `غداً ${timeFormatted}`;
+    } else if (isYesterday) {
+      return `أمس ${timeFormatted}`;
+    } else {
+      const dateOptions = { month: 'short', day: 'numeric' };
+      const dateFormatted = date.toLocaleDateString('ar-EG', dateOptions);
+      return `${dateFormatted} - ${timeFormatted}`;
+    }
+  } catch (e) {
+    return deadlineStr;
+  }
+};
+
+const isUrgent = (task) => {
+  if (!task?.deadline || task.status === 'completed') return false;
+  try {
+    const end = new Date(String(task.deadline).replace(' ', 'T')).getTime();
+    if (isNaN(end)) return false;
+    const now = Date.now();
+    const diffHours = (end - now) / (1000 * 60 * 60);
+    return diffHours <= 6; // Less than 6 hours or overdue
+  } catch {
+    return false;
+  }
 };
 
 const fetchDashboardData = async () => {
@@ -340,6 +511,8 @@ onMounted(() => {
 .green-card { border-bottom: 3px solid #34d399; }
 .orange-card { border-bottom: 3px solid #fbbf24; }
 .purple-card { border-bottom: 3px solid #c084fc; }
+.teal-card { border-bottom: 3px solid #7de8dc; }
+.teal-card:hover { box-shadow: 0 8px 20px rgba(125, 232, 220, 0.15); }
 .red-card { border-bottom: 3px solid #ef4444; background: rgba(239, 68, 68, 0.05); }
 .gray-card { border-bottom: 3px solid #64748b; opacity: 0.8; }
 
@@ -351,15 +524,19 @@ onMounted(() => {
 }
 
 /* Grids Setup */
-.kpi-grid, .priorities-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+.kpi-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; align-items: stretch; }
+.priorities-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; align-items: start; }
 
 .glass-card { background: rgba(15, 22, 61, 0.65); border: 1px solid rgba(137, 153, 226, 0.15); border-radius: 16px; padding: 22px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
 .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
 .d-flex { display: flex; }
 .align-items-center { align-items: center; }
+.justify-content-between { justify-content: space-between; }
 .gap-2 { gap: 8px; }
+.mb-0 { margin-bottom: 0 !important; }
 .card-title { margin: 0; font-size: 18px; color: #fff; }
 .badge { background: rgba(137, 153, 226, 0.15); color: #8fc9ff; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: bold; }
+.badge-teal { background: rgba(125, 232, 220, 0.15); color: #7de8dc; }
 
 /* View All Link */
 .view-all-link { font-size: 12px; color: #7de8dc; text-decoration: none; font-weight: 600; transition: 0.2s; background: rgba(125, 232, 220, 0.05); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(125, 232, 220, 0.1); }
@@ -372,6 +549,7 @@ onMounted(() => {
 .circle-bg { fill: none; stroke: rgba(137, 153, 226, 0.1); stroke-width: 2.5; }
 .circle { fill: none; stroke: #34d399; stroke-width: 2.5; stroke-linecap: round; animation: progress 1s ease-out forwards; }
 .circle-purple { stroke: #c084fc; }
+.circle-teal { stroke: #7de8dc; }
 .percentage { fill: #fff; font-family: 'Cairo', sans-serif; font-size: 8px; font-weight: 800; text-anchor: middle; }
 @keyframes progress { 0% { stroke-dasharray: 0 100; } }
 .kpi-desc { font-size: 13px; color: #aab5da; line-height: 1.6; }
@@ -388,11 +566,33 @@ onMounted(() => {
 .item-header strong { font-size: 14px; color: #eef0ff; line-height: 1.4; }
 .project-tag { font-size: 10px; padding: 3px 8px; background: rgba(143, 201, 255, 0.15); color: #8fc9ff; border-radius: 6px; white-space: nowrap; }
 .client-tag { background: rgba(192, 132, 252, 0.15); color: #c084fc; }
+.manager-tag { background: rgba(125, 232, 220, 0.12); color: #7de8dc; border: 1px solid rgba(125, 232, 220, 0.25); }
 .post-desc { font-size: 11px; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%; }
+
+.title-with-badge { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.deadline-row { display: flex; align-items: center; justify-content: space-between; font-size: 12px; }
+.deadline-label { color: #9ba3c4; font-size: 12px; font-weight: 600; }
+.text-danger { color: #f87171 !important; font-weight: 700; }
+
+.urgent-tag { 
+  font-size: 10px; 
+  padding: 2px 7px; 
+  border-radius: 6px; 
+  background: rgba(239, 68, 68, 0.2); 
+  color: #f87171; 
+  border: 1px solid rgba(239, 68, 68, 0.35); 
+  font-weight: 800; 
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  animation: pulse-danger 2s infinite; 
+}
 
 .item-footer { display: flex; justify-content: space-between; align-items: flex-end; }
 .action-link { font-size: 11px; color: #7de8dc; text-decoration: none; font-weight: bold; background: rgba(125, 232, 220, 0.1); padding: 4px 10px; border-radius: 6px; transition: 0.2s; }
 .action-link:hover { background: rgba(125, 232, 220, 0.2); }
+.action-teal { color: #7de8dc; background: rgba(125, 232, 220, 0.1); }
+.action-teal:hover { background: rgba(125, 232, 220, 0.25); color: #fff; }
 
 /* SLA Smart Colors */
 .sla-indicator { display: flex; flex-direction: column; gap: 3px; min-width: 140px; }
@@ -420,12 +620,18 @@ onMounted(() => {
 
 .text-green { color: #34d399; }
 .text-purple { color: #c084fc; }
+.text-teal { color: #7de8dc; }
 .muted { color: #64748b; }
 .text-sm { font-size: 11px; }
 .text-center { text-align: center; }
 .mt-3 { margin-top: 15px; }
 .mt-4 { margin-top: 25px; }
 .py-4 { padding-top: 20px; padding-bottom: 20px; }
+
+@media (max-width: 1200px) {
+  .kpi-grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .priorities-grid { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+}
 
 @media (max-width: 900px) {
   .kpi-grid, .priorities-grid { grid-template-columns: 1fr; }

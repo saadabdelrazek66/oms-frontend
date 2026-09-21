@@ -69,7 +69,7 @@
 
             <th v-if="!isMediaBuyer" class="sub-th admin-th">المنفذ</th>
             <th v-if="!isMediaBuyer" class="sub-th admin-th">بدء التنفيذ</th>
-            <th v-if="!isMediaBuyer" class="sub-th admin-th">الديدلاين</th>
+            <th v-if="!isMediaBuyer" class="sub-th admin-th" style="min-width: 145px;">الديدلاين</th>
             <th v-if="!isMediaBuyer" class="sub-th admin-th">المراجعين (متعدد)</th>
             <th v-if="!isMediaBuyer" class="sub-th admin-th">مراجعة القسم</th>
             <th v-if="!isMediaBuyer" class="sub-th admin-th" style="background: #cfd8dc;">اعتماد المدير</th>
@@ -189,19 +189,17 @@
             </td>
             
             <!-- عمود الديدلاين وتأثير المحرك الذكي -->
-            <td v-if="!isMediaBuyer" :class="getDeadlineStatus(post.execution_started_at || post.created_at, post.deadline, post.delivered_at ? 'completed' : 'pending').class + '-border'">
-              <div class="lock-wrapper">
-                <VueDatePicker 
-                  v-model="post.deadline" 
-                  :disabled="!canEditFields(post) || isFieldDisabled(post, 'deadline')"
-                  auto-apply
-                  @closed="autoSave(post, 'deadline')"
-                  time-picker-inline
-                  position="left"
-                  placeholder="تاريخ ووقت"
-                ></VueDatePicker>
-                <span v-if="hasLockIcon(post, 'deadline')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'deadline')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
-              </div>
+            <td v-if="!isMediaBuyer" :class="getDeadlineStatus(post.execution_started_at || post.created_at, post.deadline, post.delivered_at ? 'completed' : 'pending').class + '-border'" style="min-width: 145px; padding: 4px;">
+              <SmartDeadlinePicker
+                v-model="post.deadline"
+                :disabled="!canEditFields(post) || isFieldDisabled(post, 'deadline')"
+                :is-locked="hasLockIcon(post, 'deadline')"
+                :is-manager="isManager"
+                :post="post"
+                :execution-started-at="post.execution_started_at || post.created_at"
+                @change="autoSave(post, 'deadline')"
+                @unlock="unlockField(post, 'deadline')"
+              />
               
               <!-- SLA Smart Indicator للديدلاين -->
               <div class="sla-indicator" v-if="post.deadline" style="margin-top: 5px; margin-bottom: 5px;">
@@ -648,7 +646,7 @@
     </Teleport>
 
 
-    <transition name="toast"><div v-if="toastMessage" class="toast-message">{{ toastMessage }}</div></transition>
+
 
                   <!-- View Post Modal (Premium Report Design) -->
     <teleport to="body">
@@ -706,7 +704,7 @@
                     <span class="info-icon">⏰</span>
                     <div class="info-data">
                       <span class="info-label">الديدلاين</span>
-                      <strong class="info-value text-red">{{ formatDate(selectedPostForView.deadline) || 'غير محدد' }}</strong>
+                      <strong class="info-value text-red">{{ formatDeadlineDisplay(selectedPostForView.deadline) }}</strong>
                     </div>
                   </li>
                   <li v-if="!isMediaBuyer">
@@ -848,6 +846,8 @@ import api from '../axios';
 import { VueDatePicker } from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css';
 import CustomMultiSelect from '../components/CustomMultiSelect.vue';
+import SmartDeadlinePicker from '../components/SmartDeadlinePicker.vue';
+import alertService from '../services/alertService';
 
 // استيراد المحرك الذكي
 import { getDeadlineStatus } from '../utils/timeHelper';
@@ -992,7 +992,7 @@ let scrollLeft;
 const onMouseDown = (e) => {
   if (!spreadsheetContainer.value) return;
   const targetTag = e.target.tagName.toLowerCase();
-  if (['input', 'select', 'button', 'textarea', 'a', 'path', 'svg', 'label'].includes(targetTag) || e.target.closest('.icon-btn, .primary-btn, .secondary-btn, .custom-multiselect, .dropdown-menu, .multiselect-toggle')) return;
+  if (['input', 'select', 'button', 'textarea', 'a', 'path', 'svg', 'label'].includes(targetTag) || e.target.closest('.icon-btn, .primary-btn, .secondary-btn, .custom-multiselect, .dropdown-menu, .multiselect-toggle, .smart-deadline-cell, .deadline-active-chip, .deadline-empty-btn, .deadline-popover-card')) return;
 
   isDown = true;
   spreadsheetContainer.value.classList.add('dragging');
@@ -1164,7 +1164,16 @@ const sendWhatsApp = (phone, customMessage) => {
   window.open(`https://api.whatsapp.com/send/?phone=${cleanPhone}&text=${text}`, '_blank');
 };
 
-const showToast = (message) => { toastMessage.value = message; setTimeout(() => { toastMessage.value = ''; }, 4000); };
+const showToast = (message, type = 'info') => {
+  if (!message) return;
+  if (message.includes('خطأ') || message.includes('تعذر') || message.includes('فشل') || message.includes('غير مصرح') || message.includes('⚠️')) {
+    alertService.error(message);
+  } else if (message.includes('تم') || message.includes('نجاح') || message.includes('✅') || message.includes('🚀')) {
+    alertService.success(message);
+  } else {
+    alertService.toast(message, type);
+  }
+};
 
 const isManager = computed(() => {
   if (!currentUser.value) return false;
@@ -1237,7 +1246,14 @@ const canEditDelivery = (post) => {
 };
 
 const startExecution = async (post) => {
-  if (!window.confirm('هل أنت متأكد من تكليف المنفذ وبدء العمل؟ (تأكد من استكمال كافة بيانات الـ Brief)')) return;
+  const confirmed = await alertService.confirm({
+    title: 'بدء تنفيذ المنشور',
+    message: 'هل أنت متأكد من تكليف المنفذ وبدء العمل؟ (تأكد من استكمال كافة بيانات الـ Brief)',
+    confirmText: 'نعم، ابدأ العمل 🚀',
+    cancelText: 'إلغاء',
+    type: 'info'
+  });
+  if (!confirmed) return;
   try {
     const res = await api.post(`/plan-posts/${post.id}/start-execution`);
     
@@ -1287,7 +1303,14 @@ const markAsDelivered = (post) => {
 };
 
 const resubmitPost = async (post) => {
-  if (!window.confirm('هل أنت متأكد من إعادة إرسال المنشور للمراجعة؟')) return;
+  const confirmed = await alertService.confirm({
+    title: 'إعادة إرسال للمراجعة',
+    message: 'هل أنت متأكد من إعادة إرسال المنشور للمراجعة؟',
+    confirmText: 'نعم، أعد الإرسال 🔄',
+    cancelText: 'إلغاء',
+    type: 'info'
+  });
+  if (!confirmed) return;
   try {
     const res = await api.post(`/plan-posts/${post.id}/resubmit`);
     
@@ -1342,6 +1365,41 @@ const isReviewerCheck = computed(() => {
     if (isPlanResponsible.value) return false;
     return true; 
 });
+
+const normalizeDeadline = (val) => {
+  if (!val) return null;
+  const str = String(val).trim();
+  const match = str.match(/^(\d{4})[-/](\d{2})[-/](\d{2})[T\s](\d{2}):(\d{2})/);
+  if (match) {
+    return `${match[1]}-${match[2]}-${match[3]} ${match[4]}:${match[5]}:00`;
+  }
+  const d = new Date(val);
+  if (isNaN(d.getTime())) return null;
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd} ${hh}:${min}:00`;
+};
+
+const formatDeadlineDisplay = (val) => {
+  if (!val) return 'غير محدد';
+  const str = String(val).trim();
+  const match = str.match(/^(\d{4})[-/](\d{2})[-/](\d{2})[T\s](\d{2}):(\d{2})/);
+  const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+  if (match) {
+    const y = match[1];
+    const m = parseInt(match[2], 10) - 1;
+    const d = parseInt(match[3], 10);
+    const h24 = parseInt(match[4], 10);
+    const min = match[5];
+    const ampm = h24 >= 12 ? 'م' : 'ص';
+    const h12 = h24 % 12 || 12;
+    return `${d} ${months[m]} ${y} • ${String(h12).padStart(2, '0')}:${min} ${ampm}`;
+  }
+  return formatDate(val) || 'غير محدد';
+};
 
 const formatDateTimeLocal = (val) => {
   if (!val) return '';
@@ -1449,7 +1507,7 @@ const fetchPosts = async () => {
         ad_platform: Array.isArray(p.ad_platform) ? p.ad_platform : (p.ad_platform ? JSON.parse(p.ad_platform) : []),
         reviewer_ids: Array.isArray(p.reviewer_ids) ? p.reviewer_ids : (p.reviewer_ids ? JSON.parse(p.reviewer_ids) : []),
         published_links: typeof p.published_links === 'string' ? JSON.parse(p.published_links || '{}') : (p.published_links || {}),
-        deadline: formatDateTimeLocal(p.deadline)
+        deadline: normalizeDeadline(p.deadline)
       };
     });
     
@@ -1490,9 +1548,14 @@ const getUrlLabel = (url, index) => {
 };
 
 const deletePost = async (post, index) => {
-  if (!confirm('هل أنت متأكد من حذف هذا الصف نهائياً؟ لا يمكن التراجع عن هذه الخطوة.')) {
-    return;
-  }
+  const confirmed = await alertService.confirm({
+    title: 'تأكيد حذف المنشور',
+    message: 'هل أنت متأكد من حذف هذا الصف نهائياً؟ لا يمكن التراجع عن هذه الخطوة.',
+    confirmText: 'نعم، احذف الصف 🗑️',
+    cancelText: 'إلغاء',
+    type: 'danger'
+  });
+  if (!confirmed) return;
 
   try {
     await api.delete(`/plan-posts/${post.id}`);
@@ -1526,7 +1589,14 @@ const autoSave = async (post, field) => {
 };
 
 const approvePost = async (post, type) => {
-  if (!window.confirm('هل أنت متأكد من الاعتماد؟')) return;
+  const confirmed = await alertService.confirm({
+    title: 'تأكيد اعتماد المنشور',
+    message: `هل أنت متأكد من تسجيل الاعتماد (${type === 'manager' ? 'اعتماد المدير' : 'مراجعة القسم'})؟`,
+    confirmText: 'نعم، اعتمد المنشور ✅',
+    cancelText: 'إلغاء',
+    type: 'success'
+  });
+  if (!confirmed) return;
   try {
     const res = await api.post(`/plan-posts/${post.id}/review`, { 
       review_type: type,
@@ -1550,7 +1620,14 @@ const approvePost = async (post, type) => {
 };
 
 const resetReview = async (post, type) => {
-  if (!window.confirm('هل أنت متأكد من التراجع وإعادة فتح المراجعة لهذا المنشور؟')) return;
+  const confirmed = await alertService.confirm({
+    title: 'إعادة فتح المراجعة',
+    message: 'هل أنت متأكد من التراجع وإعادة فتح المراجعة لهذا المنشور؟',
+    confirmText: 'نعم، أعد فتح المراجعة 🔄',
+    cancelText: 'إلغاء',
+    type: 'warning'
+  });
+  if (!confirmed) return;
   
   try {
     if (type === 'manager') {

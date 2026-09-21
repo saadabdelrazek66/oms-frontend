@@ -299,16 +299,43 @@
               <div class="milestone-card-block review-block">
                 <div class="block-top">
                   <span class="block-label">🔍 المراجعة الداخلية</span>
-                  <span class="block-date" v-if="plan.requires_review">{{ formatDate(plan.planned_review_date) }}</span>
+                  <span class="block-date" v-if="plan.requires_review">إنهاء: {{ formatDate(plan.planned_review_date) }}</span>
                   <span class="block-date muted" v-else>— غير مطلوبة —</span>
                 </div>
 
-                <div class="sla-indicator" v-if="plan.requires_review && plan.planned_review_date">
-                  <span class="sla-msg" :class="getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).class + '-text'">
-                    {{ getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).message }}
+                <!-- تفاصيل موعد التسليم الابتدائي للمراجعة (ديدلاين المنفذ) -->
+                <div v-if="plan.requires_review" class="initial-delivery-box">
+                  <div class="initial-delivery-row">
+                    <span class="id-label">موعد التسليم الابتدائي:</span>
+                    <span class="id-val" :class="{ 'id-highlight': plan.planned_initial_delivery_date }">
+                      {{ plan.planned_initial_delivery_date ? formatDate(plan.planned_initial_delivery_date) : 'غير محدد' }}
+                    </span>
+                  </div>
+
+                  <!-- شارة التسليم الفعلي إذا تم التسليم الابتدائي -->
+                  <div v-if="plan.actual_initial_delivery_date" class="actual-delivery-tag">
+                    <span class="tag-icon">✓</span>
+                    <span>تم التسليم الابتدائي: {{ formatDate(plan.actual_initial_delivery_date) }}</span>
+                  </div>
+
+                  <!-- عداد SLA للتسليم الابتدائي إذا لم يُسلّم بعد للمراجعة -->
+                  <div class="sla-indicator" v-else-if="plan.planned_initial_delivery_date && (plan.status === 'pending' || plan.status === 'rejected')">
+                    <span class="sla-msg" :class="getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_initial_delivery_date, plan.status, currentTime).class + '-text'">
+                      {{ getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_initial_delivery_date, plan.status, currentTime).message }}
+                    </span>
+                    <div class="sla-progress-bg">
+                      <div class="sla-progress-fill" :class="getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_initial_delivery_date, plan.status, currentTime).class + '-bg'" :style="{ width: getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_initial_delivery_date, plan.status, currentTime).percentage + '%' }"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- مؤشر SLA لإنهاء المراجعة عند دخول الخطة للمراجعة أو كاحتياطي -->
+                <div class="sla-indicator" v-if="plan.requires_review && plan.planned_review_date && (plan.status === 'under_review' || (!plan.planned_initial_delivery_date && ['pending', 'rejected'].includes(plan.status)))">
+                  <span class="sla-msg" :class="getDeadlineStatus(plan.actual_initial_delivery_date || plan.start_date || plan.created_at, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).class + '-text'">
+                    {{ getDeadlineStatus(plan.actual_initial_delivery_date || plan.start_date || plan.created_at, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).message }}
                   </span>
                   <div class="sla-progress-bg" v-if="!['reviewed', 'completed'].includes(plan.status)">
-                    <div class="sla-progress-fill" :class="getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).class + '-bg'" :style="{ width: getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).percentage + '%' }"></div>
+                    <div class="sla-progress-fill" :class="getDeadlineStatus(plan.actual_initial_delivery_date || plan.start_date || plan.created_at, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).class + '-bg'" :style="{ width: getDeadlineStatus(plan.actual_initial_delivery_date || plan.start_date || plan.created_at, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).percentage + '%' }"></div>
                   </div>
                 </div>
                 <div v-else-if="!plan.requires_review" class="no-review-placeholder">
@@ -316,10 +343,10 @@
                 </div>
 
                 <div class="block-action-slot">
-                  <!-- زر إرسال للمراجعة الداخلية للمسؤول أو الـ Account Manager أو المدير -->
-                  <div v-if="isUserResponsible(plan) && plan.requires_review && (plan.status === 'pending' || plan.status === 'rejected')">
+                  <!-- زر تسليم للمراجعة للمسؤول أو المنفذ أو الـ Account Manager أو المدير -->
+                  <div v-if="canSubmitForReview(plan) && plan.requires_review && (plan.status === 'pending' || plan.status === 'rejected')">
                     <button class="confirm-btn review full-w-btn" type="button" :disabled="actionLoading === `submit-review-${plan.id}`" @click="submitForReview(plan)">
-                      {{ actionLoading === `submit-review-${plan.id}` ? 'جارٍ...' : 'إرسال للمراجعة الداخلية 📤' }}
+                      {{ actionLoading === `submit-review-${plan.id}` ? 'جارٍ...' : 'تسليم للمراجعة 📤' }}
                     </button>
                   </div>
 
@@ -415,9 +442,9 @@
                   class="cluster-btn details" 
                   type="button" 
                   @click="openDetailsModal(plan)"
-                  title="تحديث الرابط النهائي والملاحظات"
+                  title="عرض تفاصيل الخطة والديدلاين والملاحظات"
                 >
-                  <span>✎</span> الرابط/الملاحظات
+                  <span>✎</span> تفاصيل الخطة
                 </button>
               </div>
 
@@ -526,12 +553,26 @@
                 <td>
                   <div class="milestone" style="min-width: 175px;">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                      <span v-if="plan.requires_review" class="date">{{ formatDate(plan.planned_review_date) }}</span>
+                      <span v-if="plan.requires_review" class="date-header-badge">المراجعة الداخلية</span>
                       <span v-else class="muted mb-1" style="display:block;">— لا تتطلب مراجعة —</span>
                       
                       <button v-if="isManager && plan.status !== 'completed'" title="تنبيه واتساب الذكي" aria-label="إرسال تنبيه واتساب ذكي" class="wa-quick-btn" type="button" @click="smartNotify(plan)">
                         <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
                       </button>
+                    </div>
+
+                    <div v-if="plan.requires_review" class="table-milestone-dates">
+                      <div class="table-date-line">
+                        <span class="t-label">التسليم الابتدائي:</span>
+                        <span class="t-val">{{ plan.planned_initial_delivery_date ? formatDate(plan.planned_initial_delivery_date) : 'غير محدد' }}</span>
+                      </div>
+                      <div v-if="plan.actual_initial_delivery_date" class="t-actual-badge">
+                        ✓ تم التسليم: {{ formatDate(plan.actual_initial_delivery_date) }}
+                      </div>
+                      <div class="table-date-line">
+                        <span class="t-label">إنهاء المراجعة:</span>
+                        <span class="t-val">{{ formatDate(plan.planned_review_date) }}</span>
+                      </div>
                     </div>
                     
                     <div class="sla-indicator mb-2" v-if="plan.requires_review && plan.planned_review_date">
@@ -543,9 +584,9 @@
                       </div>
                     </div>
 
-                    <div v-if="isUserResponsible(plan) && plan.requires_review && (plan.status === 'pending' || plan.status === 'rejected')" class="mt-1 mb-1">
+                    <div v-if="canSubmitForReview(plan) && plan.requires_review && (plan.status === 'pending' || plan.status === 'rejected')" class="mt-1 mb-1">
                       <button class="confirm-btn review" type="button" :disabled="actionLoading === `submit-review-${plan.id}`" @click="submitForReview(plan)">
-                        {{ actionLoading === `submit-review-${plan.id}` ? 'جارٍ...' : 'إرسال للمراجعة الداخلية' }}
+                        {{ actionLoading === `submit-review-${plan.id}` ? 'جارٍ...' : 'تسليم للمراجعة 📤' }}
                       </button>
                     </div>
                     
@@ -577,7 +618,7 @@
                       المراجع المساعدة 🔗 ({{ plan.reference_links.length }})
                     </button>
                     <button v-if="getReviewHistories(plan).length > 0" @click="openHistoryModal(plan)" class="history-btn">سجل الحركات 📋</button>
-                    <button class="details-btn" type="button" @click="openDetailsModal(plan)">تحديث الرابط/الملاحظات</button>
+                    <button class="details-btn" type="button" @click="openDetailsModal(plan)">تفاصيل الخطة</button>
                   </div>
                 </td>
                 
@@ -630,7 +671,13 @@
               <label>التسليم النهائي</label>
               <input v-model="duplicateForm.planned_delivery_date" type="datetime-local" required />
             </div>
-            <div class="form-group" v-if="planToDuplicate?.requires_review">
+          </div>
+          <div class="form-grid" v-if="planToDuplicate?.requires_review">
+            <div class="form-group">
+              <label>موعد التسليم الابتدائي</label>
+              <input v-model="duplicateForm.planned_initial_delivery_date" type="datetime-local" />
+            </div>
+            <div class="form-group">
               <label>موعد إنهاء المراجعة</label>
               <input v-model="duplicateForm.planned_review_date" type="datetime-local" required />
             </div>
@@ -819,7 +866,7 @@
 
     
     <Teleport to="body">
-      <div v-if="showManagerModal && (user && (user.role === 'manager' || user.job_title === 'Account Manager'))" class="modal-overlay" @click.self="closeManagerModal"><div class="modal-content" role="dialog"><button class="modal-close" type="button" @click="closeManagerModal">×</button><div class="modal-icon">◈</div><span class="eyebrow">مساحة التخطيط</span><h3>{{ isEditing ? 'تعديل الخطة' : 'إنشاء خطة جديدة' }}</h3><form class="plan-form" @submit.prevent="saveManagerPlan"><div class="form-grid"><div class="form-group"><label>العميل المستهدف</label><select v-model="form.client_id" required><option value="" disabled>اختر العميل...</option><option v-for="client in allClients" :key="client.id" :value="client.id">{{ client.name }}</option></select></div><div class="form-group"><label>نوع الخطة</label><select v-model="form.plan_type" required><option value="" disabled>اختر...</option><option value="استراتيجية (Strategic)">استراتيجية</option><option value="محتوى (Content)">محتوى</option><option value="تسويق عبر السوشيال ميديا">سوشيال ميديا</option><option value="إعلانات ممولة (Media Buying)">إعلانات ممولة</option><option value="تحسين محركات البحث (SEO)">SEO</option><option value="خطة شاملة">خطة شاملة</option></select></div></div><div class="form-grid"><div class="form-group"><label>تاريخ بداية الخطة</label><input v-model="form.start_date" type="date" required /></div><div class="form-group"><label>تاريخ نهاية الخطة</label><input v-model="form.end_date" type="date" required /></div></div><div class="form-grid"><div class="form-group"><label>التسليم النهائي</label><input v-model="form.planned_delivery_date" type="datetime-local" required /></div><div class="form-group toggle-group"><label>مراجعة داخلية؟</label><label class="toggle-switch"><input type="checkbox" v-model="form.requires_review"><span class="slider"></span></label><span class="toggle-label">{{ form.requires_review ? 'نعم' : 'لا' }}</span></div></div><div class="form-grid" v-if="form.requires_review"><div class="form-group"><label>موعد إنهاء المراجعة</label><input v-model="form.planned_review_date" type="datetime-local" required /></div></div><div class="separator"></div><div class="section-title" style="display:flex; justify-content:space-between; align-items:center;"><div><span>🔗</span> الروابط المرجعية (Reference Links)</div><button type="button" class="add-link-btn" @click="addReferenceLink">＋ إضافة رابط</button></div><div class="reference-links-container"><div v-for="(link, index) in form.reference_links" :key="index" class="link-input-group"><input v-model="form.reference_links[index]" type="url" placeholder="أدخل رابط المرجع (مثال: Google Drive, Notion, etc...)" required /><button type="button" class="remove-link-btn" @click="removeReferenceLink(index)" title="حذف الرابط">⌫</button></div><p v-if="form.reference_links.length === 0" class="muted text-center" style="font-size:10px; margin-top:10px;">لا توجد روابط مرجعية (اختياري)</p></div>
+      <div v-if="showManagerModal && (user && (user.role === 'manager' || user.job_title === 'Account Manager'))" class="modal-overlay" @click.self="closeManagerModal"><div class="modal-content" role="dialog"><button class="modal-close" type="button" @click="closeManagerModal">×</button><div class="modal-icon">◈</div><span class="eyebrow">مساحة التخطيط</span><h3>{{ isEditing ? 'تعديل الخطة' : 'إنشاء خطة جديدة' }}</h3><form class="plan-form" @submit.prevent="saveManagerPlan"><div class="form-grid"><div class="form-group"><label>العميل المستهدف</label><select v-model="form.client_id" required><option value="" disabled>اختر العميل...</option><option v-for="client in allClients" :key="client.id" :value="client.id">{{ client.name }}</option></select></div><div class="form-group"><label>نوع الخطة</label><select v-model="form.plan_type" required><option value="" disabled>اختر...</option><option value="استراتيجية (Strategic)">استراتيجية</option><option value="محتوى (Content)">محتوى</option><option value="تسويق عبر السوشيال ميديا">سوشيال ميديا</option><option value="إعلانات ممولة (Media Buying)">إعلانات ممولة</option><option value="تحسين محركات البحث (SEO)">SEO</option><option value="خطة شاملة">خطة شاملة</option></select></div></div><div class="form-grid"><div class="form-group"><label>تاريخ بداية الخطة</label><input v-model="form.start_date" type="date" required /></div><div class="form-group"><label>تاريخ نهاية الخطة</label><input v-model="form.end_date" type="date" required /></div></div><div class="form-grid"><div class="form-group"><label>التسليم النهائي</label><input v-model="form.planned_delivery_date" type="datetime-local" required /></div><div class="form-group toggle-group"><label>مراجعة داخلية؟</label><label class="toggle-switch"><input type="checkbox" v-model="form.requires_review"><span class="slider"></span></label><span class="toggle-label">{{ form.requires_review ? 'نعم' : 'لا' }}</span></div></div><div class="form-grid" v-if="form.requires_review"><div class="form-group"><label>موعد التسليم الابتدائي</label><input v-model="form.planned_initial_delivery_date" type="datetime-local" /></div><div class="form-group"><label>موعد إنهاء المراجعة</label><input v-model="form.planned_review_date" type="datetime-local" required /></div></div><div class="separator"></div><div class="section-title" style="display:flex; justify-content:space-between; align-items:center;"><div><span>🔗</span> الروابط المرجعية (Reference Links)</div><button type="button" class="add-link-btn" @click="addReferenceLink">＋ إضافة رابط</button></div><div class="reference-links-container"><div v-for="(link, index) in form.reference_links" :key="index" class="link-input-group"><input v-model="form.reference_links[index]" type="url" placeholder="أدخل رابط المرجع (مثال: Google Drive, Notion, etc...)" required /><button type="button" class="remove-link-btn" @click="removeReferenceLink(index)" title="حذف الرابط">⌫</button></div><p v-if="form.reference_links.length === 0" class="muted text-center" style="font-size:10px; margin-top:10px;">لا توجد روابط مرجعية (اختياري)</p></div>
 <div class="separator"></div>
 <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
   <div><span>⚙️</span> إعدادات الحقول الإلزامية للمنشورات (Brief Settings)</div>
@@ -841,7 +888,125 @@
 
     
     <Teleport to="body">
-      <div v-if="showDetailsModal" class="modal-overlay" role="presentation" @click.self="closeDetailsModal"><div class="modal-content" role="dialog" style="width: min(500px, 100%) !important;"><button class="modal-close" type="button" @click="closeDetailsModal">×</button><div class="modal-icon">✎</div><span class="eyebrow">تحديث سريع</span><h3>تحديث تفاصيل الخطة</h3><form class="plan-form" @submit.prevent="saveDetails"><div class="form-group"><label>لينك البلان النهائي</label><input v-model="detailsForm.final_link" type="url" placeholder="https://..." /></div><div class="form-group"><label>ملاحظات عامة</label><textarea v-model="detailsForm.notes" rows="4"></textarea></div><div class="modal-actions"><button type="button" class="secondary-btn" @click="closeDetailsModal">إلغاء</button><button type="submit" class="primary-btn" :disabled="saving">حفظ التفاصيل</button></div></form></div></div>
+      <div v-if="showDetailsModal" class="modal-overlay" role="presentation" @click.self="closeDetailsModal">
+        <div class="modal-content plan-details-modal" role="dialog" style="width: min(560px, 100%) !important;">
+          <button class="modal-close" type="button" @click="closeDetailsModal">×</button>
+          <div class="modal-icon">✎</div>
+          <span class="eyebrow">تفاصيل الخطة</span>
+          <h3>تفاصيل ومعلومات الخطة</h3>
+
+          <!-- لوحة معلومات المواعيد والديدلاينز والتسليم الفعلي -->
+          <div v-if="currentDetailsPlan" class="details-summary-card">
+            <div class="summary-top-row">
+              <div class="summary-client-info">
+                <span class="summary-client-title">{{ currentDetailsPlan.client?.name || 'عميل محذوف' }}</span>
+                <span class="summary-plan-tag">{{ currentDetailsPlan.plan_type }}</span>
+              </div>
+              <div :class="['status-badge', getPlanStatusInfo(currentDetailsPlan.status).class]">
+                <i></i>{{ getPlanStatusInfo(currentDetailsPlan.status).text }}
+              </div>
+            </div>
+
+            <!-- شبكة الديدلاينز ومواعيد التسليم -->
+            <div class="deadlines-timeline-grid">
+              <!-- 1. ديدلاين التسليم الابتدائي للمراجعة -->
+              <div class="timeline-box" v-if="currentDetailsPlan.requires_review">
+                <div class="timeline-box-header">
+                  <span class="tb-title">📤 موعد التسليم الابتدائي (المنفذ):</span>
+                  <span class="tb-val" :class="{ 'highlight': currentDetailsPlan.planned_initial_delivery_date }">
+                    {{ currentDetailsPlan.planned_initial_delivery_date ? formatDate(currentDetailsPlan.planned_initial_delivery_date) : 'غير محدد' }}
+                  </span>
+                </div>
+                <!-- تاريخ التسليم الفعلي عند أول ضغط تسليم للمراجعة (ثابت) -->
+                <div v-if="currentDetailsPlan.actual_initial_delivery_date" class="delivery-status-pill success" title="تاريخ أول محاولة تسليم تم تسجيلها">
+                  <span class="pill-icon">✓</span>
+                  <span>تاريخ أول تسليم للمراجعة: <strong>{{ formatDate(currentDetailsPlan.actual_initial_delivery_date) }}</strong></span>
+                </div>
+                <div v-else class="delivery-status-pill pending">
+                  <span class="pill-icon">⏳</span>
+                  <span>لم يتم أول تسليم للمراجعة بعد</span>
+                </div>
+              </div>
+
+              <!-- 2. موعد إنهاء المراجعة الداخلية -->
+              <div class="timeline-box" v-if="currentDetailsPlan.requires_review">
+                <div class="timeline-box-header">
+                  <span class="tb-title">🔍 موعد إنهاء المراجعة:</span>
+                  <span class="tb-val">{{ formatDate(currentDetailsPlan.planned_review_date) }}</span>
+                </div>
+                <div v-if="currentDetailsPlan.actual_review_date" class="delivery-status-pill success">
+                  <span class="pill-icon">✓</span>
+                  <span>تمت المراجعة: <strong>{{ formatDate(currentDetailsPlan.actual_review_date) }}</strong></span>
+                </div>
+              </div>
+
+              <!-- 3. موعد التسليم النهائي -->
+              <div class="timeline-box">
+                <div class="timeline-box-header">
+                  <span class="tb-title">🏁 موعد التسليم النهائي:</span>
+                  <span class="tb-val">{{ formatDate(currentDetailsPlan.planned_delivery_date) }}</span>
+                </div>
+                <div v-if="currentDetailsPlan.actual_delivery_date" class="delivery-status-pill success">
+                  <span class="pill-icon">✓</span>
+                  <span>تم التسليم النهائي: <strong>{{ formatDate(currentDetailsPlan.actual_delivery_date) }}</strong></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- سجل حركات ومتابعة الخطة (Timeline) المدمج داخل تفاصيل الخطة -->
+            <div v-if="getReviewHistories(currentDetailsPlan).length > 0" class="details-history-block">
+              <div class="details-history-title">
+                <span>📋</span> سجل المتابعة والمراجعات ({{ getReviewHistories(currentDetailsPlan).length }})
+              </div>
+              <div class="history-timeline compact-timeline">
+                <div v-for="(history, index) in getReviewHistories(currentDetailsPlan)" :key="'dh_' + index" class="timeline-item">
+                  <div class="tl-dot" :class="history.action === 'approved' ? 'tl-green' : (history.action === 'submitted' ? 'tl-blue' : 'tl-red')"></div>
+                  <div class="tl-content">
+                    <div class="tl-header">
+                      <strong>
+                        <template v-if="history.action === 'submitted'">
+                          🚀 المنفذ: {{ history.reviewer?.name || history.user?.name || 'الموظف' }}
+                        </template>
+                        <template v-else>
+                          🔍 المراجع: {{ history.reviewer?.name || history.user?.name || 'مجهول' }}
+                        </template>
+                      </strong>
+                      <span class="tl-date" dir="ltr">{{ formatDate(history.created_at) }}</span>
+                    </div>
+                    <div class="tl-action" :class="history.action === 'approved' ? 'text-green' : (history.action === 'submitted' ? 'text-blue' : 'text-red')">
+                      <template v-if="history.action === 'submitted'">
+                        🚀 قام {{ history.reviewer?.name || history.user?.name || 'الموظف' }} بتسليم الخطة للمراجعة
+                      </template>
+                      <template v-else-if="history.action === 'approved'">
+                        ✅ وافق على الخطة واعتمدها
+                      </template>
+                      <template v-else>
+                        ❌ رفض الخطة وطلب تعديلات
+                      </template>
+                    </div>
+                    <div class="tl-notes" v-if="history.notes">{{ history.notes }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <form class="plan-form mt-3" @submit.prevent="saveDetails">
+            <div class="form-group">
+              <label>لينك البلان النهائي</label>
+              <input v-model="detailsForm.final_link" type="url" placeholder="https://..." />
+            </div>
+            <div class="form-group">
+              <label>ملاحظات عامة</label>
+              <textarea v-model="detailsForm.notes" rows="3"></textarea>
+            </div>
+            <div class="modal-actions">
+              <button type="button" class="secondary-btn" @click="closeDetailsModal">إلغاء</button>
+              <button type="submit" class="primary-btn" :disabled="saving">حفظ التفاصيل</button>
+            </div>
+          </form>
+        </div>
+      </div>
     </Teleport>
 
     
@@ -856,7 +1021,43 @@
 
     
     <Teleport to="body">
-      <div v-if="showHistoryModal" class="modal-overlay" role="presentation" @click.self="closeHistoryModal"><div class="modal-content history-modal" style="width: min(500px, 100%) !important;"><button class="modal-close" type="button" @click="closeHistoryModal">×</button><div class="modal-icon">📋</div><h3>السجل الكامل للحركات</h3><div class="history-timeline"><div v-for="(history, index) in getReviewHistories(selectedHistoryPlan)" :key="index" class="timeline-item"><div class="tl-dot" :class="history.action === 'approved' ? 'tl-green' : 'tl-red'"></div><div class="tl-content"><div class="tl-header"><strong>{{ history.reviewer?.name || 'مجهول' }}</strong><span class="tl-date" dir="ltr">{{ formatDate(history.created_at) }}</span></div><div class="tl-action" :class="history.action === 'approved' ? 'text-green' : 'text-red'">{{ history.action === 'approved' ? '✅ وافق على الخطة' : '❌ رفض الخطة' }}</div><div class="tl-notes" v-if="history.notes">{{ history.notes }}</div></div></div></div></div></div>
+      <div v-if="showHistoryModal" class="modal-overlay" role="presentation" @click.self="closeHistoryModal">
+        <div class="modal-content history-modal" style="width: min(520px, 100%) !important;">
+          <button class="modal-close" type="button" @click="closeHistoryModal">×</button>
+          <div class="modal-icon">📋</div>
+          <h3>السجل الكامل للحركات</h3>
+          <div class="history-timeline">
+            <div v-for="(history, index) in getReviewHistories(selectedHistoryPlan)" :key="index" class="timeline-item">
+              <div class="tl-dot" :class="history.action === 'approved' ? 'tl-green' : (history.action === 'submitted' ? 'tl-blue' : 'tl-red')"></div>
+              <div class="tl-content">
+                <div class="tl-header">
+                  <strong>
+                    <template v-if="history.action === 'submitted'">
+                      🚀 المنفذ: {{ history.reviewer?.name || history.user?.name || 'الموظف' }}
+                    </template>
+                    <template v-else>
+                      🔍 المراجع: {{ history.reviewer?.name || history.user?.name || 'مجهول' }}
+                    </template>
+                  </strong>
+                  <span class="tl-date" dir="ltr">{{ formatDate(history.created_at) }}</span>
+                </div>
+                <div class="tl-action" :class="history.action === 'approved' ? 'text-green' : (history.action === 'submitted' ? 'text-blue' : 'text-red')">
+                  <template v-if="history.action === 'submitted'">
+                    🚀 قام {{ history.reviewer?.name || history.user?.name || 'الموظف' }} بتسليم الخطة للمراجعة
+                  </template>
+                  <template v-else-if="history.action === 'approved'">
+                    ✅ وافق على الخطة واعتمدها
+                  </template>
+                  <template v-else>
+                    ❌ رفض الخطة وطلب تعديلات
+                  </template>
+                </div>
+                <div class="tl-notes" v-if="history.notes">{{ history.notes }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </Teleport>
 
 
@@ -903,13 +1104,13 @@
       </div>
     </Teleport>
 
-    <transition name="toast"><div v-if="toastMessage" class="toast-message" role="status" aria-live="polite">{{ toastMessage }}</div></transition>
   </section>
 </template>
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import api from '../axios';
+import alertService from '../services/alertService';
 
 // استيراد المحرك الذكي للتواريخ
 import { getDeadlineStatus } from '../utils/timeHelper';
@@ -948,6 +1149,15 @@ const isUserReviewer = (plan) => {
   if (!plan || !plan.users) return false;
   const uid = Number(currentUserId.value) || Number(user.value?.id);
   return plan.users.some(u => Number(u.id) === uid && u.pivot?.task_role === 'reviewer'); 
+};
+const isUserExecutor = (plan) => {
+  if (isManager.value || user.value?.role === 'manager' || user.value?.job_title === 'Account Manager') return true;
+  if (!plan || !plan.users) return false;
+  const uid = Number(currentUserId.value) || Number(user.value?.id);
+  return plan.users.some(u => Number(u.id) === uid && u.pivot?.task_role === 'executor');
+};
+const canSubmitForReview = (plan) => {
+  return isUserResponsible(plan) || isUserExecutor(plan);
 };
 const getExecutors = (plan) => { if (!plan || !plan.users) return []; return plan.users.filter(u => u.pivot?.task_role === 'executor'); };
 const getResponsibles = (plan) => { if (!plan || !plan.users) return []; return plan.users.filter(u => u.pivot?.task_role === 'responsible'); }; 
@@ -1260,7 +1470,7 @@ const onTableWheel = (e) => {
 
 const showDuplicateModal = ref(false);
 const planToDuplicate = ref(null);
-const duplicateForm = reactive({ start_date: '', end_date: '', planned_delivery_date: '', planned_review_date: '' });
+const duplicateForm = reactive({ start_date: '', end_date: '', planned_delivery_date: '', planned_review_date: '', planned_initial_delivery_date: '' });
 
 const openDuplicateModal = (plan) => {
   if (user.value?.role !== 'manager' && user.value?.job_title !== 'Account Manager') {
@@ -1273,10 +1483,12 @@ const openDuplicateModal = (plan) => {
     const oldStart = new Date(plan.start_date);
     const oldEnd = new Date(plan.end_date);
     const oldReview = plan.planned_review_date ? new Date(plan.planned_review_date) : null;
+    const oldInitialDelivery = plan.planned_initial_delivery_date ? new Date(plan.planned_initial_delivery_date) : null;
     const oldDelivery = new Date(plan.planned_delivery_date);
 
     const durationMs = oldEnd.getTime() - oldStart.getTime();
     const reviewGapMs = oldReview ? (oldReview.getTime() - oldStart.getTime()) : 0;
+    const initialDeliveryGapMs = oldInitialDelivery ? (oldInitialDelivery.getTime() - oldStart.getTime()) : 0;
     const deliveryGapMs = oldDelivery.getTime() - oldStart.getTime();
 
     const now = new Date();
@@ -1294,6 +1506,7 @@ const openDuplicateModal = (plan) => {
 
     const newEnd = new Date(newStart.getTime() + durationMs);
     const newReview = oldReview ? new Date(newStart.getTime() + reviewGapMs) : null;
+    const newInitialDelivery = oldInitialDelivery ? new Date(newStart.getTime() + initialDeliveryGapMs) : null;
     const newDelivery = new Date(newStart.getTime() + deliveryGapMs);
 
     const toDateString = (d) => {
@@ -1304,12 +1517,14 @@ const openDuplicateModal = (plan) => {
     duplicateForm.start_date = toDateString(newStart);
     duplicateForm.end_date = toDateString(newEnd);
     duplicateForm.planned_review_date = newReview ? toDatetimeLocal(newReview) : '';
+    duplicateForm.planned_initial_delivery_date = newInitialDelivery ? toDatetimeLocal(newInitialDelivery) : '';
     duplicateForm.planned_delivery_date = toDatetimeLocal(newDelivery);
   } else {
     duplicateForm.start_date = '';
     duplicateForm.end_date = '';
     duplicateForm.planned_delivery_date = '';
     duplicateForm.planned_review_date = '';
+    duplicateForm.planned_initial_delivery_date = '';
   }
   
   showDuplicateModal.value = true;
@@ -1323,7 +1538,12 @@ const closeDuplicateModal = () => {
 const submitDuplicate = async () => {
   actionLoading.value = 'duplicate';
   try {
-    await api.post(`/content-plans/${planToDuplicate.value.id}/duplicate`, duplicateForm);
+    const payload = {
+      ...duplicateForm,
+      planned_initial_delivery_date: duplicateForm.planned_initial_delivery_date || null,
+      planned_review_date: duplicateForm.planned_review_date || null,
+    };
+    await api.post(`/content-plans/${planToDuplicate.value.id}/duplicate`, payload);
     closeDuplicateModal();
     showToast('تم استنساخ الخطة بنجاح 🚀');
     await fetchPlans();
@@ -1385,11 +1605,28 @@ const saveFollowUp = async () => {
     selectedFollowUpPlan.value = plans.value.find(p => p.id === selectedFollowUpPlan.value.id); 
   } catch (error) {} finally { actionLoading.value = ''; } 
 };
-const deleteFollowUp = async (id) => { if (!window.confirm('متأكد من حذف المتابعة؟')) return; try { await api.delete(`/follow-ups/${id}`); showToast('تم الحذف'); await fetchPlans(); selectedFollowUpPlan.value = plans.value.find(p => p.id === selectedFollowUpPlan.value.id); } catch (error) {} };
+const deleteFollowUp = async (id) => {
+  const confirmed = await alertService.confirm({
+    title: 'تأكيد حذف المتابعة',
+    message: 'هل أنت متأكد من رغبتك في حذف هذا التحديث من سجل المتابعة نهائياً؟',
+    confirmText: 'نعم، احذف 🗑️',
+    cancelText: 'إلغاء',
+    type: 'danger'
+  });
+  if (!confirmed) return;
+  try {
+    await api.delete(`/follow-ups/${id}`);
+    showToast('تم حذف المتابعة بنجاح');
+    await fetchPlans();
+    selectedFollowUpPlan.value = plans.value.find(p => p.id === selectedFollowUpPlan.value.id);
+  } catch (error) {
+    showToast(error.response?.data?.message || 'حدث خطأ أثناء حذف المتابعة');
+  }
+};
 
 const form = reactive({ 
   client_id: '', plan_type: '', start_date: '', end_date: '', requires_review: true, 
-  planned_delivery_date: '', planned_review_date: '', 
+  planned_delivery_date: '', planned_review_date: '', planned_initial_delivery_date: '',
   final_link: '', notes: '', reference_links: [], 
   responsible_ids: [], reviewer_ids: [], executor_ids: [],
   required_brief_fields: Object.keys(availableBriefFields) 
@@ -1403,8 +1640,18 @@ const getInitials = (name = '') => name.trim().split(' ').slice(0, 2).map(word =
 const getRoleNames = (users = [], role) => { const matches = users.filter(user => user.pivot?.task_role === role); return matches.length ? matches.map(user => user.name).join('، ') : '—'; };
 const formatDate = (value) => value ? new Date(value).toLocaleString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
 const toDatetimeLocal = (value) => { if (!value) return ''; const date = new Date(value); return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16); };
-let toastTimer;
-const showToast = (message) => { toastMessage.value = message; clearTimeout(toastTimer); toastTimer = setTimeout(() => { toastMessage.value = ''; }, 3200); };
+const showToast = (message, type = 'info') => {
+  if (!message) return;
+  if (message.includes('خطأ') || message.includes('تعذر') || message.includes('فشل') || message.includes('عذراً') || message.includes('لا تمتلك') || message.includes('رفض')) {
+    alertService.error(message);
+  } else if (message.includes('تم') || message.includes('نجاح') || message.includes('✅') || message.includes('🚀')) {
+    alertService.success(message);
+  } else if (message.includes('تنبيه') || message.includes('الحد الأقصى') || message.includes('⚠️')) {
+    alertService.warning(message);
+  } else {
+    alertService.toast(message, type);
+  }
+};
 
 const getPlanStatusInfo = (status) => {
   switch(status) {
@@ -1590,25 +1837,43 @@ const smartNotify = (plan) => {
 };
 
 const submitForReview = async (plan) => {
-  if (!window.confirm('إرسال الخطة للمراجعة الداخلية؟')) return;
+  const confirmed = await alertService.confirm({
+    title: 'تسليم الخطة للمراجعة',
+    message: `هل أنت متأكد من تسليم خطة "${plan?.client?.name || ''}" للمراجعة الداخلية؟`,
+    confirmText: 'نعم، تسليم للمراجعة 🚀',
+    cancelText: 'إلغاء',
+    type: 'info'
+  });
+  if (!confirmed) return;
   actionLoading.value = `submit-review-${plan.id}`;
   try { 
     await api.post(`/content-plans/${plan.id}/submit-review`); 
-    showToast('تم الإرسال للمراجعة'); 
+    showToast('تم التسليم للمراجعة بنجاح ✅'); 
     await fetchPlans(); 
-    triggerWaPrompt('تم الإرسال بنجاح', 'هل تريد إرسال تنبيه للمراجع لكي يبدأ الآن؟', 'review_needed', plan);
-  } catch (error) {} finally { actionLoading.value = ''; }
+    triggerWaPrompt('تم التسليم بنجاح', 'هل تريد إرسال تنبيه للمراجع لكي يبدأ الآن؟', 'review_needed', plan);
+  } catch (error) {
+    showToast(error.response?.data?.message || 'حدث خطأ أثناء التسليم للمراجعة');
+  } finally { actionLoading.value = ''; }
 };
 
 const approvePlan = async (plan) => {
-  if (!window.confirm('تأكيد الموافقة على الخطة؟')) return;
+  const confirmed = await alertService.confirm({
+    title: 'تأكيد اعتماد الخطة',
+    message: `هل أنت متأكد من اعتماد خطة "${plan?.client?.name || ''}" لتصبح جاهزة للعميل؟`,
+    confirmText: 'نعم، اعتمد الخطة ✅',
+    cancelText: 'إلغاء',
+    type: 'success'
+  });
+  if (!confirmed) return;
   actionLoading.value = `approve-${plan.id}`;
   try { 
     await api.post(`/content-plans/${plan.id}/approve`); 
-    showToast('تم الاعتماد'); 
+    showToast('تم اعتماد الخطة بنجاح ✅'); 
     await fetchPlans();
     triggerWaPrompt('تمت الموافقة بنجاح', 'أبلغ المسؤول الآن بأن الخطة جاهزة لتُسلم للعميل.', 'plan_approved', plan);
-  } catch (error) {} finally { actionLoading.value = ''; }
+  } catch (error) {
+    showToast(error.response?.data?.message || 'حدث خطأ أثناء الاعتماد');
+  } finally { actionLoading.value = ''; }
 };
 
 const submitRejectPlan = async () => {
@@ -1624,15 +1889,24 @@ const submitRejectPlan = async () => {
 };
 
 const submitFinalDelivery = async (plan) => {
-  if (!window.confirm('تأكيد التسليم النهائي للعميل؟')) return;
+  const confirmed = await alertService.confirm({
+    title: 'تأكيد التسليم النهائي للعميل',
+    message: `هل أنت متأكد من تسجيل التسليم النهائي لخطة "${plan?.client?.name || ''}" للعميل؟`,
+    confirmText: 'نعم، تسليم للعميل 🚀',
+    cancelText: 'إلغاء',
+    type: 'success'
+  });
+  if (!confirmed) return;
   actionLoading.value = `delivery-${plan.id}`;
   try { 
     await api.post(`/content-plans/${plan.id}/final-delivery`); 
-    showToast('تم التسليم بنجاح'); 
+    showToast('تم التسليم للعميل بنجاح ✅'); 
     await fetchPlans(); 
     deliveredPlan.value = plans.value.find(p => p.id === plan.id) || plan;
     showDeliverySuccessModal.value = true;
-  } catch (error) {} finally { actionLoading.value = ''; }
+  } catch (error) {
+    showToast(error.response?.data?.message || 'حدث خطأ أثناء التسليم');
+  } finally { actionLoading.value = ''; }
 };
 const closeDeliveryModal = () => { showDeliverySuccessModal.value = false; deliveredPlan.value = null; };
 
@@ -1646,7 +1920,7 @@ const closeReferencesModal = () => { showReferencesModal.value = false; selected
 
 const resetForm = () => Object.assign(form, { 
   client_id: '', plan_type: '', start_date: '', end_date: '', requires_review: true, 
-  planned_delivery_date: '', planned_review_date: '', 
+  planned_delivery_date: '', planned_review_date: '', planned_initial_delivery_date: '',
   final_link: '', notes: '', reference_links: [],
   responsible_ids: [], reviewer_ids: [], executor_ids: [],
   required_brief_fields: Object.keys(availableBriefFields) 
@@ -1668,6 +1942,7 @@ const openManagerModal = (plan = null) => {
       requires_review: Boolean(plan.requires_review), 
       planned_delivery_date: toDatetimeLocal(plan.planned_delivery_date), 
       planned_review_date: toDatetimeLocal(plan.planned_review_date), 
+      planned_initial_delivery_date: toDatetimeLocal(plan.planned_initial_delivery_date),
       final_link: plan.final_link || '', 
       notes: plan.notes || '', 
       reference_links: Array.isArray(plan.reference_links) ? [...plan.reference_links] : [],
@@ -1692,17 +1967,27 @@ const saveManagerPlan = async () => {
     return;
   }
   saving.value = true; 
-  if (!form.requires_review) { form.planned_review_date = ''; form.reviewer_ids = []; } 
+  if (!form.requires_review) {
+    form.planned_review_date = '';
+    form.planned_initial_delivery_date = '';
+    form.reviewer_ids = [];
+  } 
   form.reference_links = form.reference_links.filter(link => link.trim() !== '');
+
+  const payload = {
+    ...form,
+    planned_initial_delivery_date: form.planned_initial_delivery_date || null,
+    planned_review_date: form.planned_review_date || null,
+  };
   
   try { 
     if (isEditing.value) {
-      await api.put(`/content-plans/${editId.value}`, form);
+      await api.put(`/content-plans/${editId.value}`, payload);
       closeManagerModal(); 
       showToast('تم التحديث بنجاح'); 
       await fetchPlans(); 
     } else {
-      const response = await api.post('/content-plans', form);
+      const response = await api.post('/content-plans', payload);
       closeManagerModal();
       showToast('تم الإنشاء بنجاح'); 
       await fetchPlans(); 
@@ -1715,7 +2000,29 @@ const saveManagerPlan = async () => {
   } catch (error) {} finally { saving.value = false; } 
 };
 
-const deletePlan = async (id) => { if (user.value?.role !== 'manager' && user.value?.job_title !== 'Account Manager') { showToast('عذراً، لا تمتلك الصلاحية لحذف الخطط'); return; } if (!window.confirm('تأكيد الحذف؟')) return; try { await api.delete(`/content-plans/${id}`); showToast('تم الحذف'); await fetchPlans(); } catch (error) {} };
+const deletePlan = async (id) => {
+  if (user.value?.role !== 'manager' && user.value?.job_title !== 'Account Manager') {
+    showToast('عذراً، لا تمتلك الصلاحية لحذف الخطط');
+    return;
+  }
+  const planToDelete = plans.value.find(p => p.id === id);
+  const planName = planToDelete?.client?.name ? `خطة عميل "${planToDelete.client.name}"` : 'هذه الخطة';
+  const confirmed = await alertService.confirm({
+    title: 'تأكيد حذف الخطة',
+    message: `هل أنت متأكد من رغبتك في حذف ${planName} نهائياً؟ سيتم حذف جميع المنشورات والمتابعات التابعة لها.`,
+    confirmText: 'نعم، احذف الخطة 🗑️',
+    cancelText: 'إلغاء',
+    type: 'danger'
+  });
+  if (!confirmed) return;
+  try {
+    await api.delete(`/content-plans/${id}`);
+    showToast('تم حذف الخطة بنجاح 🗑️');
+    await fetchPlans();
+  } catch (error) {
+    showToast(error.response?.data?.message || 'حدث خطأ أثناء الحذف');
+  }
+};
 
 const openDetailsModal = (plan) => { 
   editId.value = plan.id; 
@@ -1841,7 +2148,6 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-  window.clearTimeout(toastTimer);
   window.removeEventListener('keydown', handleViewerKeyDown);
   if (countdownInterval) {
     clearInterval(countdownInterval);
@@ -1923,7 +2229,23 @@ onBeforeUnmount(() => {
 .remove-link-btn:hover { background: rgba(255,103,139,.2); }
 
 /* Timeline Styles */
-.history-timeline { margin-top:20px; padding-right:10px; border-right:2px solid rgba(145,160,230,.15); display:flex; flex-direction:column; gap:20px; } .timeline-item { position:relative; } .tl-dot { position:absolute; right:-15px; top:3px; width:10px; height:10px; border-radius:50%; border:2px solid #171d52; } .tl-green { background:#78e4d8; } .tl-red { background:#ff9bad; } .tl-content { background:rgba(6,11,37,.4); padding:12px; border-radius:8px; border:1px solid rgba(145,160,230,.1); } .tl-header { display:flex; justify-content:space-between; margin-bottom:5px; font-size:11px; color:#d9ddf5; } .tl-date { color:#7782b0; font-size:9px; } .tl-action { font-size:10px; font-weight:700; margin-bottom:5px; } .text-green { color:#78e4d8; } .text-red { color:#ff9bad; } .tl-notes { background:rgba(0,0,0,.2); padding:8px; border-radius:6px; font-size:10px; color:#aab5da; font-style:italic; }
+.history-timeline { margin-top:20px; padding-right:10px; border-right:2px solid rgba(145,160,230,.15); display:flex; flex-direction:column; gap:20px; } 
+.timeline-item { position:relative; } 
+.tl-dot { position:absolute; right:-15px; top:3px; width:10px; height:10px; border-radius:50%; border:2px solid #171d52; } 
+.tl-green { background:#78e4d8; box-shadow: 0 0 8px rgba(120, 228, 216, 0.4); } 
+.tl-red { background:#ff9bad; box-shadow: 0 0 8px rgba(255, 155, 173, 0.4); } 
+.tl-blue { background:#65b5ff; box-shadow: 0 0 8px rgba(101, 181, 255, 0.6); } 
+.tl-content { background:rgba(6,11,37,.4); padding:12px; border-radius:8px; border:1px solid rgba(145,160,230,.1); } 
+.tl-header { display:flex; justify-content:space-between; margin-bottom:5px; font-size:11px; color:#d9ddf5; } 
+.tl-date { color:#7782b0; font-size:9px; } 
+.tl-action { font-size:10px; font-weight:700; margin-bottom:5px; } 
+.text-green { color:#78e4d8; } 
+.text-red { color:#ff9bad; } 
+.text-blue { color:#65b5ff; } 
+.tl-notes { background:rgba(0,0,0,.2); padding:8px; border-radius:6px; font-size:10px; color:#aab5da; font-style:italic; }
+.details-history-block { margin-top: 10px; border-top: 1px solid rgba(137, 153, 226, 0.12); padding-top: 12px; }
+.details-history-title { font-size: 11.5px; font-weight: 800; color: #c9d2f5; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+.compact-timeline { margin-top: 10px !important; max-height: 240px; overflow-y: auto; padding-left: 6px; }
 .mb-0 { margin-bottom:0 !important; } .mt-2 { margin-top:15px !important; } .mt-3 { margin-top:20px !important; }
 
 /* Follow Ups Styles */
@@ -2409,6 +2731,209 @@ onBeforeUnmount(() => {
   font-size: 9px;
   color: #7de8dc;
   display: block;
+}
+
+/* موعد وتسليم ابتدائي */
+.initial-delivery-box {
+  background: rgba(6, 11, 37, 0.45);
+  border: 1px dashed rgba(125, 232, 220, 0.22);
+  border-radius: 8px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.initial-delivery-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 9.5px;
+}
+
+.id-label {
+  color: #9cb0dc;
+  font-weight: 700;
+}
+
+.id-val {
+  color: #cdd6f8;
+  font-size: 9px;
+  direction: ltr;
+}
+
+.id-val.id-highlight {
+  color: #7de8dc;
+  font-weight: 700;
+}
+
+.actual-delivery-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(46, 213, 115, 0.12);
+  border: 1px solid rgba(46, 213, 115, 0.35);
+  color: #2ed573;
+  padding: 3px 6px;
+  border-radius: 6px;
+  font-size: 8.5px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.actual-delivery-tag .tag-icon {
+  font-size: 10px;
+}
+
+.table-milestone-dates {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 6px;
+}
+
+.date-header-badge {
+  font-size: 10px;
+  font-weight: 800;
+  color: #c9d2f5;
+  margin-bottom: 3px;
+  display: block;
+}
+
+.table-date-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 9px;
+}
+
+.table-date-line .t-label {
+  color: #8fa0cf;
+}
+
+.table-date-line .t-val {
+  color: #d8e2ff;
+  direction: ltr;
+}
+
+.t-actual-badge {
+  background: rgba(46, 213, 115, 0.12);
+  border: 1px solid rgba(46, 213, 115, 0.3);
+  color: #2ed573;
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-size: 8.5px;
+  font-weight: 700;
+  margin: 2px 0;
+}
+
+/* لوحة ملخص تفاصيل الخطة والمواعيد في المودال */
+.details-summary-card {
+  background: rgba(6, 11, 37, 0.6);
+  border: 1px solid rgba(137, 153, 226, 0.16);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.summary-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(137, 153, 226, 0.12);
+  padding-bottom: 8px;
+}
+
+.summary-client-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.summary-client-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #f1f5ff;
+}
+
+.summary-plan-tag {
+  font-size: 10px;
+  background: rgba(125, 232, 220, 0.12);
+  color: #7de8dc;
+  border: 1px solid rgba(125, 232, 220, 0.25);
+  padding: 2px 7px;
+  border-radius: 6px;
+}
+
+.deadlines-timeline-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.timeline-box {
+  background: rgba(18, 24, 63, 0.5);
+  border: 1px solid rgba(137, 153, 226, 0.12);
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.timeline-box-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.tb-title {
+  color: #9cb0dc;
+  font-weight: 700;
+}
+
+.tb-val {
+  color: #c9d2f5;
+  direction: ltr;
+  font-size: 10.5px;
+}
+
+.tb-val.highlight {
+  color: #7de8dc;
+  font-weight: 700;
+}
+
+.delivery-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  width: fit-content;
+}
+
+.delivery-status-pill.success {
+  background: rgba(46, 213, 115, 0.14);
+  border: 1px solid rgba(46, 213, 115, 0.4);
+  color: #2ed573;
+}
+
+.delivery-status-pill.pending {
+  background: rgba(255, 171, 0, 0.12);
+  border: 1px solid rgba(255, 171, 0, 0.35);
+  color: #ffab00;
+}
+
+.delivery-status-pill .pill-icon {
+  font-size: 11px;
 }
 
 /* فوتر الكارت */

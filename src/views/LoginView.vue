@@ -127,7 +127,12 @@ const handleLogin = async () => {
       router.push('/employee/dashboard');
     }
   } catch (error) {
-    errorMessage.value = error.response?.data?.message || 'بيانات الدخول غير صحيحة';
+    if (error.response?.data?.errors) {
+      const firstError = Object.values(error.response.data.errors)[0];
+      errorMessage.value = Array.isArray(firstError) ? firstError[0] : firstError;
+    } else {
+      errorMessage.value = error.response?.data?.message || 'بيانات الدخول غير صحيحة، يرجى التأكد من البريد وكلمة المرور';
+    }
   } finally {
     isLoading.value = false;
   }
@@ -165,7 +170,8 @@ const handleLogin = async () => {
 .input-wrap { display: flex; align-items: center; min-height: 52px; border: 1px solid rgba(142, 154, 213, .25); border-radius: 13px; background: rgba(9, 13, 42, .42); transition: .2s ease; }.input-wrap.focused, .input-wrap:focus-within { border-color: #78e8de; box-shadow: 0 0 0 4px rgba(120,232,222,.08); }.input-wrap input { width: 100%; border: 0; outline: 0; color: #f5f6ff; background: transparent; padding: 0 10px; font: inherit; font-size: 13px; direction: ltr; text-align: left; }.input-wrap input::placeholder { color: #626b98; }.field-icon { width: 18px; margin: 0 14px; fill: none; stroke: #7d88ba; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; flex: 0 0 auto; }.visibility-btn { width: 44px; height: 48px; display: grid; place-items: center; border: 0; color: #7d88ba; background: transparent; cursor: pointer; }.visibility-btn svg { width: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }.visibility-btn:hover { color: #77e9df; }
 .remember-row { display: flex; align-items: center; gap: 9px; color: #8f98c0; font-size: 11px; cursor: pointer; margin: 2px 0 25px; }.remember-row input { position: absolute; opacity: 0; }.custom-check { width: 16px; height: 16px; border: 1px solid #5f6a9f; border-radius: 5px; transition: .2s; }.remember-row input:checked + .custom-check { border-color: #77e9df; background: #77e9df; box-shadow: inset 0 0 0 3px #172052; }
 .submit-btn { width: 100%; min-height: 52px; border: 0; border-radius: 13px; color: #11143a; background: linear-gradient(100deg, #83ece2, #b98aff); font: inherit; font-size: 14px; font-weight: 800; cursor: pointer; box-shadow: 0 12px 25px rgba(119, 233, 223, .14); transition: transform .2s, box-shadow .2s, filter .2s; }.submit-btn:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.06); box-shadow: 0 16px 30px rgba(119, 233, 223, .23); }.submit-btn:disabled { opacity: .7; cursor: wait; }.arrow { font-size: 19px; margin-right: 6px; }.loading-state { display: inline-flex; gap: 9px; align-items: center; }.spinner { width: 15px; height: 15px; border: 2px solid rgba(17,20,58,.3); border-top-color: #11143a; border-radius: 50%; animation: spin .7s linear infinite; }
-.error-message { display: flex; align-items: center; gap: 8px; color: #ff9eaf; font-size: 11px; margin: 14px 0 0; }.error-message span { display: inline-grid; place-items: center; width: 16px; height: 16px; border: 1px solid currentColor; border-radius: 50%; font-weight: 800; }.form-footer { color: #747ea9; font-size: 11px; text-align: center; margin: 44px 0 0; }.mobile-brand { display: none; }
+.error-message { display: flex; align-items: center; gap: 10px; color: #ff9eaf; font-size: 12px; font-weight: 600; margin: 16px 0 0; padding: 11px 14px; background: rgba(255, 103, 139, 0.12); border: 1px solid rgba(255, 155, 173, 0.3); border-radius: 12px; animation: shake 0.35s ease-in-out; }.error-message span { display: inline-grid; place-items: center; width: 18px; height: 18px; border: 1.5px solid currentColor; border-radius: 50%; font-weight: 800; flex-shrink: 0; }.form-footer { color: #747ea9; font-size: 11px; text-align: center; margin: 44px 0 0; }.mobile-brand { display: none; }
+@keyframes shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (max-width: 760px) { .auth-page { padding: 16px; }.auth-shell { display: block; min-height: auto; border-radius: 22px; }.brand-panel { display: none; }.form-panel { padding: 30px 24px 26px; }.mobile-brand { display: flex; justify-content: center; align-items: center; margin-bottom: 30px; }.mobile-logo { height: 75px; width: auto; max-width: 170px; object-fit: contain; filter: drop-shadow(0 6px 20px rgba(0, 216, 204, 0.35)); }.form-heading h2 { font-size: 27px; } }
 </style>

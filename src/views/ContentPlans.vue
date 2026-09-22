@@ -345,7 +345,10 @@
                 <div class="block-action-slot">
                   <!-- زر تسليم للمراجعة للمسؤول أو المنفذ أو الـ Account Manager أو المدير -->
                   <div v-if="canSubmitForReview(plan) && plan.requires_review && (plan.status === 'pending' || plan.status === 'rejected')">
-                    <button class="confirm-btn review full-w-btn" type="button" :disabled="actionLoading === `submit-review-${plan.id}`" @click="submitForReview(plan)">
+                    <div v-if="!hasPlanLink(plan)" class="plan-link-warning-pill" @click="openDetailsModal(plan, true)" title="اضغط لإضافة رابط البلان في تفاصيل الخطة">
+                      <span>⚠️ يجب إضافة رابط البلان أولاً</span>
+                    </div>
+                    <button class="confirm-btn review full-w-btn" :class="{ 'btn-missing-link': !hasPlanLink(plan) }" type="button" :disabled="actionLoading === `submit-review-${plan.id}`" @click="submitForReview(plan)" :title="!hasPlanLink(plan) ? 'اضغط لإضافة رابط البلان النهائي بتفاصيل الخطة أولاً' : 'تسليم الخطة للمراجعة'">
                       {{ actionLoading === `submit-review-${plan.id}` ? 'جارٍ...' : 'تسليم للمراجعة 📤' }}
                     </button>
                   </div>
@@ -390,15 +393,21 @@
                   <div v-if="plan.status === 'completed'" class="status-badge status-green">
                     <i></i> تم التسليم <small>{{ formatDate(plan.actual_delivery_date) }}</small>
                   </div>
-                  <button 
-                    v-else-if="isUserResponsible(plan) && (plan.status === 'reviewed' || (!plan.requires_review && (plan.status === 'pending' || plan.status === 'rejected')))" 
-                    class="confirm-btn full-w-btn" 
-                    type="button" 
-                    :disabled="actionLoading === `delivery-${plan.id}`" 
-                    @click="submitFinalDelivery(plan)"
-                  >
-                    {{ actionLoading === `delivery-${plan.id}` ? 'جارٍ...' : 'تأكيد التسليم النهائي ✅' }}
-                  </button>
+                  <div v-else-if="isUserResponsible(plan) && (plan.status === 'reviewed' || (!plan.requires_review && (plan.status === 'pending' || plan.status === 'rejected')))">
+                    <div v-if="!hasPlanLink(plan)" class="plan-link-warning-pill" @click="openDetailsModal(plan, true)" title="اضغط لإضافة رابط البلان في تفاصيل الخطة">
+                      <span>⚠️ يجب إضافة رابط البلان أولاً</span>
+                    </div>
+                    <button 
+                      class="confirm-btn full-w-btn" 
+                      :class="{ 'btn-missing-link': !hasPlanLink(plan) }"
+                      type="button" 
+                      :disabled="actionLoading === `delivery-${plan.id}`" 
+                      @click="submitFinalDelivery(plan)"
+                      :title="!hasPlanLink(plan) ? 'اضغط لإضافة رابط البلان النهائي بتفاصيل الخطة أولاً' : 'تأكيد التسليم النهائي للعميل'"
+                    >
+                      {{ actionLoading === `delivery-${plan.id}` ? 'جارٍ...' : 'تأكيد التسليم النهائي ✅' }}
+                    </button>
+                  </div>
                   <span v-else-if="plan.requires_review && !['reviewed', 'completed'].includes(plan.status)" class="muted-slot-text">بانتظار إنهاء المراجعة</span>
                   <span v-else class="muted-slot-text">بانتظار إنهاء الدورة</span>
                 </div>
@@ -446,6 +455,17 @@
                 >
                   <span>✎</span> تفاصيل الخطة
                 </button>
+
+                <a 
+                  v-if="hasPlanLink(plan)" 
+                  class="cluster-btn plan-link" 
+                  :href="plan.final_link.startsWith('http') ? plan.final_link : 'https://' + plan.final_link" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  title="فتح رابط البلان النهائي في نافذة جديدة"
+                >
+                  <span>🔗</span> رابط البلان
+                </a>
               </div>
 
               <router-link :to="`/plan-board/${plan.id}`" class="spreadsheet-link-banner">
@@ -543,9 +563,14 @@
                     <div v-if="plan.status === 'completed'" class="status-badge status-green mt-2">
                       <i></i> تم التسليم <small>{{ formatDate(plan.actual_delivery_date) }}</small>
                     </div>
-                    <button v-else-if="isUserResponsible(plan) && (plan.status === 'reviewed' || (!plan.requires_review && (plan.status === 'pending' || plan.status === 'rejected')))" class="confirm-btn mt-2" type="button" :disabled="actionLoading === `delivery-${plan.id}`" @click="submitFinalDelivery(plan)">
-                      {{ actionLoading === `delivery-${plan.id}` ? 'جارٍ...' : 'تأكيد التسليم النهائي' }}
-                    </button>
+                    <div v-else-if="isUserResponsible(plan) && (plan.status === 'reviewed' || (!plan.requires_review && (plan.status === 'pending' || plan.status === 'rejected')))">
+                      <div v-if="!hasPlanLink(plan)" class="plan-link-warning-pill table-pill" @click="openDetailsModal(plan, true)" title="اضغط لإضافة رابط البلان">
+                        <span>⚠️ رابط البلان مطلوب</span>
+                      </div>
+                      <button class="confirm-btn mt-1" :class="{ 'btn-missing-link': !hasPlanLink(plan) }" type="button" :disabled="actionLoading === `delivery-${plan.id}`" @click="submitFinalDelivery(plan)" :title="!hasPlanLink(plan) ? 'اضغط لإضافة رابط البلان بتفاصيل الخطة أولاً' : 'تأكيد التسليم النهائي'">
+                        {{ actionLoading === `delivery-${plan.id}` ? 'جارٍ...' : 'تأكيد التسليم النهائي' }}
+                      </button>
+                    </div>
                     <span v-else class="muted mt-2 d-block">بانتظار إنهاء الدورة</span>
                   </div>
                 </td>
@@ -585,7 +610,10 @@
                     </div>
 
                     <div v-if="canSubmitForReview(plan) && plan.requires_review && (plan.status === 'pending' || plan.status === 'rejected')" class="mt-1 mb-1">
-                      <button class="confirm-btn review" type="button" :disabled="actionLoading === `submit-review-${plan.id}`" @click="submitForReview(plan)">
+                      <div v-if="!hasPlanLink(plan)" class="plan-link-warning-pill table-pill" @click="openDetailsModal(plan, true)" title="اضغط لإضافة رابط البلان">
+                        <span>⚠️ رابط البلان مطلوب</span>
+                      </div>
+                      <button class="confirm-btn review" :class="{ 'btn-missing-link': !hasPlanLink(plan) }" type="button" :disabled="actionLoading === `submit-review-${plan.id}`" @click="submitForReview(plan)" :title="!hasPlanLink(plan) ? 'اضغط لإضافة رابط البلان بتفاصيل الخطة أولاً' : 'تسليم للمراجعة'">
                         {{ actionLoading === `submit-review-${plan.id}` ? 'جارٍ...' : 'تسليم للمراجعة 📤' }}
                       </button>
                     </div>
@@ -619,6 +647,9 @@
                     </button>
                     <button v-if="getReviewHistories(plan).length > 0" @click="openHistoryModal(plan)" class="history-btn">سجل الحركات 📋</button>
                     <button class="details-btn" type="button" @click="openDetailsModal(plan)">تفاصيل الخطة</button>
+                    <a v-if="hasPlanLink(plan)" :href="plan.final_link.startsWith('http') ? plan.final_link : 'https://' + plan.final_link" target="_blank" rel="noopener noreferrer" class="plan-link-table-btn" title="فتح رابط البلان النهائي">
+                      رابط البلان 🔗
+                    </a>
                   </div>
                 </td>
                 
@@ -993,8 +1024,33 @@
 
           <form class="plan-form mt-3" @submit.prevent="saveDetails">
             <div class="form-group">
-              <label>لينك البلان النهائي</label>
-              <input v-model="detailsForm.final_link" type="url" placeholder="https://..." />
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <label style="margin-bottom:0;">
+                  لينك البلان النهائي
+                  <span style="color: #f87171; font-weight: bold; margin-right: 4px;">*</span>
+                  <span style="color: #fbbf24; font-size: 11px; font-weight: normal; margin-right: 6px;">(مطلوب للتسليم ⚠️)</span>
+                </label>
+                <a 
+                  v-if="detailsForm.final_link && detailsForm.final_link.trim()" 
+                  :href="detailsForm.final_link.startsWith('http') ? detailsForm.final_link : 'https://' + detailsForm.final_link" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  style="font-size: 11px; color: #60a5fa; text-decoration: none; display: flex; align-items: center; gap: 4px;"
+                  title="اختبار وفتح الرابط"
+                >
+                  <span>تجربة الرابط</span> ↗
+                </a>
+              </div>
+              <input 
+                ref="planLinkInputRef"
+                v-model="detailsForm.final_link" 
+                type="text" 
+                placeholder="https://..." 
+                @blur="onFinalLinkBlur"
+              />
+              <small style="display:block; font-size:11px; color:#94a3b8; margin-top:4px;">
+                مطلوب لتتمكن من تسليم الخطة للمراجعة أو التسليم النهائي للعميل. (مثال: رابط Google Drive, Sheets, Figma, إلخ).
+              </small>
             </div>
             <div class="form-group">
               <label>ملاحظات عامة</label>
@@ -1158,6 +1214,18 @@ const isUserExecutor = (plan) => {
 };
 const canSubmitForReview = (plan) => {
   return isUserResponsible(plan) || isUserExecutor(plan);
+};
+const hasPlanLink = (plan) => {
+  return Boolean(plan && plan.final_link && String(plan.final_link).trim().length > 0);
+};
+const planLinkInputRef = ref(null);
+const onFinalLinkBlur = () => {
+  if (detailsForm.final_link && detailsForm.final_link.trim()) {
+    let val = detailsForm.final_link.trim();
+    if (!/^https?:\/\//i.test(val)) {
+      detailsForm.final_link = 'https://' + val;
+    }
+  }
 };
 const getExecutors = (plan) => { if (!plan || !plan.users) return []; return plan.users.filter(u => u.pivot?.task_role === 'executor'); };
 const getResponsibles = (plan) => { if (!plan || !plan.users) return []; return plan.users.filter(u => u.pivot?.task_role === 'responsible'); }; 
@@ -1837,6 +1905,16 @@ const smartNotify = (plan) => {
 };
 
 const submitForReview = async (plan) => {
+  if (!hasPlanLink(plan)) {
+    await alertService.alert({
+      title: 'رابط الخطة مطلوب ⚠️',
+      message: `لا يمكن تسليم خطة "${plan?.client?.name || ''}" للمراجعة بدون إضافة رابط البلان النهائي أولاً.\nيرجى إضافة الرابط في خانة (لينك البلان النهائي) بتفاصيل الخطة.`,
+      okText: 'إضافة الرابط الآن 🔗',
+      type: 'warning'
+    });
+    openDetailsModal(plan, true);
+    return;
+  }
   const confirmed = await alertService.confirm({
     title: 'تسليم الخطة للمراجعة',
     message: `هل أنت متأكد من تسليم خطة "${plan?.client?.name || ''}" للمراجعة الداخلية؟`,
@@ -1889,6 +1967,16 @@ const submitRejectPlan = async () => {
 };
 
 const submitFinalDelivery = async (plan) => {
+  if (!hasPlanLink(plan)) {
+    await alertService.alert({
+      title: 'رابط الخطة مطلوب ⚠️',
+      message: `لا يمكن تسجيل التسليم النهائي لخطة "${plan?.client?.name || ''}" بدون إضافة رابط البلان النهائي أولاً.\nيرجى إضافة الرابط في خانة (لينك البلان النهائي) بتفاصيل الخطة.`,
+      okText: 'إضافة الرابط الآن 🔗',
+      type: 'warning'
+    });
+    openDetailsModal(plan, true);
+    return;
+  }
   const confirmed = await alertService.confirm({
     title: 'تأكيد التسليم النهائي للعميل',
     message: `هل أنت متأكد من تسجيل التسليم النهائي لخطة "${plan?.client?.name || ''}" للعميل؟`,
@@ -2024,7 +2112,7 @@ const deletePlan = async (id) => {
   }
 };
 
-const openDetailsModal = (plan) => { 
+const openDetailsModal = (plan, focusLink = false) => { 
   editId.value = plan.id; 
   currentDetailsPlan.value = plan;
   detailsForm.final_link = plan.final_link || ''; 
@@ -2032,13 +2120,22 @@ const openDetailsModal = (plan) => {
   originalDetails.final_link = (plan.final_link || '').trim();
   originalDetails.notes = (plan.notes || '').trim();
   showDetailsModal.value = true; 
+  if (focusLink || !plan.final_link) {
+    nextTick(() => {
+      planLinkInputRef.value?.focus();
+    });
+  }
 };
 const closeDetailsModal = () => { 
   showDetailsModal.value = false; 
   currentDetailsPlan.value = null;
 };
 const saveDetails = async () => { 
-  const newLink = (detailsForm.final_link || '').trim();
+  let newLink = (detailsForm.final_link || '').trim();
+  if (newLink && !/^https?:\/\//i.test(newLink)) {
+    newLink = 'https://' + newLink;
+    detailsForm.final_link = newLink;
+  }
   const newNotes = (detailsForm.notes || '').trim();
   const isLinkChanged = newLink !== originalDetails.final_link;
   const isNotesChanged = newNotes !== originalDetails.notes;
@@ -2052,8 +2149,13 @@ const saveDetails = async () => {
       targetPlan.final_link = detailsForm.final_link;
       targetPlan.notes = detailsForm.notes;
     }
+    const foundPlan = plans.value.find(p => p.id === editId.value);
+    if (foundPlan) {
+      foundPlan.final_link = detailsForm.final_link;
+      foundPlan.notes = detailsForm.notes;
+    }
     closeDetailsModal(); 
-    showToast('تم التحديث بنجاح'); 
+    showToast('تم حفظ التفاصيل بنجاح ✅'); 
     await fetchPlans(); 
 
     // إذا كانت هناك بيانات محدثة بالفعل، نجهز رسالة ونبلغ المدير
@@ -3001,6 +3103,66 @@ onBeforeUnmount(() => {
   color: #12183f;
   transform: translateY(-1px);
   box-shadow: 0 4px 15px rgba(125, 232, 220, 0.25);
+}
+
+.plan-link-warning-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px dashed rgba(245, 158, 11, 0.45);
+  border-radius: 6px;
+  color: #fbbf24;
+  font-size: 9px;
+  font-weight: 700;
+  margin-bottom: 5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  justify-content: center;
+}
+.plan-link-warning-pill:hover {
+  background: rgba(245, 158, 11, 0.22);
+  border-color: #f59e0b;
+  transform: translateY(-1px);
+}
+.plan-link-warning-pill.table-pill {
+  width: auto;
+  font-size: 8.5px;
+  padding: 2px 6px;
+}
+.btn-missing-link {
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+.cluster-btn.plan-link {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.25);
+  color: #93c5fd;
+  text-decoration: none;
+}
+.cluster-btn.plan-link:hover {
+  background: rgba(59, 130, 246, 0.22);
+  border-color: #3b82f6;
+  color: #ffffff;
+}
+.plan-link-table-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 7px;
+  border-radius: 5px;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  color: #93c5fd;
+  font-size: 9px;
+  text-decoration: none;
+  font-weight: 700;
+  transition: 0.2s;
+}
+.plan-link-table-btn:hover {
+  background: rgba(59, 130, 246, 0.25);
+  color: #fff;
 }
 
 @media (max-width: 900px) {

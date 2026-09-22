@@ -22,15 +22,21 @@ api.interceptors.request.use(
   },
 )
 
-// 2. Response Interceptor: اصطياد خطأ 401 والطرد التلقائي
+// 2. Response Interceptor: اصطياد خطأ 401 والطرد التلقائي (مع استثناء طلبات تسجيل الدخول)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && error.response.status === 401) {
+    const isLoginRequest = error.config?.url?.includes('/login')
+
+    if (error.response && error.response.status === 401 && !isLoginRequest) {
       localStorage.removeItem('token')
       localStorage.removeItem('role')
+      localStorage.removeItem('user_id')
+      localStorage.removeItem('user')
 
-      window.location.href = '/'
+      if (window.location.pathname !== '/' && window.location.pathname !== '/login') {
+        window.location.href = '/'
+      }
     }
     return Promise.reject(error)
   },

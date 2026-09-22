@@ -58,7 +58,7 @@
             <th v-if="!isMediaBuyer" colspan="8" class="group-header blue-group">محتوى المنشور</th>
             <th colspan="1" class="group-header light-blue-group">التسليم</th>
             <th colspan="1" class="group-header pink-group">ملاحظات</th>
-            <th v-if="isManager" colspan="1" class="group-header admin-group">إجراءات</th>
+            <th v-if="canDeletePosts" colspan="1" class="group-header admin-group">إجراءات</th>
           </tr>
           <tr>
             <th class="sub-th red-th">تاريخ النشر المخطط</th>
@@ -90,12 +90,12 @@
 
             <th class="sub-th light-blue-th">روابط ووقت التسليم</th>
             <th class="sub-th pink-th">Note</th>
-            <th v-if="isManager" class="sub-th admin-th">حذف</th>
+            <th v-if="canDeletePosts" class="sub-th admin-th">حذف</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="filteredPosts.length === 0">
-            <td :colspan="isMediaBuyer ? 9 : (isDesignerOrEditor ? 18 : 26)" class="text-center py-4 muted">لا توجد منشورات. قم بإضافة منشور جديد.</td>
+            <td :colspan="isMediaBuyer ? 9 : (isDesignerOrEditor ? 18 : (canDeletePosts ? 26 : 25))" class="text-center py-4 muted">لا توجد منشورات. قم بإضافة منشور جديد.</td>
           </tr>
           <tr v-for="(post, index) in filteredPosts" :key="post.id" :id="'post-row-' + post.id" class="post-row" :class="{ 'urgent-row': post.is_urgent }">
             
@@ -480,7 +480,7 @@
                 <span v-if="hasLockIcon(post, 'notes')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'notes')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
               </div>
             </td>
-            <td v-if="isManager" class="text-center">
+            <td v-if="canDeletePosts" class="text-center">
               <button 
                 class="icon-btn delete-btn" 
                 @click="deletePost(post, index)" 
@@ -1180,6 +1180,19 @@ const isManager = computed(() => {
   return currentUser.value.role === 'manager';
 });
 
+const checkIfResponsibleFromPlan = (plan) => {
+  if (!plan || !currentUser.value) return false;
+  const uid = Number(currentUser.value.id);
+  if (plan.users && Array.isArray(plan.users)) {
+    return plan.users.some(u => Number(u.id) === uid && u.pivot?.task_role === 'responsible');
+  }
+  return false;
+};
+
+const canDeletePosts = computed(() => {
+  return isManager.value || isPlanResponsible.value || checkIfResponsibleFromPlan(currentPlan.value);
+});
+
 const canEditFields = (post) => {
   if (!currentUser.value) return false;
   if (isManager.value) return true;
@@ -1477,11 +1490,17 @@ const fetchCurrentPlan = async () => {
   try {
     const res = await api.get(`/content-plans/${planId}`);
     currentPlan.value = res.data.data || res.data;
+    if (checkIfResponsibleFromPlan(currentPlan.value)) {
+      isPlanResponsible.value = true;
+    }
   } catch (error) {
     try {
       const fallbackRes = await api.get('/content-plans');
       const allPlans = fallbackRes.data.data || fallbackRes.data || [];
       currentPlan.value = allPlans.find(p => p.id == planId) || null;
+      if (checkIfResponsibleFromPlan(currentPlan.value)) {
+        isPlanResponsible.value = true;
+      }
     } catch(e) {
       console.error('Error fetching plan details:', e);
     }
@@ -1511,7 +1530,7 @@ const fetchPosts = async () => {
       };
     });
     
-    isPlanResponsible.value = res.data.is_responsible || false;
+    isPlanResponsible.value = res.data.is_responsible || checkIfResponsibleFromPlan(currentPlan.value) || isPlanResponsible.value || false;
     
   } catch (error) {
     showToast('تعذر تحميل بيانات اللوحة.');

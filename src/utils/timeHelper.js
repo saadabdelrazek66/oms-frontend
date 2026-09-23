@@ -110,7 +110,10 @@ export const getDeadlineStatus = (createdAt, dueDate, status, currentTimestamp =
   }
   if (isNaN(now)) now = Date.now();
 
-  const start = isNaN(rawStartTime) ? end - 24 * 60 * 60 * 1000 : rawStartTime;
+  let start = isNaN(rawStartTime) ? end - 24 * 60 * 60 * 1000 : rawStartTime;
+  if (start >= end) {
+    start = end - 24 * 60 * 60 * 1000;
+  }
 
   // إجمالي الوقت المتاح للمهمة
   const totalDuration = end - start > 0 ? end - start : 1;

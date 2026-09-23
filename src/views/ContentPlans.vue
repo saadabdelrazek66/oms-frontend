@@ -320,22 +320,22 @@
 
                   <!-- عداد SLA للتسليم الابتدائي إذا لم يُسلّم بعد للمراجعة -->
                   <div class="sla-indicator" v-else-if="plan.planned_initial_delivery_date && (plan.status === 'pending' || plan.status === 'rejected')">
-                    <span class="sla-msg" :class="getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_initial_delivery_date, plan.status, currentTime).class + '-text'">
-                      {{ getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_initial_delivery_date, plan.status, currentTime).message }}
+                    <span class="sla-msg" :class="getDeadlineStatus(plan.created_at || plan.start_date, plan.planned_initial_delivery_date, plan.status, currentTime).class + '-text'">
+                      {{ getDeadlineStatus(plan.created_at || plan.start_date, plan.planned_initial_delivery_date, plan.status, currentTime).message }}
                     </span>
                     <div class="sla-progress-bg">
-                      <div class="sla-progress-fill" :class="getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_initial_delivery_date, plan.status, currentTime).class + '-bg'" :style="{ width: getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_initial_delivery_date, plan.status, currentTime).percentage + '%' }"></div>
+                      <div class="sla-progress-fill" :class="getDeadlineStatus(plan.created_at || plan.start_date, plan.planned_initial_delivery_date, plan.status, currentTime).class + '-bg'" :style="{ width: getDeadlineStatus(plan.created_at || plan.start_date, plan.planned_initial_delivery_date, plan.status, currentTime).percentage + '%' }"></div>
                     </div>
                   </div>
                 </div>
 
                 <!-- مؤشر SLA لإنهاء المراجعة عند دخول الخطة للمراجعة أو كاحتياطي -->
                 <div class="sla-indicator" v-if="plan.requires_review && plan.planned_review_date && (plan.status === 'under_review' || (!plan.planned_initial_delivery_date && ['pending', 'rejected'].includes(plan.status)))">
-                  <span class="sla-msg" :class="getDeadlineStatus(plan.actual_initial_delivery_date || plan.start_date || plan.created_at, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).class + '-text'">
-                    {{ getDeadlineStatus(plan.actual_initial_delivery_date || plan.start_date || plan.created_at, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).message }}
+                  <span class="sla-msg" :class="getDeadlineStatus(plan.actual_initial_delivery_date || plan.created_at || plan.start_date, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).class + '-text'">
+                    {{ getDeadlineStatus(plan.actual_initial_delivery_date || plan.created_at || plan.start_date, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).message }}
                   </span>
                   <div class="sla-progress-bg" v-if="!['reviewed', 'completed'].includes(plan.status)">
-                    <div class="sla-progress-fill" :class="getDeadlineStatus(plan.actual_initial_delivery_date || plan.start_date || plan.created_at, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).class + '-bg'" :style="{ width: getDeadlineStatus(plan.actual_initial_delivery_date || plan.start_date || plan.created_at, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).percentage + '%' }"></div>
+                    <div class="sla-progress-fill" :class="getDeadlineStatus(plan.actual_initial_delivery_date || plan.created_at || plan.start_date, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).class + '-bg'" :style="{ width: getDeadlineStatus(plan.actual_initial_delivery_date || plan.created_at || plan.start_date, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).percentage + '%' }"></div>
                   </div>
                 </div>
                 <div v-else-if="!plan.requires_review" class="no-review-placeholder">
@@ -381,11 +381,11 @@
                 </div>
 
                 <div class="sla-indicator" v-if="plan.planned_delivery_date">
-                  <span class="sla-msg" :class="getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_delivery_date, plan.status, currentTime).class + '-text'">
-                    {{ getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_delivery_date, plan.status, currentTime).message }}
+                  <span class="sla-msg" :class="getDeadlineStatus(plan.created_at || plan.start_date, plan.planned_delivery_date, plan.status, currentTime).class + '-text'">
+                    {{ getDeadlineStatus(plan.created_at || plan.start_date, plan.planned_delivery_date, plan.status, currentTime).message }}
                   </span>
                   <div class="sla-progress-bg" v-if="plan.status !== 'completed'">
-                    <div class="sla-progress-fill" :class="getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_delivery_date, plan.status, currentTime).class + '-bg'" :style="{ width: getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_delivery_date, plan.status, currentTime).percentage + '%' }"></div>
+                    <div class="sla-progress-fill" :class="getDeadlineStatus(plan.created_at || plan.start_date, plan.planned_delivery_date, plan.status, currentTime).class + '-bg'" :style="{ width: getDeadlineStatus(plan.created_at || plan.start_date, plan.planned_delivery_date, plan.status, currentTime).percentage + '%' }"></div>
                   </div>
                 </div>
 
@@ -552,11 +552,11 @@
                     <span class="date">{{ formatDate(plan.planned_delivery_date) }}</span>
                     
                     <div class="sla-indicator" v-if="plan.planned_delivery_date">
-                      <span class="sla-msg" :class="getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_delivery_date, plan.status, currentTime).class + '-text'">
-                        {{ getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_delivery_date, plan.status, currentTime).message }}
+                      <span class="sla-msg" :class="getDeadlineStatus(plan.created_at || plan.start_date, plan.planned_delivery_date, plan.status, currentTime).class + '-text'">
+                        {{ getDeadlineStatus(plan.created_at || plan.start_date, plan.planned_delivery_date, plan.status, currentTime).message }}
                       </span>
                       <div class="sla-progress-bg" v-if="plan.status !== 'completed'">
-                        <div class="sla-progress-fill" :class="getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_delivery_date, plan.status, currentTime).class + '-bg'" :style="{ width: getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_delivery_date, plan.status, currentTime).percentage + '%' }"></div>
+                        <div class="sla-progress-fill" :class="getDeadlineStatus(plan.created_at || plan.start_date, plan.planned_delivery_date, plan.status, currentTime).class + '-bg'" :style="{ width: getDeadlineStatus(plan.created_at || plan.start_date, plan.planned_delivery_date, plan.status, currentTime).percentage + '%' }"></div>
                       </div>
                     </div>
 
@@ -897,24 +897,173 @@
 
     
     <Teleport to="body">
-      <div v-if="showManagerModal && (user && (user.role === 'manager' || user.job_title === 'Account Manager'))" class="modal-overlay" @click.self="closeManagerModal"><div class="modal-content" role="dialog"><button class="modal-close" type="button" @click="closeManagerModal">×</button><div class="modal-icon">◈</div><span class="eyebrow">مساحة التخطيط</span><h3>{{ isEditing ? 'تعديل الخطة' : 'إنشاء خطة جديدة' }}</h3><form class="plan-form" @submit.prevent="saveManagerPlan"><div class="form-grid"><div class="form-group"><label>العميل المستهدف</label><select v-model="form.client_id" required><option value="" disabled>اختر العميل...</option><option v-for="client in allClients" :key="client.id" :value="client.id">{{ client.name }}</option></select></div><div class="form-group"><label>نوع الخطة</label><select v-model="form.plan_type" required><option value="" disabled>اختر...</option><option value="استراتيجية (Strategic)">استراتيجية</option><option value="محتوى (Content)">محتوى</option><option value="تسويق عبر السوشيال ميديا">سوشيال ميديا</option><option value="إعلانات ممولة (Media Buying)">إعلانات ممولة</option><option value="تحسين محركات البحث (SEO)">SEO</option><option value="خطة شاملة">خطة شاملة</option></select></div></div><div class="form-grid"><div class="form-group"><label>تاريخ بداية الخطة</label><input v-model="form.start_date" type="date" required /></div><div class="form-group"><label>تاريخ نهاية الخطة</label><input v-model="form.end_date" type="date" required /></div></div><div class="form-grid"><div class="form-group"><label>التسليم النهائي</label><input v-model="form.planned_delivery_date" type="datetime-local" required /></div><div class="form-group toggle-group"><label>مراجعة داخلية؟</label><label class="toggle-switch"><input type="checkbox" v-model="form.requires_review"><span class="slider"></span></label><span class="toggle-label">{{ form.requires_review ? 'نعم' : 'لا' }}</span></div></div><div class="form-grid" v-if="form.requires_review"><div class="form-group"><label>موعد التسليم الابتدائي</label><input v-model="form.planned_initial_delivery_date" type="datetime-local" /></div><div class="form-group"><label>موعد إنهاء المراجعة</label><input v-model="form.planned_review_date" type="datetime-local" required /></div></div><div class="separator"></div><div class="section-title" style="display:flex; justify-content:space-between; align-items:center;"><div><span>🔗</span> الروابط المرجعية (Reference Links)</div><button type="button" class="add-link-btn" @click="addReferenceLink">＋ إضافة رابط</button></div><div class="reference-links-container"><div v-for="(link, index) in form.reference_links" :key="index" class="link-input-group"><input v-model="form.reference_links[index]" type="url" placeholder="أدخل رابط المرجع (مثال: Google Drive, Notion, etc...)" required /><button type="button" class="remove-link-btn" @click="removeReferenceLink(index)" title="حذف الرابط">⌫</button></div><p v-if="form.reference_links.length === 0" class="muted text-center" style="font-size:10px; margin-top:10px;">لا توجد روابط مرجعية (اختياري)</p></div>
-<div class="separator"></div>
-<div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
-  <div><span>⚙️</span> إعدادات الحقول الإلزامية للمنشورات (Brief Settings)</div>
-</div>
-<p style="font-size: 11px; color: #8792be; margin-bottom: 20px; margin-top: 5px; padding-right: 5px;">
-  حدد الحقول التي يجب على مسؤول الخطة تعبئتها إلزامياً قبل أن يتمكن من إرسال التكليف للمصمم/المنفذ. (بشكل افتراضي جميع الحقول مطلوبة).
-</p>
-<div class="brief-settings-container" style="margin-bottom: 10px;">
-  <div class="checkbox-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; padding: 5px;">
-    <label v-for="(label, key) in availableBriefFields" :key="key" class="custom-cb">
-      <input type="checkbox" :value="key" v-model="form.required_brief_fields" />
-      <span class="cb-text">{{ label }}</span>
-    </label>
-  </div>
-</div>
-<div class="separator"></div>
-<div class="section-title"><span>⌁</span> توزيع المهام</div><div class="form-grid-3 users-grid"><div class="form-group"><label>المسؤول</label><div class="checkbox-list"><label v-for="user in allUsers" :key="'resp_'+user.id" class="custom-cb"><input type="checkbox" :value="user.id" v-model="form.responsible_ids" /><span class="cb-text">{{ user.name }}</span></label></div></div><div class="form-group" v-if="form.requires_review"><label>المراجع</label><div class="checkbox-list"><label v-for="user in allUsers" :key="'rev_'+user.id" class="custom-cb"><input type="checkbox" :value="user.id" v-model="form.reviewer_ids" /><span class="cb-text">{{ user.name }}</span></label></div></div><div class="form-group" :style="form.requires_review ? '' : 'grid-column: span 2;'"><label>المنفذ</label><div class="checkbox-list" :style="form.requires_review ? '' : 'display:grid; grid-template-columns:1fr 1fr;'"><label v-for="user in allUsers" :key="'exec_'+user.id" class="custom-cb"><input type="checkbox" :value="user.id" v-model="form.executor_ids" /><span class="cb-text">{{ user.name }}</span></label></div></div></div><div class="modal-actions"><button type="button" class="secondary-btn" @click="closeManagerModal">إلغاء</button><button type="submit" class="primary-btn" :disabled="saving">{{ saving ? 'جارٍ الحفظ...' : 'حفظ الخطة' }}</button></div></form></div></div>
+      <div v-if="showManagerModal && (user && (user.role === 'manager' || user.job_title === 'Account Manager'))" class="modal-overlay" @click.self="closeManagerModal">
+        <div class="modal-content manager-modal-content" role="dialog" ref="managerModalContentRef">
+          <button class="modal-close" type="button" @click="closeManagerModal">×</button>
+          <div class="modal-icon">◈</div>
+          <span class="eyebrow">مساحة التخطيط</span>
+          <h3>{{ isEditing ? 'تعديل الخطة' : 'إنشاء خطة جديدة' }}</h3>
+
+          <!-- بانر تنبيه وعرض أخطاء التحقق داخل المودال -->
+          <div v-if="managerModalErrors.length > 0" class="modal-validation-banner" role="alert">
+            <div class="banner-title">
+              <span class="warning-icon">⚠️</span>
+              <strong>يرجى تصحيح الأخطاء التالية لحفظ الخطة:</strong>
+            </div>
+            <ul class="banner-errors-list">
+              <li v-for="(err, index) in managerModalErrors" :key="index">{{ err }}</li>
+            </ul>
+          </div>
+
+          <form class="plan-form" @submit.prevent="saveManagerPlan">
+            <div class="form-grid">
+              <div class="form-group" :class="{ 'has-field-error': managerFieldErrors.client_id }">
+                <label>العميل المستهدف <span class="text-red">*</span></label>
+                <select v-model="form.client_id" required @change="clearFieldError('client_id')">
+                  <option value="" disabled>اختر العميل...</option>
+                  <option v-for="client in allClients" :key="client.id" :value="client.id">{{ client.name }}</option>
+                </select>
+                <span v-if="managerFieldErrors.client_id" class="field-error-msg">{{ managerFieldErrors.client_id }}</span>
+              </div>
+              <div class="form-group" :class="{ 'has-field-error': managerFieldErrors.plan_type }">
+                <label>نوع الخطة <span class="text-red">*</span></label>
+                <select v-model="form.plan_type" required @change="clearFieldError('plan_type')">
+                  <option value="" disabled>اختر...</option>
+                  <option value="استراتيجية (Strategic)">استراتيجية</option>
+                  <option value="محتوى (Content)">محتوى</option>
+                  <option value="تسويق عبر السوشيال ميديا">سوشيال ميديا</option>
+                  <option value="إعلانات ممولة (Media Buying)">إعلانات ممولة</option>
+                  <option value="تحسين محركات البحث (SEO)">SEO</option>
+                  <option value="خطة شاملة">خطة شاملة</option>
+                </select>
+                <span v-if="managerFieldErrors.plan_type" class="field-error-msg">{{ managerFieldErrors.plan_type }}</span>
+              </div>
+            </div>
+
+            <div class="form-grid">
+              <div class="form-group" :class="{ 'has-field-error': managerFieldErrors.start_date }">
+                <label>تاريخ بداية الخطة <span class="text-red">*</span></label>
+                <input v-model="form.start_date" type="date" required @input="clearFieldError('start_date')" />
+                <span v-if="managerFieldErrors.start_date" class="field-error-msg">{{ managerFieldErrors.start_date }}</span>
+              </div>
+              <div class="form-group" :class="{ 'has-field-error': managerFieldErrors.end_date }">
+                <label>تاريخ نهاية الخطة <span class="text-red">*</span></label>
+                <input v-model="form.end_date" type="date" required @input="clearFieldError('end_date')" />
+                <span v-if="managerFieldErrors.end_date" class="field-error-msg">{{ managerFieldErrors.end_date }}</span>
+              </div>
+            </div>
+
+            <div class="form-grid">
+              <div class="form-group" :class="{ 'has-field-error': managerFieldErrors.planned_delivery_date }">
+                <label>التسليم النهائي <span class="text-red">*</span></label>
+                <input v-model="form.planned_delivery_date" type="datetime-local" required @input="clearFieldError('planned_delivery_date')" />
+                <span v-if="managerFieldErrors.planned_delivery_date" class="field-error-msg">{{ managerFieldErrors.planned_delivery_date }}</span>
+              </div>
+              <div class="form-group toggle-group">
+                <label>مراجعة داخلية؟</label>
+                <label class="toggle-switch">
+                  <input type="checkbox" v-model="form.requires_review" @change="onRequiresReviewChange">
+                  <span class="slider"></span>
+                </label>
+                <span class="toggle-label">{{ form.requires_review ? 'نعم' : 'لا' }}</span>
+              </div>
+            </div>
+
+            <div class="form-grid" v-if="form.requires_review">
+              <div class="form-group" :class="{ 'has-field-error': managerFieldErrors.planned_initial_delivery_date }">
+                <label>موعد التسليم الابتدائي</label>
+                <input v-model="form.planned_initial_delivery_date" type="datetime-local" @input="clearFieldError('planned_initial_delivery_date')" />
+                <span v-if="managerFieldErrors.planned_initial_delivery_date" class="field-error-msg">{{ managerFieldErrors.planned_initial_delivery_date }}</span>
+              </div>
+              <div class="form-group" :class="{ 'has-field-error': managerFieldErrors.planned_review_date }">
+                <label>موعد إنهاء المراجعة <span class="text-red">*</span></label>
+                <input v-model="form.planned_review_date" type="datetime-local" required @input="clearFieldError('planned_review_date')" />
+                <span v-if="managerFieldErrors.planned_review_date" class="field-error-msg">{{ managerFieldErrors.planned_review_date }}</span>
+              </div>
+            </div>
+
+            <div class="separator"></div>
+
+            <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
+              <div><span>🔗</span> الروابط المرجعية (Reference Links)</div>
+              <button type="button" class="add-link-btn" @click="addReferenceLink">＋ إضافة رابط</button>
+            </div>
+            <div class="reference-links-container">
+              <div v-for="(link, index) in form.reference_links" :key="index" class="link-input-group">
+                <input v-model="form.reference_links[index]" type="url" placeholder="أدخل رابط المرجع (مثال: Google Drive, Notion, etc...)" required />
+                <button type="button" class="remove-link-btn" @click="removeReferenceLink(index)" title="حذف الرابط">⌫</button>
+              </div>
+              <p v-if="form.reference_links.length === 0" class="muted text-center" style="font-size:10px; margin-top:10px;">لا توجد روابط مرجعية (اختياري)</p>
+            </div>
+
+            <div class="separator"></div>
+
+            <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
+              <div><span>⚙️</span> إعدادات الحقول الإلزامية للمنشورات (Brief Settings)</div>
+            </div>
+            <p style="font-size: 11px; color: #8792be; margin-bottom: 20px; margin-top: 5px; padding-right: 5px;">
+              حدد الحقول التي يجب على مسؤول الخطة تعبئتها إلزامياً قبل أن يتمكن من إرسال التكليف للمصمم/المنفذ. (بشكل افتراضي جميع الحقول مطلوبة).
+            </p>
+            <div class="brief-settings-container" style="margin-bottom: 10px;">
+              <div class="checkbox-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; padding: 5px;">
+                <label v-for="(label, key) in availableBriefFields" :key="key" class="custom-cb">
+                  <input type="checkbox" :value="key" v-model="form.required_brief_fields" />
+                  <span class="cb-text">{{ label }}</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="separator"></div>
+
+            <div class="section-title"><span>⌁</span> توزيع المهام</div>
+            <div class="form-grid-3 users-grid">
+              <div class="form-group" :class="{ 'has-field-error': managerFieldErrors.responsible_ids }">
+                <label>المسؤول <span class="text-red">*</span></label>
+                <div class="checkbox-list">
+                  <label v-for="user in allUsers" :key="'resp_'+user.id" class="custom-cb">
+                    <input type="checkbox" :value="user.id" v-model="form.responsible_ids" @change="clearFieldError('responsible_ids')" />
+                    <span class="cb-text">{{ user.name }}</span>
+                  </label>
+                </div>
+                <span v-if="managerFieldErrors.responsible_ids" class="field-error-msg">{{ managerFieldErrors.responsible_ids }}</span>
+              </div>
+
+              <div class="form-group" v-if="form.requires_review" :class="{ 'has-field-error': managerFieldErrors.reviewer_ids }">
+                <label>المراجع <span class="text-red">*</span></label>
+                <div class="checkbox-list">
+                  <label v-for="user in allUsers" :key="'rev_'+user.id" class="custom-cb">
+                    <input type="checkbox" :value="user.id" v-model="form.reviewer_ids" @change="clearFieldError('reviewer_ids')" />
+                    <span class="cb-text">{{ user.name }}</span>
+                  </label>
+                </div>
+                <span v-if="managerFieldErrors.reviewer_ids" class="field-error-msg">{{ managerFieldErrors.reviewer_ids }}</span>
+              </div>
+
+              <div class="form-group" :style="form.requires_review ? '' : 'grid-column: span 2;'" :class="{ 'has-field-error': managerFieldErrors.executor_ids }">
+                <label>المنفذ <span class="text-red">*</span></label>
+                <div class="checkbox-list" :style="form.requires_review ? '' : 'display:grid; grid-template-columns:1fr 1fr;'">
+                  <label v-for="user in allUsers" :key="'exec_'+user.id" class="custom-cb">
+                    <input type="checkbox" :value="user.id" v-model="form.executor_ids" @change="clearFieldError('executor_ids')" />
+                    <span class="cb-text">{{ user.name }}</span>
+                  </label>
+                </div>
+                <span v-if="managerFieldErrors.executor_ids" class="field-error-msg">{{ managerFieldErrors.executor_ids }}</span>
+              </div>
+            </div>
+
+            <div v-if="managerModalErrors.length > 0" class="bottom-error-note">
+              <span>⚠️ لا يمكن حفظ الخطة: يرجى مراجعة وتصحيح الأخطاء الموضحة أعلاه.</span>
+            </div>
+
+            <div class="modal-actions">
+              <button type="button" class="secondary-btn" @click="closeManagerModal">إلغاء</button>
+              <button type="submit" class="primary-btn" :disabled="saving">
+                {{ saving ? 'جارٍ الحفظ...' : 'حفظ الخطة' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     </Teleport>
 
     
@@ -1256,7 +1405,7 @@ const formatShortDate = (dateStr) => {
 };
 
 const isPlanDelayed = (plan) => {
-  return plan.status === 'rejected' || getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_delivery_date, plan.status, currentTime.value).isOverdue;
+  return plan.status === 'rejected' || getDeadlineStatus(plan.created_at || plan.start_date, plan.planned_delivery_date, plan.status, currentTime.value).isOverdue;
 };
 
 const filters = reactive({
@@ -1295,6 +1444,215 @@ const toastMessage = ref('');
 const editId = ref(null);
 
 const showManagerModal = ref(false);
+const managerModalErrors = ref([]);
+const managerFieldErrors = reactive({});
+const managerModalContentRef = ref(null);
+
+const clearFieldError = (fieldName) => {
+  if (managerFieldErrors[fieldName]) {
+    delete managerFieldErrors[fieldName];
+  }
+};
+
+const onRequiresReviewChange = () => {
+  if (!form.requires_review) {
+    clearFieldError('planned_review_date');
+    clearFieldError('planned_initial_delivery_date');
+    clearFieldError('reviewer_ids');
+    form.planned_review_date = '';
+    form.planned_initial_delivery_date = '';
+    form.reviewer_ids = [];
+  }
+};
+
+const parseDateSafe = (dStr) => {
+  if (!dStr) return null;
+  const d = new Date(dStr.includes('T') ? dStr : dStr + 'T00:00:00');
+  return isNaN(d.getTime()) ? null : d;
+};
+
+const validateManagerPlanForm = () => {
+  const errors = [];
+  const fieldErrors = {};
+
+  if (!form.client_id) {
+    errors.push('العميل المستهدف مطلوب.');
+    fieldErrors.client_id = 'يرجى اختيار العميل';
+  }
+
+  if (!form.plan_type) {
+    errors.push('نوع الخطة مطلوب.');
+    fieldErrors.plan_type = 'يرجى تحديد نوع الخطة';
+  }
+
+  if (!form.start_date) {
+    errors.push('تاريخ بداية الخطة مطلوب.');
+    fieldErrors.start_date = 'يرجى تحديد تاريخ البداية';
+  }
+
+  if (!form.end_date) {
+    errors.push('تاريخ نهاية الخطة مطلوب.');
+    fieldErrors.end_date = 'يرجى تحديد تاريخ النهاية';
+  }
+
+  const start = parseDateSafe(form.start_date);
+  const end = parseDateSafe(form.end_date);
+  const delivery = parseDateSafe(form.planned_delivery_date);
+  const review = parseDateSafe(form.planned_review_date);
+  const initialDelivery = parseDateSafe(form.planned_initial_delivery_date);
+
+  // 1. تاريخ نهاية الخطة يجب أن يكون مساوياً أو بعد تاريخ البداية
+  if (start && end && end < start) {
+    errors.push('تاريخ نهاية الخطة يجب أن يكون مساوياً أو بعد تاريخ البداية.');
+    fieldErrors.end_date = 'تاريخ النهاية يجب ألا يسبق تاريخ البداية';
+  }
+
+  // 2. التسليم النهائي: مطلوب ويجب أن يكون قبل تاريخ بداية الخطة
+  if (!form.planned_delivery_date) {
+    errors.push('موعد التسليم النهائي مطلوب.');
+    fieldErrors.planned_delivery_date = 'يرجى تحديد موعد التسليم النهائي';
+  } else if (start && delivery && delivery >= start) {
+    errors.push('التسليم النهائي يجب أن يتم قبل تاريخ بداية الخطة.');
+    fieldErrors.planned_delivery_date = 'التسليم النهائي يجب أن يتم قبل تاريخ بداية الخطة';
+  }
+
+  // 3. موعد المراجعة الداخلية (إذا كانت المراجعة مفعلة): مطلوب ويجب أن يسبق موعد التسليم النهائي
+  if (form.requires_review) {
+    if (!form.planned_review_date) {
+      errors.push('موعد إنهاء المراجعة الداخلية مطلوب.');
+      fieldErrors.planned_review_date = 'يرجى تحديد موعد إنهاء المراجعة';
+    } else if (delivery && review && review >= delivery) {
+      errors.push('موعد إنهاء المراجعة يجب أن يسبق موعد التسليم النهائي.');
+      fieldErrors.planned_review_date = 'موعد إنهاء المراجعة يجب أن يسبق موعد التسليم النهائي';
+    }
+
+    if (!form.reviewer_ids || form.reviewer_ids.length === 0) {
+      errors.push('يرجى اختيار مراجع واحد على الأقل للخطة.');
+      fieldErrors.reviewer_ids = 'يرجى اختيار مراجع للخطة';
+    }
+  }
+
+  // 4. التسليم الابتدائي: يجب أن يسبق موعد المراجعة (إذا كانت مفعلة) أو التسليم النهائي (إذا لم تكن مفعلة)
+  if (form.planned_initial_delivery_date && initialDelivery) {
+    if (form.requires_review) {
+      if (review && initialDelivery >= review) {
+        errors.push('موعد التسليم الابتدائي يجب أن يسبق موعد المراجعة.');
+        fieldErrors.planned_initial_delivery_date = 'موعد التسليم الابتدائي يجب أن يسبق موعد المراجعة';
+      } else if (!review && delivery && initialDelivery >= delivery) {
+        errors.push('موعد التسليم الابتدائي يجب أن يسبق موعد التسليم النهائي.');
+        fieldErrors.planned_initial_delivery_date = 'موعد التسليم الابتدائي يجب أن يسبق موعد التسليم النهائي';
+      }
+    } else {
+      if (delivery && initialDelivery >= delivery) {
+        errors.push('موعد التسليم الابتدائي يجب أن يسبق موعد التسليم النهائي.');
+        fieldErrors.planned_initial_delivery_date = 'موعد التسليم الابتدائي يجب أن يسبق موعد التسليم النهائي';
+      }
+    }
+  }
+
+  if (!form.responsible_ids || form.responsible_ids.length === 0) {
+    errors.push('يرجى اختيار شخص مسؤول واحد على الأقل للخطة.');
+    fieldErrors.responsible_ids = 'يرجى اختيار مسؤول للخطة';
+  }
+
+  if (!form.executor_ids || form.executor_ids.length === 0) {
+    errors.push('يرجى اختيار منفذ واحد على الأقل للخطة.');
+    fieldErrors.executor_ids = 'يرجى اختيار منفذ للخطة';
+  }
+
+  return { isValid: errors.length === 0, errors, fieldErrors };
+};
+
+const translateValidationError = (field, message) => {
+  if (!message) return '';
+  
+  const fieldLabels = {
+    client_id: 'العميل المستهدف',
+    plan_type: 'نوع الخطة',
+    start_date: 'تاريخ بداية الخطة',
+    end_date: 'تاريخ نهاية الخطة',
+    planned_delivery_date: 'التسليم النهائي',
+    planned_review_date: 'موعد إنهاء المراجعة',
+    planned_initial_delivery_date: 'موعد التسليم الابتدائي',
+    responsible_ids: 'المسؤول عن الخطة',
+    reviewer_ids: 'المراجع',
+    executor_ids: 'المنفذ',
+    required_brief_fields: 'إعدادات الحقول الإلزامية للمنشورات',
+    reference_links: 'الروابط المرجعية',
+    final_link: 'رابط الخطة',
+    notes: 'الملاحظات'
+  };
+
+  const fieldName = fieldLabels[field] || field;
+
+  // إذا كانت الرسالة بالفعل بالعربية من الباك إند
+  if (/[\u0600-\u06FF]/.test(message)) {
+    return message;
+  }
+
+  const lower = message.toLowerCase();
+
+  if (lower.includes('required')) {
+    return `حقل (${fieldName}) مطلوب ولا يمكن تركه فارغاً.`;
+  }
+
+  // تسلسل مرحلة التحضير الجديد:
+  if (field === 'planned_delivery_date' && (lower.includes('before') || lower.includes('start'))) {
+    return 'التسليم النهائي يجب أن يتم قبل تاريخ بداية الخطة.';
+  }
+
+  if (field === 'planned_review_date' && (lower.includes('before') || lower.includes('delivery'))) {
+    return 'موعد إنهاء المراجعة يجب أن يسبق موعد التسليم النهائي.';
+  }
+
+  if (field === 'planned_initial_delivery_date') {
+    if (lower.includes('review')) {
+      return 'موعد التسليم الابتدائي يجب أن يسبق موعد المراجعة.';
+    }
+    if (lower.includes('delivery')) {
+      return 'موعد التسليم الابتدائي يجب أن يسبق موعد التسليم النهائي.';
+    }
+    if (lower.includes('before')) {
+      return 'موعد التسليم الابتدائي يجب أن يسبق موعد المراجعة أو التسليم النهائي.';
+    }
+  }
+
+  if (field === 'end_date' && (lower.includes('after') || lower.includes('start'))) {
+    return 'تاريخ نهاية الخطة يجب أن يكون مساوياً أو بعد تاريخ البداية.';
+  }
+
+  if (lower.includes('before or equal to') || lower.includes('before')) {
+    if (lower.includes('start_date') || lower.includes('start date')) {
+      return `(${fieldName}) يجب أن يكون قبل تاريخ بداية الخطة.`;
+    }
+    if (lower.includes('planned_delivery_date') || lower.includes('delivery date')) {
+      return `(${fieldName}) يجب أن يسبق موعد التسليم النهائي.`;
+    }
+    if (lower.includes('planned_review_date') || lower.includes('review date')) {
+      return `(${fieldName}) يجب أن يسبق موعد إنهاء المراجعة.`;
+    }
+    return `(${fieldName}) يجب أن يكون تاريخاً سابقاً للمرحلة التالية.`;
+  }
+
+  if (lower.includes('after or equal to') || lower.includes('after')) {
+    if (lower.includes('start_date') || lower.includes('start date')) {
+      return `(${fieldName}) يجب أن يكون مساوياً أو بعد تاريخ بداية الخطة.`;
+    }
+    if (lower.includes('planned_initial_delivery_date')) {
+      return `(${fieldName}) يجب أن يكون بعد موعد التسليم الابتدائي.`;
+    }
+    if (lower.includes('planned_review_date')) {
+      return `(${fieldName}) يجب أن يكون بعد موعد إنهاء المراجعة.`;
+    }
+    return `(${fieldName}) يجب أن يكون تاريخاً لاحقاً للمرحلة السابقة.`;
+  }
+
+  if (lower.includes('date')) {
+    return `(${fieldName}) يجب أن يكون تاريخاً صالحاً.`;
+  }
+
+  return `[${fieldName}]: ${message}`;
+};
 const showDetailsModal = ref(false);
 const showRejectModal = ref(false);
 const showHistoryModal = ref(false);
@@ -1604,6 +1962,36 @@ const closeDuplicateModal = () => {
 };
 
 const submitDuplicate = async () => {
+  const start = parseDateSafe(duplicateForm.start_date);
+  const end = parseDateSafe(duplicateForm.end_date);
+  const delivery = parseDateSafe(duplicateForm.planned_delivery_date);
+  const review = parseDateSafe(duplicateForm.planned_review_date);
+  const initial = parseDateSafe(duplicateForm.planned_initial_delivery_date);
+
+  if (start && end && end < start) {
+    showToast('تاريخ نهاية الخطة يجب أن يكون مساوياً أو بعد تاريخ البداية');
+    return;
+  }
+  if (start && delivery && delivery >= start) {
+    showToast('التسليم النهائي يجب أن يتم قبل تاريخ بداية الخطة');
+    return;
+  }
+  if (planToDuplicate.value?.requires_review) {
+    if (delivery && review && review >= delivery) {
+      showToast('موعد إنهاء المراجعة يجب أن يسبق موعد التسليم النهائي');
+      return;
+    }
+    if (review && initial && initial >= review) {
+      showToast('موعد التسليم الابتدائي يجب أن يسبق موعد المراجعة');
+      return;
+    }
+  } else {
+    if (delivery && initial && initial >= delivery) {
+      showToast('موعد التسليم الابتدائي يجب أن يسبق موعد التسليم النهائي');
+      return;
+    }
+  }
+
   actionLoading.value = 'duplicate';
   try {
     const payload = {
@@ -2019,6 +2407,8 @@ const openManagerModal = (plan = null) => {
     showToast('عذراً، لا تمتلك الصلاحية لإنشاء أو تعديل الخطط');
     return;
   }
+  managerModalErrors.value = [];
+  Object.keys(managerFieldErrors).forEach(key => delete managerFieldErrors[key]);
   isEditing.value = Boolean(plan); 
   editId.value = plan?.id || null; 
   if (plan) { 
@@ -2046,7 +2436,11 @@ const openManagerModal = (plan = null) => {
   } 
   showManagerModal.value = true; 
 };
-const closeManagerModal = () => { showManagerModal.value = false; };
+const closeManagerModal = () => { 
+  showManagerModal.value = false; 
+  managerModalErrors.value = [];
+  Object.keys(managerFieldErrors).forEach(key => delete managerFieldErrors[key]);
+};
 const closeCreationModal = () => { showCreationSuccessModal.value = false; createdPlan.value = null; };
 
 const saveManagerPlan = async () => { 
@@ -2054,6 +2448,25 @@ const saveManagerPlan = async () => {
     showToast('عذراً، لا تمتلك الصلاحية لحفظ الخطط');
     return;
   }
+
+  // 1. فحص التحقق من صحة البيانات محلياً أولاً لإعطاء رد فعل فوري ومباشر
+  const validation = validateManagerPlanForm();
+  if (!validation.isValid) {
+    managerModalErrors.value = validation.errors;
+    Object.assign(managerFieldErrors, validation.fieldErrors);
+    alertService.error(validation.errors[0] || 'يرجى مراجعة وتصحيح البيانات المدخلة في الخطة');
+    nextTick(() => {
+      if (managerModalContentRef.value) {
+        managerModalContentRef.value.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    });
+    return;
+  }
+
+  // مسح أي أخطاء سابقة طالما الفحص المحلي سليم
+  managerModalErrors.value = [];
+  Object.keys(managerFieldErrors).forEach(key => delete managerFieldErrors[key]);
+
   saving.value = true; 
   if (!form.requires_review) {
     form.planned_review_date = '';
@@ -2085,7 +2498,42 @@ const saveManagerPlan = async () => {
         showCreationSuccessModal.value = true;
       }
     }
-  } catch (error) {} finally { saving.value = false; } 
+  } catch (error) {
+    console.error('فشل حفظ الخطة:', error);
+    const errorList = [];
+    const serverFieldErrors = {};
+
+    if (error.response?.data?.errors) {
+      Object.entries(error.response.data.errors).forEach(([field, msgs]) => {
+        const msgArray = Array.isArray(msgs) ? msgs : [msgs];
+        msgArray.forEach(m => {
+          const translated = translateValidationError(field, m);
+          errorList.push(translated);
+          if (!serverFieldErrors[field]) {
+            serverFieldErrors[field] = translated;
+          }
+        });
+      });
+    }
+
+    if (errorList.length === 0) {
+      const generalMsg = error.response?.data?.message || 'حدث خطأ أثناء حفظ الخطة. يرجى مراجعة البيانات والمحاولة مجدداً.';
+      errorList.push(generalMsg);
+    }
+
+    managerModalErrors.value = errorList;
+    Object.assign(managerFieldErrors, serverFieldErrors);
+
+    alertService.error(errorList[0] || 'تعذر حفظ الخطة بسبب أخطاء في المدخلات');
+
+    nextTick(() => {
+      if (managerModalContentRef.value) {
+        managerModalContentRef.value.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    });
+  } finally { 
+    saving.value = false; 
+  } 
 };
 
 const deletePlan = async (id) => {
@@ -2436,7 +2884,7 @@ onBeforeUnmount(() => {
   }
 }
 
-.toast-message { position:fixed; left:25px; bottom:25px; z-index:200; padding:12px 17px; border:1px solid rgba(116,232,220,.22); border-radius:10px; color:#bdf7f0; background:#182552; box-shadow:0 12px 30px rgba(0,0,0,.25); font-size:11px; }.toast-enter-active,.toast-leave-active { transition:.25s; }.toast-enter-from,.toast-leave-to { opacity:0; transform:translateY(10px); } @keyframes spin { to { transform:rotate(360deg); } }
+.toast-message { position:fixed; left:25px; bottom:25px; z-index:100005 !important; padding:12px 17px; border:1px solid rgba(116,232,220,.22); border-radius:10px; color:#bdf7f0; background:#182552; box-shadow:0 12px 30px rgba(0,0,0,.25); font-size:11px; }.toast-enter-active,.toast-leave-active { transition:.25s; }.toast-enter-from,.toast-leave-to { opacity:0; transform:translateY(10px); } @keyframes spin { to { transform:rotate(360deg); } }
 
 /* ---------------------------------------------------
    SLA Smart Colors (تأثيرات التأخير الذكية)
@@ -3163,6 +3611,64 @@ onBeforeUnmount(() => {
 .plan-link-table-btn:hover {
   background: rgba(59, 130, 246, 0.25);
   color: #fff;
+}
+
+/* ---------------------------------------------------
+   Modal Validation Errors & In-Modal Feedback
+--------------------------------------------------- */
+.modal-validation-banner {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.38);
+  border-radius: 12px;
+  padding: 13px 16px;
+  margin: 14px 0 18px;
+  color: #fca5a5;
+  animation: shake 0.35s ease-in-out;
+}
+.modal-validation-banner .banner-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #f87171;
+  margin-bottom: 7px;
+}
+.modal-validation-banner .banner-errors-list {
+  margin: 0;
+  padding-right: 20px;
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: #fecaca;
+}
+.has-field-error input,
+.has-field-error select,
+.has-field-error textarea,
+.has-field-error .checkbox-list {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25) !important;
+  background: rgba(239, 68, 68, 0.05) !important;
+}
+.field-error-msg {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #f87171;
+  margin-top: 5px;
+  animation: fadeIn 0.2s ease;
+}
+.bottom-error-note {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #f87171;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: rgba(239, 68, 68, 0.08);
+  border-radius: 8px;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 @media (max-width: 900px) {

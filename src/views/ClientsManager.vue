@@ -52,6 +52,7 @@
         <table class="clients-table" :aria-busy="loading">
           <thead>
             <tr>
+              <th scope="col" style="width: 50px; text-align: center;">#</th>
               <th scope="col">العميل / الشركة</th>
               <th scope="col">التواصل الأساسي</th>
               <th scope="col">البيانات المالية</th>
@@ -62,17 +63,24 @@
           </thead>
           <tbody>
             <tr v-if="loading">
-              <td colspan="6" class="state-cell">
+              <td colspan="7" class="state-cell">
                 <span class="spinner"></span> جارٍ تحميل البيانات...
               </td>
             </tr>
             <tr v-else-if="clients.length === 0">
-              <td colspan="6" class="state-cell">لا يوجد عملاء مسجلون حاليًا</td>
+              <td colspan="7" class="state-cell">لا يوجد عملاء مسجلون حاليًا</td>
             </tr>
-            <tr v-for="client in clients" v-else :key="client.id">
+            <tr v-for="(client, index) in clients" v-else :key="client.id">
+              <td class="text-center" style="font-weight: 700; color: #8792be; width: 50px; vertical-align: middle;">{{ index + 1 }}</td>
               <td>
                 <div class="client-cell">
-                  <div class="client-avatar">{{ getInitials(client.name) }}</div>
+                  <ClientAvatar
+                    :logo-url="client.logo_url"
+                    :name="client.name"
+                    :size="40"
+                    rounded="11px"
+                    class="client-avatar"
+                  />
                   <div>
                     <strong>{{ client.name }}</strong
                     ><span>عميل نشط</span>
@@ -225,12 +233,86 @@
         <p>أدخل البيانات الأساسية ووسائل التواصل الخاصة بالشركة.</p>
 
         <form class="client-form" @submit.prevent="saveClient">
-          <!-- البيانات الأساسية -->
+          <!-- البيانات الأساسية والشعار -->
           <div class="form-section">
-            <h4>البيانات الأساسية</h4>
-            <div class="form-group mb-0">
-              <label>اسم الشركة / العميل <i>*</i></label>
-              <input v-model="form.name" type="text" placeholder="مثال: شركة أفق" required />
+            <h4>البيانات الأساسية وشعار الشركة</h4>
+            <div class="basic-info-grid">
+              <!-- رفع ومعاينة اللوجو -->
+              <div class="logo-field-group">
+                <label class="field-label">شعار الشركة (اللوجو)</label>
+
+                <input
+                  ref="logoInputRef"
+                  type="file"
+                  accept="image/png, image/jpeg, image/webp, image/svg+xml"
+                  style="display: none"
+                  @change="onLogoSelected"
+                />
+
+                <div v-if="logoPreview" class="logo-preview-card">
+                  <div class="logo-img-wrapper">
+                    <img :src="logoPreview" alt="معاينة اللوجو" class="logo-preview-img" />
+                  </div>
+                  <div class="logo-preview-meta">
+                    <span class="logo-status-tag">
+                      <i class="check-icon">✓</i>
+                      {{ logoFile ? 'لوجو جديد محدد' : 'اللوجو الحالي' }}
+                    </span>
+                    <div class="logo-action-buttons">
+                      <button
+                        type="button"
+                        class="logo-action-btn edit-btn"
+                        @click="triggerLogoUpload"
+                        title="تغيير الصورة"
+                      >
+                        📷 تغيير
+                      </button>
+                      <button
+                        type="button"
+                        class="logo-action-btn remove-btn-custom"
+                        @click="removeLogo"
+                        title="إزالة الصورة"
+                      >
+                        ✕ إزالة
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  v-else
+                  class="logo-dropzone"
+                  role="button"
+                  tabindex="0"
+                  @click="triggerLogoUpload"
+                  @keydown.enter.prevent="triggerLogoUpload"
+                  @keydown.space.prevent="triggerLogoUpload"
+                >
+                  <div class="dropzone-icon-wrap">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="dropzone-icon">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="17 8 12 3 7 8" />
+                      <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                  </div>
+                  <div class="dropzone-text">
+                    <span class="dropzone-main">اضغط لرفع لوجو العميل</span>
+                    <span class="dropzone-sub">PNG, JPG, WebP أو SVG (حتى 5MB)</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- اسم الشركة -->
+              <div class="form-group mb-0 client-name-group">
+                <label>اسم الشركة / العميل <i>*</i></label>
+                <input
+                  v-model="form.name"
+                  type="text"
+                  placeholder="مثال: شركة أفق للتطوير"
+                  required
+                />
+                <span class="field-hint">اسم الشركة يظهر في اللوحات والخطط والتقارير</span>
+              </div>
             </div>
           </div>
 
@@ -503,7 +585,13 @@
           ×
         </button>
         <div class="details-hero">
-          <div class="details-avatar">{{ getInitials(selectedClient.name) }}</div>
+          <ClientAvatar
+            :logo-url="selectedClient.logo_url"
+            :name="selectedClient.name"
+            :size="62"
+            rounded="17px"
+            class="details-avatar"
+          />
           <div>
             <span class="eyebrow">ملف العميل التفصيلي</span>
             <h3 id="client-details-title">{{ selectedClient.name }}</h3>
@@ -685,6 +773,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import api from '../axios'
 import { canManageAccounts } from '@/utils/permissions'
+import ClientAvatar from '@/components/ClientAvatar.vue'
 
 // كائن المستخدم الحالي لتطبيق صلاحيات إدارة العملاء
 const currentUser = ref(null)
@@ -712,6 +801,41 @@ const toastMessage = ref('')
 const modalCloseButton = ref(null)
 const detailsModal = ref(null)
 let toastTimer = null
+
+// متغيرات ودوال رفع لوجو العميل
+const logoFile = ref(null)
+const logoPreview = ref('')
+const logoInputRef = ref(null)
+
+const triggerLogoUpload = () => {
+  logoInputRef.value?.click()
+}
+
+const onLogoSelected = (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  if (!file.type.startsWith('image/')) {
+    showToast('⚠️ يرجى اختيار ملف صورة صالح (PNG, JPG, WebP, SVG)')
+    return
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    showToast('⚠️ حجم الصورة كبير جداً، الحد الأقصى 5 ميجابايت')
+    return
+  }
+
+  logoFile.value = file
+  logoPreview.value = URL.createObjectURL(file)
+}
+
+const removeLogo = () => {
+  logoFile.value = null
+  logoPreview.value = ''
+  if (logoInputRef.value) {
+    logoInputRef.value.value = ''
+  }
+}
 
 const form = reactive({
   name: '',
@@ -946,6 +1070,11 @@ const removeContact = (index) => {
 }
 
 const resetForm = () => {
+  logoFile.value = null
+  logoPreview.value = ''
+  if (logoInputRef.value) {
+    logoInputRef.value.value = ''
+  }
   Object.assign(form, {
     name: '',
     phones: [],
@@ -968,6 +1097,11 @@ const openModal = (client) => {
   }
   isEditing.value = Boolean(client)
   editId.value = client?.id || null
+  logoFile.value = null
+  logoPreview.value = client?.logo_url || ''
+  if (logoInputRef.value) {
+    logoInputRef.value.value = ''
+  }
   if (client) {
     Object.assign(form, {
       name: client.name,
@@ -1020,11 +1154,65 @@ const saveClient = async () => {
 
   saving.value = true
   try {
-    // إرسال البيانات للباك إند، الـ Validation سيتكفل بالباقي
-    if (isEditing.value) await api.put(`/clients/${editId.value}`, form)
-    else await api.post('/clients', form)
+    // بناء كائن FormData لدعم رفع ملف اللوجو
+    const formData = new FormData()
+
+    formData.append('name', form.name ? form.name.trim() : '')
+    if (form.bank_name) formData.append('bank_name', form.bank_name)
+    if (form.bank_branch) formData.append('bank_branch', form.bank_branch)
+    if (form.bank_account) formData.append('bank_account', form.bank_account)
+    if (form.instapay) formData.append('instapay', form.instapay)
+    if (form.wallet) formData.append('wallet', form.wallet)
+
+    // إرفاق ملف اللوجو في حال تم اختيار ملف جديد
+    if (logoFile.value) {
+      formData.append('logo', logoFile.value)
+    }
+
+    // أرقام الهواتف
+    form.phones.forEach((phone, index) => {
+      formData.append(`phones[${index}][number]`, phone.number || '')
+      formData.append(`phones[${index}][has_whatsapp]`, phone.has_whatsapp ? '1' : '0')
+    })
+
+    // الإيميلات
+    form.emails.forEach((email, index) => {
+      formData.append(`emails[${index}]`, email || '')
+    })
+
+    // روابط السوشيال ميديا
+    form.social_links.forEach((link, index) => {
+      formData.append(`social_links[${index}][platform]`, link.platform || '')
+      formData.append(`social_links[${index}][url]`, link.url || '')
+    })
+
+    // روابط درايف
+    form.drive_links.forEach((link, index) => {
+      formData.append(`drive_links[${index}][title]`, link.title || '')
+      formData.append(`drive_links[${index}][url]`, link.url || '')
+    })
+
+    // جهات الاتصال (الأشخاص)
+    form.contacts.forEach((contact, index) => {
+      formData.append(`contacts[${index}][contact_name]`, contact.contact_name || '')
+      formData.append(`contacts[${index}][contact_method]`, contact.contact_method || '')
+      formData.append(`contacts[${index}][contact_details]`, contact.contact_details || '')
+    })
+
+    // إرسال الطلب للباك إند (Laravel FormData Gotcha: في حالة التعديل يتم إرسال POST مع _method = PUT)
+    if (isEditing.value) {
+      formData.append('_method', 'PUT')
+      await api.post(`/clients/${editId.value}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+    } else {
+      await api.post('/clients', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+    }
+
     closeModal()
-    showToast(isEditing.value ? 'تم تحديث بيانات العميل' : 'تم إنشاء العميل بنجاح')
+    showToast(isEditing.value ? 'تم تحديث بيانات العميل بنجاح' : 'تم إنشاء العميل بنجاح')
     await fetchClients()
   } catch (error) {
     showToast(error.response?.data?.message || 'تأكد من إدخال البيانات بشكل صحيح')
@@ -1307,16 +1495,13 @@ onBeforeUnmount(() => {
   min-width: 180px;
 }
 .client-avatar {
-  width: 40px;
-  height: 40px;
-  flex: 0 0 40px;
-  display: grid;
-  place-items: center;
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  max-width: 40px !important;
+  flex: 0 0 40px !important;
+  overflow: hidden;
   border-radius: 11px;
-  color: #252058;
-  background: linear-gradient(145deg, #80e8df, #ac84fa);
-  font-size: 13px;
-  font-weight: 800;
 }
 .client-cell > div:last-child {
   min-width: 0;
@@ -1561,6 +1746,173 @@ onBeforeUnmount(() => {
   font-size: 16px;
   line-height: 1.5;
 }
+.basic-info-grid {
+  display: grid;
+  grid-template-columns: 210px 1fr;
+  gap: 18px;
+  align-items: start;
+}
+@media (max-width: 680px) {
+  .basic-info-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.logo-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.field-label {
+  display: block;
+  color: #c7cde8;
+  font-size: 14px !important;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.logo-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 12px;
+  min-height: 135px;
+  border: 2px dashed rgba(137, 153, 226, 0.28);
+  border-radius: 14px;
+  background: rgba(8, 14, 42, 0.45);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.22s ease;
+  outline: none;
+}
+.logo-dropzone:hover,
+.logo-dropzone:focus-visible {
+  border-color: #7de8dc;
+  background: rgba(125, 232, 220, 0.06);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(125, 232, 220, 0.12);
+}
+.dropzone-icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(125, 232, 220, 0.18), rgba(178, 138, 255, 0.18));
+  border: 1px solid rgba(125, 232, 220, 0.35);
+  display: grid;
+  place-items: center;
+  color: #7de8dc;
+}
+.dropzone-icon {
+  width: 22px;
+  height: 22px;
+}
+.dropzone-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.dropzone-main {
+  color: #eef1ff;
+  font-size: 12px;
+  font-weight: 700;
+}
+.dropzone-sub {
+  color: #7d8bb9;
+  font-size: 10px;
+}
+.logo-preview-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(125, 232, 220, 0.32);
+  border-radius: 14px;
+  background: rgba(10, 16, 48, 0.65);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+.logo-img-wrapper {
+  width: 100%;
+  height: 105px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(4, 7, 27, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(137, 153, 226, 0.18);
+}
+.logo-preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.logo-preview-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.logo-status-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #7de8dc;
+  font-weight: 600;
+}
+.logo-status-tag .check-icon {
+  font-style: normal;
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(125, 232, 220, 0.2);
+  font-size: 10px;
+}
+.logo-action-buttons {
+  display: flex;
+  gap: 6px;
+}
+.logo-action-btn {
+  flex: 1;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+.logo-action-btn.edit-btn {
+  color: #7de8dc;
+  background: rgba(125, 232, 220, 0.12);
+  border-color: rgba(125, 232, 220, 0.3);
+}
+.logo-action-btn.edit-btn:hover {
+  background: rgba(125, 232, 220, 0.22);
+  transform: translateY(-1px);
+}
+.logo-action-btn.remove-btn-custom {
+  color: #ff9bad;
+  background: rgba(255, 103, 139, 0.12);
+  border-color: rgba(255, 103, 139, 0.3);
+}
+.logo-action-btn.remove-btn-custom:hover {
+  background: rgba(255, 103, 139, 0.22);
+  transform: translateY(-1px);
+}
+.client-name-group {
+  display: flex;
+  flex-direction: column;
+}
+.field-hint {
+  display: block;
+  margin-top: 6px;
+  color: #7a87b5;
+  font-size: 11px;
+}
 .section-head {
   display: flex;
   align-items: center;
@@ -1687,16 +2039,13 @@ onBeforeUnmount(() => {
   border-bottom: 1px solid rgba(143, 157, 226, 0.14);
 }
 .details-avatar {
-  width: 62px;
-  height: 62px;
-  flex: 0 0 62px;
-  display: grid;
-  place-items: center;
+  width: 62px !important;
+  height: 62px !important;
+  min-width: 62px !important;
+  max-width: 62px !important;
+  flex: 0 0 62px !important;
+  overflow: hidden;
   border-radius: 17px;
-  color: #252058;
-  background: linear-gradient(145deg, #80e8df, #ac84fa);
-  font-size: 20px;
-  font-weight: 800;
 }
 .details-hero > div:last-child {
   min-width: 0;

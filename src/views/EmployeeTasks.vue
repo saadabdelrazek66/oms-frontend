@@ -121,6 +121,7 @@
         <table class="tasks-table" :aria-busy="isLoading">
           <thead>
             <tr>
+              <th scope="col" style="width: 50px; text-align: center;">#</th>
               <th scope="col">النوع والمنصة</th>
               <th scope="col">دوري والأطراف</th>
               <th scope="col">الديدلاين</th>
@@ -132,15 +133,16 @@
           </thead>
           <tbody>
             <tr v-if="isLoading">
-              <td colspan="7" class="state-cell">
+              <td colspan="8" class="state-cell">
                 <span class="spinner" aria-hidden="true"></span>
                 جارٍ تحميل المهام...
               </td>
             </tr>
             <tr v-else-if="tasks.length === 0">
-              <td colspan="7" class="state-cell">🎉 لا توجد مهام مطلوبة حاليًا. استمتع بوقتك!</td>
+              <td colspan="8" class="state-cell">🎉 لا توجد مهام مطلوبة حاليًا. استمتع بوقتك!</td>
             </tr>
-            <tr v-for="task in tasks" v-else :key="task.id">
+            <tr v-for="(task, index) in tasks" v-else :key="task.id">
+              <td class="text-center row-num-cell" style="font-weight: 700; color: #8792be; width: 50px; vertical-align: middle;">{{ ((currentPage - 1) * perPage) + index + 1 }}</td>
               
               <!-- 1. النوع والمنصة -->
               <td>
@@ -258,6 +260,7 @@ const isLoading = ref(true);
 const currentPage = ref(1);
 const lastPage = ref(1);
 const totalItems = ref(0);
+const perPage = ref(10);
 const deliveryFilter = ref('');
 const reviewFilter = ref('');
 const managerReviewFilter = ref('');
@@ -338,6 +341,7 @@ const fetchTasks = async () => {
     currentPage.value = response.data.tasks.current_page;
     lastPage.value = response.data.tasks.last_page;
     totalItems.value = response.data.tasks.total;
+    perPage.value = response.data.tasks.per_page || 10;
     
     isManager.value = response.data.is_manager;
     targetUserId.value = response.data.target_user_id; // حفظ الـ ID لمعرفة دور الموظف
@@ -622,6 +626,13 @@ onMounted(() => {
   color: #d9ddf5;
   font-size: 14px;
   line-height: 1.6;
+}
+
+.row-num-cell {
+  text-align: center !important;
+  font-weight: 700;
+  color: #8792be !important;
+  width: 50px;
 }
 
 .text-center { text-align: center; }

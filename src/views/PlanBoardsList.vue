@@ -22,7 +22,7 @@
     <div v-else>
       <div class="boards-grid" :class="{ 'is-fetching': loading }">
         <div 
-          v-for="plan in plans" 
+          v-for="(plan, index) in plans" 
           :key="plan.id" 
           class="board-card"
           role="button"
@@ -38,9 +38,13 @@
           <!-- رأس الكارت: بيانات العميل ورقم الخطة والشارة إذا لزم الأمر -->
           <div class="bc-header">
             <div class="bc-client-block">
-              <div class="bc-avatar" :title="plan.client?.name">
-                {{ getInitials(plan.client?.name || '?') }}
-              </div>
+              <ClientAvatar
+                :logo-url="plan.client?.logo_url"
+                :name="plan.client?.name"
+                size="34"
+                rounded="9px"
+                class="bc-avatar"
+              />
               <div class="bc-client-info">
                 <span class="bc-client-label">العميل</span>
                 <span class="bc-client-name" :title="plan.client?.name">
@@ -57,7 +61,7 @@
               >
                 {{ plan.plan_type }}
               </span>
-              <span class="plan-id-pill">#{{ plan.id }}</span>
+              <span class="plan-id-pill">#{{ ((currentPage - 1) * perPage) + index + 1 }}</span>
             </div>
           </div>
 
@@ -140,6 +144,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../axios';
+import ClientAvatar from '@/components/ClientAvatar.vue';
 
 const router = useRouter();
 
@@ -148,6 +153,7 @@ const loading = ref(true);
 const currentPage = ref(1);
 const lastPage = ref(1);
 const totalPlans = ref(0);
+const perPage = ref(10);
 
 const getInitials = (name = '') => name.trim().split(' ').slice(0, 2).map(word => word[0]).join('').toUpperCase();
 
@@ -271,16 +277,19 @@ const fetchPlans = async (page = 1) => {
       currentPage.value = resData.current_page || page;
       lastPage.value = resData.last_page || 1;
       totalPlans.value = resData.total ?? resData.data.length;
+      perPage.value = resData.per_page || 10;
     } else if (resData?.data && Array.isArray(resData.data.data)) {
       plans.value = resData.data.data;
       currentPage.value = resData.data.current_page || page;
       lastPage.value = resData.data.last_page || 1;
       totalPlans.value = resData.data.total ?? resData.data.data.length;
+      perPage.value = resData.data.per_page || 10;
     } else if (Array.isArray(resData)) {
       plans.value = resData;
       currentPage.value = 1;
       lastPage.value = 1;
       totalPlans.value = resData.length;
+      perPage.value = resData.length || 10;
     } else {
       plans.value = [];
     }

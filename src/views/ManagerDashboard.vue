@@ -161,6 +161,7 @@
           <table class="leaderboard-table">
             <thead>
               <tr>
+                <th style="width: 50px; text-align: center;">#</th>
                 <th style="min-width: 150px;">الموظف</th>
                 <th>إجمالي المُسند</th>
                 <th>قيد العمل ⏳</th>
@@ -171,7 +172,8 @@
               </tr>
             </thead>
             <tbody v-if="leaderboardData && leaderboardData.data.length > 0">
-              <tr v-for="user in leaderboardData.data" :key="user.id" :class="getRowClass(user.health_status)">
+              <tr v-for="(user, index) in leaderboardData.data" :key="user.id" :class="getRowClass(user.health_status)">
+                <td class="text-center" style="font-weight: 700; color: #8792be; width: 50px; vertical-align: middle;">{{ ((leaderboardData.current_page - 1) * (leaderboardData.per_page || 10)) + index + 1 }}</td>
                 
                 <!-- الموظف -->
                 <td>
@@ -255,7 +257,7 @@
             </tbody>
             <tbody v-else>
               <tr>
-                <td colspan="7" class="text-center py-4 muted">لا يوجد موظفين مسند إليهم أعمال في هذه الصفحة.</td>
+                <td colspan="8" class="text-center py-4 muted">لا يوجد موظفين مسند إليهم أعمال في هذه الصفحة.</td>
               </tr>
             </tbody>
           </table>

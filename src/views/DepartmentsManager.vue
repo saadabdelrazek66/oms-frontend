@@ -45,6 +45,7 @@
         <table class="deps-table" :aria-busy="loading">
           <thead>
             <tr>
+              <th scope="col" style="width: 50px; text-align: center;">#</th>
               <th scope="col">اسم القسم</th>
               <th scope="col">الوصف / المهام</th>
               <th scope="col" class="text-center">عدد الموظفين</th>
@@ -53,15 +54,16 @@
           </thead>
           <tbody>
             <tr v-if="loading">
-              <td colspan="4" class="state-cell">
+              <td colspan="5" class="state-cell">
                 <span class="spinner" aria-hidden="true"></span>
                 جارٍ تحميل الأقسام...
               </td>
             </tr>
             <tr v-else-if="departments.length === 0">
-              <td colspan="4" class="state-cell">لا توجد أقسام مسجلة حاليًا</td>
+              <td colspan="5" class="state-cell">لا توجد أقسام مسجلة حاليًا</td>
             </tr>
-            <tr v-for="dept in departments" v-else :key="dept.id">
+            <tr v-for="(dept, index) in departments" v-else :key="dept.id">
+              <td class="text-center" style="font-weight: 700; color: #8792be; width: 50px; vertical-align: middle;">{{ index + 1 }}</td>
               <td>
                 <div class="dept-cell">
                   <div class="dept-avatar" aria-hidden="true">{{ getInitials(dept.name) }}</div>

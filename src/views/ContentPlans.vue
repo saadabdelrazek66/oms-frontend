@@ -226,7 +226,13 @@
             <!-- رأس الكارت: معلومات العميل والحالة والإجراءات الإدارية -->
             <div class="card-header-row">
               <div class="client-meta-group">
-                <div class="client-avatar-badge">{{ getInitials(plan.client?.name || '؟') }}</div>
+                <ClientAvatar
+                  :logo-url="plan.client?.logo_url"
+                  :name="plan.client?.name"
+                  size="44"
+                  rounded="12px"
+                  class="client-avatar-badge"
+                />
                 <div class="client-title-block">
                   <div class="client-title-line">
                     <h3 class="client-heading" :title="plan.client?.name">{{ plan.client?.name || 'عميل محذوف' }}</h3>
@@ -523,6 +529,7 @@
             <table class="plans-table" :aria-busy="loading">
             <thead>
               <tr>
+                <th scope="col" style="width: 50px; text-align: center;">#</th>
                 <th scope="col">العميل والخطة</th>
                 <th scope="col">المسؤول</th>
                 <th scope="col">المراجع الداخلي</th>
@@ -534,12 +541,19 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-if="loading"><td :colspan="(user && (user.role === 'manager' || user.job_title === 'Account Manager')) ? 8 : 7" class="state-cell"><span class="spinner"></span> جارٍ التحميل...</td></tr>
-              <tr v-else-if="plans.length === 0"><td :colspan="(user && (user.role === 'manager' || user.job_title === 'Account Manager')) ? 8 : 7" class="state-cell">لا توجد خطط مسجلة حاليًا</td></tr>
-              <tr v-for="plan in plans" v-else :key="plan.id">
+              <tr v-if="loading"><td :colspan="(user && (user.role === 'manager' || user.job_title === 'Account Manager')) ? 9 : 8" class="state-cell"><span class="spinner"></span> جارٍ التحميل...</td></tr>
+              <tr v-else-if="plans.length === 0"><td :colspan="(user && (user.role === 'manager' || user.job_title === 'Account Manager')) ? 9 : 8" class="state-cell">لا توجد خطط مسجلة حاليًا</td></tr>
+              <tr v-for="(plan, index) in plans" v-else :key="plan.id">
+                <td class="text-center row-num-cell" style="font-weight: 700; color: #8792be; width: 50px; vertical-align: middle;">{{ ((pagination.current_page - 1) * (pagination.per_page || 10)) + index + 1 }}</td>
                 <td>
                   <div class="plan-cell">
-                    <div class="plan-avatar">{{ getInitials(plan.client?.name || '؟') }}</div>
+                    <ClientAvatar
+                      :logo-url="plan.client?.logo_url"
+                      :name="plan.client?.name"
+                      size="32"
+                      rounded="9px"
+                      class="plan-avatar"
+                    />
                     <div><strong>{{ plan.client?.name || 'عميل محذوف' }}</strong><span>{{ plan.plan_type }}</span></div>
                   </div>
                 </td>
@@ -1316,6 +1330,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import api from '../axios';
 import alertService from '../services/alertService';
+import ClientAvatar from '@/components/ClientAvatar.vue';
 
 // استيراد المحرك الذكي للتواريخ
 import { getDeadlineStatus } from '../utils/timeHelper';
@@ -1414,7 +1429,7 @@ const filters = reactive({
   review_from: '', review_to: '', is_overdue: false, requires_review: false
 });
 
-const pagination = reactive({ current_page: 1, last_page: 1, total: 0 });
+const pagination = reactive({ current_page: 1, last_page: 1, total: 0, per_page: 10 });
 
 const hasActiveFilters = computed(() => {
   return Object.values(filters).some(val => val !== '' && val !== false);
@@ -2145,6 +2160,7 @@ const fetchPlans = async () => {
       pagination.current_page = response.data.current_page;
       pagination.last_page = response.data.last_page;
       pagination.total = response.data.total;
+      pagination.per_page = response.data.per_page || 10;
     } else {
       plans.value = response.data.data || response.data || [];
       pagination.last_page = 1;
@@ -3611,6 +3627,13 @@ onBeforeUnmount(() => {
 .plan-link-table-btn:hover {
   background: rgba(59, 130, 246, 0.25);
   color: #fff;
+}
+
+.row-num-cell {
+  text-align: center !important;
+  font-weight: 700;
+  color: #8792be !important;
+  width: 50px;
 }
 
 /* ---------------------------------------------------

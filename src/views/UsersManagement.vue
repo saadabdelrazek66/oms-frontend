@@ -62,6 +62,7 @@
         <table class="users-table" :aria-busy="loading">
           <thead>
             <tr>
+              <th scope="col" style="width: 50px; text-align: center;">#</th>
               <th scope="col">المستخدم</th>
               <th scope="col">الأقسام (الأساسي والفرعية)</th>
               <th scope="col">رقم الهاتف</th>
@@ -72,12 +73,13 @@
           </thead>
           <tbody>
             <tr v-if="loading">
-              <td colspan="6" class="state-cell"><span class="spinner" aria-hidden="true"></span> جارٍ تحميل البيانات...</td>
+              <td colspan="7" class="state-cell"><span class="spinner" aria-hidden="true"></span> جارٍ تحميل البيانات...</td>
             </tr>
             <tr v-else-if="users.length === 0">
-              <td colspan="6" class="state-cell empty">لا توجد بيانات مطابقة للفلاتر الحالية</td>
+              <td colspan="7" class="state-cell empty">لا توجد بيانات مطابقة للفلاتر الحالية</td>
             </tr>
-            <tr v-for="user in users" v-else :key="user.id">
+            <tr v-for="(user, index) in users" v-else :key="user.id">
+              <td class="row-num-cell">{{ ((pagination.current_page - 1) * (pagination.per_page || 10)) + index + 1 }}</td>
               <td>
                 <div class="user-cell">
                   <div class="table-avatar" aria-hidden="true">{{ getInitials(user.name) }}</div>
@@ -332,6 +334,7 @@ const fetchUsers = async (page = 1) => {
       current_page: meta.current_page || page,
       last_page: meta.last_page || 1,
       total: meta.total || 0,
+      per_page: meta.per_page || response.data.per_page || 10,
     }
   } catch (error) {
     console.error('Error fetching users:', error)
@@ -505,8 +508,8 @@ onBeforeUnmount(() => {
 .table-responsive { overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-width: thin; }
 .users-table { width: 100%; min-width: 980px; border-collapse: collapse; text-align: right; }
 .users-table th, .users-table td { padding: 16px 22px; border-top: 1px solid rgba(138,152,222,.09); vertical-align: top; }
-.users-table th { color: #8792be; background: rgba(10,16,47,.35); font-size: 13px; line-height: 1.5; font-weight: 700; white-space: nowrap; }
 .users-table td { color: #d9ddf5; font-size: 14px; line-height: 1.6; }
+.row-num-cell { text-align: center !important; font-weight: 700; color: #8792be !important; width: 50px; vertical-align: middle !important; }
 .user-cell { display: flex; align-items: center; gap: 11px; min-width: 220px; }
 .table-avatar { width: 40px; height: 40px; flex: 0 0 40px; display: grid; place-items: center; border-radius: 10px; color: #242057; background: linear-gradient(145deg, #80e8df, #ad84fa); font-size: 13px; font-weight: 800; }
 .user-copy { min-width: 0; display: flex; flex-direction: column; }

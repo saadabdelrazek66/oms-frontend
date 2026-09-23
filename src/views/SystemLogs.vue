@@ -67,6 +67,7 @@
         <table class="logs-table">
           <thead>
             <tr>
+              <th style="width: 50px; text-align: center;">#</th>
               <th>التوقيت ⏱️</th>
               <th>المستخدم 👤</th>
               <th>القسم 📁</th>
@@ -76,7 +77,8 @@
             </tr>
           </thead>
           <tbody v-if="logsData && logsData.data.length > 0">
-            <tr v-for="log in logsData.data" :key="log.id">
+            <tr v-for="(log, index) in logsData.data" :key="log.id">
+              <td class="row-num-cell">{{ ((logsData.current_page - 1) * (logsData.per_page || 15)) + index + 1 }}</td>
               <td>
                 <div class="time-cell">
                   <span class="date-text">{{ log.created_at.split(' ')[0] }}</span>
@@ -102,7 +104,7 @@
           </tbody>
           <tbody v-else>
             <tr>
-              <td colspan="6" class="text-center py-5 empty-state">
+              <td colspan="7" class="text-center py-5 empty-state">
                 <div class="text-4xl mb-2">📭</div>
                 <p>لا توجد سجلات مطابقة لخيارات البحث الحالية.</p>
               </td>
@@ -341,6 +343,7 @@ onMounted(() => fetchLogs(1));
 .logs-table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: right; }
 .logs-table th { padding: 14px 20px; color: #aab5da; border-bottom: 1px solid rgba(137, 153, 226, 0.1); font-weight: 600; font-size: 12px; background: rgba(10, 15, 44, 0.3); white-space: nowrap; }
 .logs-table td { padding: 14px 20px; border-bottom: 1px solid rgba(137, 153, 226, 0.05); vertical-align: middle; }
+.row-num-cell { text-align: center !important; font-weight: 700; color: #8792be !important; width: 50px; }
 .logs-table tr:hover td { background: rgba(255,255,255,0.015); }
 .empty-state { color: #64748b; }
 

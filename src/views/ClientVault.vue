@@ -51,7 +51,13 @@
         <div v-for="client in clients" :key="client.id" class="client-vault-card">
           <div class="cv-header">
             <div class="cv-title">
-              <div class="cv-avatar">{{ getInitials(client.name) }}</div>
+              <ClientAvatar
+                :logo-url="client.logo_url"
+                :name="client.name"
+                size="42"
+                rounded="12px"
+                class="cv-avatar"
+              />
               <div><h3>{{ client.name }}</h3><span class="cv-count">{{ client.credentials?.length || 0 }} حسابات مسجلة</span></div>
             </div>
             <button class="add-cred-btn" type="button" aria-label="إضافة حساب للعميل" @click="openCredModal(client.id)">+ إضافة حساب</button>
@@ -154,6 +160,7 @@
 import { nextTick, onMounted, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import api from '../axios';
 import CryptoJS from 'crypto-js';
+import ClientAvatar from '@/components/ClientAvatar.vue';
 
 // إعداد مفتاح التشفير (يجب أن يطابق الباك إند تماماً)
 const SECRET_KEY = CryptoJS.enc.Utf8.parse('OctoSpaceSecureVaultKey2026!@#$*');

@@ -52,6 +52,7 @@
       <table class="spreadsheet-table">
         <thead>
           <tr>
+            <th rowspan="2" class="group-header row-num-header" style="width: 45px; text-align: center; vertical-align: middle; z-index: 10;">#</th>
             <th :colspan="isDesignerOrEditor ? 2 : (isMediaBuyer ? 3 : 5)" class="group-header red-group">حالة المنشور</th>
             <th v-if="!isMediaBuyer" colspan="6" class="group-header admin-group">الإدارة والتكليف والمراجعة</th>
             <th v-if="!isDesignerOrEditor" colspan="4" class="group-header dark-red-group">موقف التمويل</th>
@@ -95,9 +96,10 @@
         </thead>
         <tbody>
           <tr v-if="filteredPosts.length === 0">
-            <td :colspan="isMediaBuyer ? 9 : (isDesignerOrEditor ? 18 : (canDeletePosts ? 26 : 25))" class="text-center py-4 muted">لا توجد منشورات. قم بإضافة منشور جديد.</td>
+            <td :colspan="isMediaBuyer ? 10 : (isDesignerOrEditor ? 19 : (canDeletePosts ? 27 : 26))" class="text-center py-4 muted">لا توجد منشورات. قم بإضافة منشور جديد.</td>
           </tr>
           <tr v-for="(post, index) in filteredPosts" :key="post.id" :id="'post-row-' + post.id" class="post-row" :class="{ 'urgent-row': post.is_urgent }">
+            <td class="text-center readonly-cell row-num-cell" style="font-weight: 700; width: 45px; color: #8792be; vertical-align: middle;">{{ index + 1 }}</td>
             
             <!-- 2. حالة المنشور وموعد النشر الذكي -->
             <td class="readonly-cell position-relative" :class="getDeadlineStatus(currentPlan?.start_date || post.created_at, post.target_date, post.actual_publish_status).class + '-border'">

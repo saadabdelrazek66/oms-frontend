@@ -30,6 +30,13 @@
       </div>
 
       <div class="header-actions">
+        <!-- تفعيل التكرار التلقائي للمدير فقط -->
+        <AutoRecurrenceToggle
+          v-if="currentUser?.role === 'manager' && currentPlan"
+          :plan-id="currentPlan.id"
+          :model-value="Boolean(currentPlan.is_recurring)"
+          @update:model-value="currentPlan.is_recurring = $event"
+        />
         <span v-if="saving" class="saving-indicator">
           <i class="spinner"></i> جارٍ الحفظ...
         </span>
@@ -52,7 +59,7 @@
       <table class="spreadsheet-table">
         <thead>
           <tr>
-            <th rowspan="2" class="group-header row-num-header" style="width: 45px; text-align: center; vertical-align: middle; z-index: 10;">#</th>
+            <th rowspan="2" class="group-header row-num-header " style="width: 45px; text-align: center; vertical-align: middle; z-index: 10;">#</th>
             <th :colspan="isDesignerOrEditor ? 2 : (isMediaBuyer ? 3 : 5)" class="group-header red-group">حالة المنشور</th>
             <th v-if="!isMediaBuyer" colspan="6" class="group-header admin-group">الإدارة والتكليف والمراجعة</th>
             <th v-if="!isDesignerOrEditor" colspan="4" class="group-header dark-red-group">موقف التمويل</th>
@@ -62,7 +69,7 @@
             <th v-if="canDeletePosts" colspan="1" class="group-header admin-group">إجراءات</th>
           </tr>
           <tr>
-            <th class="sub-th red-th">تاريخ النشر المخطط</th>
+            <th class="sub-th red-th ">تاريخ النشر المخطط</th>
             <th v-if="!isMediaBuyer && !isDesignerOrEditor" class="sub-th red-th">النشر الفعلي</th>
             <th v-if="!isDesignerOrEditor" class="sub-th red-th">توقيت النشر</th>
             <th v-if="!isMediaBuyer" class="sub-th red-th">منصة النشر</th>
@@ -99,10 +106,10 @@
             <td :colspan="isMediaBuyer ? 10 : (isDesignerOrEditor ? 19 : (canDeletePosts ? 27 : 26))" class="text-center py-4 muted">لا توجد منشورات. قم بإضافة منشور جديد.</td>
           </tr>
           <tr v-for="(post, index) in filteredPosts" :key="post.id" :id="'post-row-' + post.id" class="post-row" :class="{ 'urgent-row': post.is_urgent }">
-            <td class="text-center readonly-cell row-num-cell" style="font-weight: 700; width: 45px; color: #8792be; vertical-align: middle;">{{ index + 1 }}</td>
+            <td class="text-center readonly-cell row-num-cell " style="font-weight: 700; width: 45px; color: #8792be; vertical-align: middle;">{{ index + 1 }}</td>
             
             <!-- 2. حالة المنشور وموعد النشر الذكي -->
-            <td class="readonly-cell position-relative" :class="getDeadlineStatus(currentPlan?.start_date || post.created_at, post.target_date, post.actual_publish_status).class + '-border'">
+            <td class="readonly-cell position-relative " :class="getDeadlineStatus(currentPlan?.start_date || post.created_at, post.target_date, post.actual_publish_status).class + '-border'">
               <button class="icon-btn view-btn" @click="openViewModal(post)" title="عرض التفاصيل">👁️</button>
               <strong>{{ getDayName(post.target_date) }}</strong>
               <small>{{ formatDate(post.target_date) }}</small>
@@ -249,8 +256,8 @@
                 </span>
                 
                 <div v-else-if="(post.reviewer_ids && post.reviewer_ids.includes(currentUser?.id)) || isManager" class="review-actions">
-                  <button class="approve-btn" :disabled="!post.delivery_links || !post.delivery_links.trim()" @click="approvePost(post, 'reviewer')" :title="(!post.delivery_links || !post.delivery_links.trim()) ? 'لا يمكن المراجعة بدون روابط التسليم' : 'موافقة'">✅ موافقة</button>
-                  <button class="reject-btn" :disabled="!post.delivery_links || !post.delivery_links.trim()" @click="openRejectModal(post, 'reviewer')" :title="(!post.delivery_links || !post.delivery_links.trim()) ? 'لا يمكن المراجعة بدون روابط التسليم' : 'رفض'">❌ رفض</button>
+                  <button class="approve-btn" :disabled="!post.delivery_links || extractUrls(post.delivery_links).length === 0" @click="approvePost(post, 'reviewer')" :title="(!post.delivery_links || extractUrls(post.delivery_links).length === 0) ? 'لا يمكن المراجعة بدون روابط التسليم' : 'موافقة'">✅ موافقة</button>
+                  <button class="reject-btn" :disabled="!post.delivery_links || extractUrls(post.delivery_links).length === 0" @click="openRejectModal(post, 'reviewer')" :title="(!post.delivery_links || extractUrls(post.delivery_links).length === 0) ? 'لا يمكن المراجعة بدون روابط التسليم' : 'رفض'">❌ رفض</button>
                 </div>
                 
                 <span v-else class="badge pending">⏳ قيد الانتظار</span>
@@ -280,8 +287,8 @@
               
               <template v-else>
                 <div v-if="isManager" class="review-actions">
-                  <button class="approve-btn" :disabled="!post.delivery_links || !post.delivery_links.trim()" @click="approvePost(post, 'manager')" :title="(!post.delivery_links || !post.delivery_links.trim()) ? 'لا يمكن الاعتماد بدون روابط التسليم' : 'اعتماد نهائي'">✅ اعتماد</button>
-                  <button class="reject-btn" :disabled="!post.delivery_links || !post.delivery_links.trim()" @click="openRejectModal(post, 'manager')" :title="(!post.delivery_links || !post.delivery_links.trim()) ? 'لا يمكن الاعتماد بدون روابط التسليم' : 'رفض'">❌ رفض</button>
+                  <button class="approve-btn" :disabled="!post.delivery_links || extractUrls(post.delivery_links).length === 0" @click="approvePost(post, 'manager')" :title="(!post.delivery_links || extractUrls(post.delivery_links).length === 0) ? 'لا يمكن الاعتماد بدون روابط التسليم' : 'اعتماد نهائي'">✅ اعتماد</button>
+                  <button class="reject-btn" :disabled="!post.delivery_links || extractUrls(post.delivery_links).length === 0" @click="openRejectModal(post, 'manager')" :title="(!post.delivery_links || extractUrls(post.delivery_links).length === 0) ? 'لا يمكن الاعتماد بدون روابط التسليم' : 'رفض'">❌ رفض</button>
                 </div>
                 
                 <span v-else class="badge pending">⏳ قيد الانتظار</span>
@@ -453,6 +460,8 @@
                   v-if="(post.review_status === 'مرفوض' || post.manager_review_status === 'مرفوض') && canEditDelivery(post)"
                   @click="resubmitPost(post)"
                   class="primary-btn reject-submit-btn w-100 mt-1"
+                  :disabled="!post.delivery_links || extractUrls(post.delivery_links).length === 0"
+                  :title="(!post.delivery_links || extractUrls(post.delivery_links).length === 0) ? 'يرجى إرفاق الروابط أولاً' : 'إعادة إرسال'"
                 >إعادة إرسال للمراجعة 🔄</button>
                 <div v-else-if="post.delivered_at" class="delivered-info">
                   <span class="delivery-time">✅ تم التسليم: {{ formatDeliveryDate(post.delivered_at) }}</span>
@@ -464,10 +473,12 @@
                   >تحديث الوقت</button>
                 </div>
                 <button 
-                  v-else-if="canEditDelivery(post)" 
-                  @click="markAsDelivered(post)" 
-                  class="primary-btn submit-delivery-btn"
-                >تسجيل التسليم</button>
+                    v-else-if="canEditDelivery(post)" 
+                    @click="markAsDelivered(post)" 
+                    class="primary-btn submit-delivery-btn"
+                    :disabled="!post.delivery_links || extractUrls(post.delivery_links).length === 0"
+                    :title="(!post.delivery_links || extractUrls(post.delivery_links).length === 0) ? 'يرجى إرفاق الروابط أولاً' : 'تسجيل التسليم'"
+                  >تسجيل التسليم</button>
               </div>
             </td>
             <td>
@@ -850,6 +861,7 @@ import '@vuepic/vue-datepicker/dist/main.css';
 import CustomMultiSelect from '../components/CustomMultiSelect.vue';
 import SmartDeadlinePicker from '../components/SmartDeadlinePicker.vue';
 import alertService from '../services/alertService';
+import AutoRecurrenceToggle from '../components/AutoRecurrenceToggle.vue';
 
 // استيراد المحرك الذكي
 import { getDeadlineStatus } from '../utils/timeHelper';
@@ -1305,6 +1317,10 @@ const formatDeliveryDate = (dateString) => {
 };
 
 const markAsDelivered = (post) => {
+  if (!post.delivery_links || extractUrls(post.delivery_links).length === 0) {
+    showToast('⚠️ لا يمكن التسليم بدون إرفاق رابط صحيح (يبدأ بـ http) في خانة التسليم.');
+    return;
+  }
   const d = new Date();
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -1318,6 +1334,10 @@ const markAsDelivered = (post) => {
 };
 
 const resubmitPost = async (post) => {
+  if (!post.delivery_links || extractUrls(post.delivery_links).length === 0) {
+    showToast('⚠️ لا يمكن إعادة التسليم للمراجعة بدون إرفاق روابط صحيحة.');
+    return;
+  }
   const confirmed = await alertService.confirm({
     title: 'إعادة إرسال للمراجعة',
     message: 'هل أنت متأكد من إعادة إرسال المنشور للمراجعة؟',
@@ -2724,5 +2744,6 @@ input:disabled, select:disabled, textarea:disabled, .custom-multiselect.disabled
     justify-content: space-between;
   }
 }
+
 
 </style>

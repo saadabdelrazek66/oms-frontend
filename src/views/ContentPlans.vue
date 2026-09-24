@@ -474,6 +474,14 @@
                 </a>
               </div>
 
+              <AutoRecurrenceToggle
+                v-if="user?.role === 'manager'"
+                :plan-id="plan.id"
+                :model-value="Boolean(plan.is_recurring)"
+                @update:model-value="plan.is_recurring = $event"
+                compact
+                style="margin-bottom: 8px; width: 100%;"
+              />
               <router-link :to="`/plan-board/${plan.id}`" class="spreadsheet-link-banner">
                 <span>فتح لوحة المحتوى (Spreadsheet)</span>
                 <span class="rocket-icon">🚀</span>
@@ -1096,6 +1104,14 @@
                 <span class="summary-client-title">{{ currentDetailsPlan.client?.name || 'عميل محذوف' }}</span>
                 <span class="summary-plan-tag">{{ currentDetailsPlan.plan_type }}</span>
               </div>
+              <div v-if="user?.role === 'manager'" style="margin-top: 8px;">
+                <AutoRecurrenceToggle
+                  :plan-id="currentDetailsPlan.id"
+                  :model-value="Boolean(currentDetailsPlan.is_recurring)"
+                  @update:model-value="currentDetailsPlan.is_recurring = $event; const p = plans.find(x => x.id === currentDetailsPlan.id); if (p) p.is_recurring = $event;"
+                  compact
+                />
+              </div>
               <div :class="['status-badge', getPlanStatusInfo(currentDetailsPlan.status).class]">
                 <i></i>{{ getPlanStatusInfo(currentDetailsPlan.status).text }}
               </div>
@@ -1330,6 +1346,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import api from '../axios';
 import alertService from '../services/alertService';
+import AutoRecurrenceToggle from '../components/AutoRecurrenceToggle.vue';
 import ClientAvatar from '@/components/ClientAvatar.vue';
 
 // استيراد المحرك الذكي للتواريخ

@@ -423,13 +423,33 @@
             </div>
             <TransitionGroup name="list" tag="div">
               <div v-for="(link, index) in form.drive_links" :key="'d' + index" class="dynamic-row">
-                <input
-                  v-model="link.title"
-                  type="text"
-                  placeholder="اسم الرابط (مثال: تصميمات شهر 8)"
-                  required
-                  style="flex: 1"
-                />
+                <div class="custom-select-wrapper drive-select-wrapper">
+                  <select
+                    v-model="link.title"
+                    class="drive-title-select"
+                    required
+                  >
+                    <option value="" disabled>اختر نوع الرابط...</option>
+                    <option
+                      v-for="opt in driveTitleOptions"
+                      :key="opt"
+                      :value="opt"
+                    >
+                      {{ opt }}
+                    </option>
+                    <option
+                      v-if="link.title && !driveTitleOptions.includes(link.title)"
+                      :value="link.title"
+                    >
+                      {{ link.title }}
+                    </option>
+                  </select>
+                  <span class="select-chevron" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </span>
+                </div>
                 <input
                   v-model="link.url"
                   type="url"
@@ -946,6 +966,14 @@ const socialPlatformOptions = [
   { value: 'WhatsApp', label: 'WhatsApp (واتساب)' },
   { value: 'Website', label: 'Website (موقع إلكتروني)' },
   { value: 'Other', label: 'أخرى (Other)' },
+]
+
+// خيارات أسماء روابط درايف المعتمدة من الباك إند
+const driveTitleOptions = [
+  'رابط مراجعة خطط',
+  'رابط تسليم نهائي خطط',
+  'رابط مراجعة بوستات',
+  'رابط تسليم نهائي بوستات',
 ]
 
 const normalizePlatform = (platform) => {
@@ -1994,6 +2022,62 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 9px;
   margin-bottom: 9px;
+}
+.custom-select-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.drive-select-wrapper {
+  flex: 1.25;
+  min-width: 175px;
+}
+.custom-select-wrapper select {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px 0 36px;
+  border: 1px solid rgba(145, 160, 230, 0.2);
+  border-radius: 10px;
+  outline: 0;
+  color: #eef0ff;
+  background: rgba(6, 11, 37, 0.46);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.custom-select-wrapper select:focus {
+  border-color: #76e8de;
+  box-shadow: 0 0 0 3px rgba(118, 232, 222, 0.1);
+}
+.custom-select-wrapper select option {
+  background: #0d143a;
+  color: #eef0ff;
+  padding: 10px;
+}
+.select-chevron {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  color: #78e5da;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+.select-chevron svg {
+  width: 14px;
+  height: 14px;
+}
+.custom-select-wrapper:focus-within .select-chevron {
+  color: #7de8dc;
+  transform: translateY(-50%) rotate(180deg);
 }
 .checkbox-label {
   min-height: 42px;

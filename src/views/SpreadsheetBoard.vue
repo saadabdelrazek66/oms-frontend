@@ -249,8 +249,8 @@
                 </span>
                 
                 <div v-else-if="(post.reviewer_ids && post.reviewer_ids.includes(currentUser?.id)) || isManager" class="review-actions">
-                  <button class="approve-btn" :disabled="!post.delivery_links || !post.delivery_links.trim()" @click="approvePost(post, 'reviewer')" :title="(!post.delivery_links || !post.delivery_links.trim()) ? 'لا يمكن المراجعة بدون روابط التسليم' : 'موافقة'">✅ موافقة</button>
-                  <button class="reject-btn" :disabled="!post.delivery_links || !post.delivery_links.trim()" @click="openRejectModal(post, 'reviewer')" :title="(!post.delivery_links || !post.delivery_links.trim()) ? 'لا يمكن المراجعة بدون روابط التسليم' : 'رفض'">❌ رفض</button>
+                  <button class="approve-btn" :disabled="!isPostDeliveryValid(post)" @click="approvePost(post, 'reviewer')" :title="!isPostDeliveryValid(post) ? 'لا يمكن المراجعة بدون رابط تسليم صالح لملف درايف' : 'موافقة'">✅ موافقة</button>
+                  <button class="reject-btn" :disabled="!isPostDeliveryValid(post)" @click="openRejectModal(post, 'reviewer')" :title="!isPostDeliveryValid(post) ? 'لا يمكن المراجعة بدون رابط تسليم صالح لملف درايف' : 'رفض'">❌ رفض</button>
                 </div>
                 
                 <span v-else class="badge pending">⏳ قيد الانتظار</span>
@@ -280,8 +280,8 @@
               
               <template v-else>
                 <div v-if="isManager" class="review-actions">
-                  <button class="approve-btn" :disabled="!post.delivery_links || !post.delivery_links.trim()" @click="approvePost(post, 'manager')" :title="(!post.delivery_links || !post.delivery_links.trim()) ? 'لا يمكن الاعتماد بدون روابط التسليم' : 'اعتماد نهائي'">✅ اعتماد</button>
-                  <button class="reject-btn" :disabled="!post.delivery_links || !post.delivery_links.trim()" @click="openRejectModal(post, 'manager')" :title="(!post.delivery_links || !post.delivery_links.trim()) ? 'لا يمكن الاعتماد بدون روابط التسليم' : 'رفض'">❌ رفض</button>
+                  <button class="approve-btn" :disabled="!isPostDeliveryValid(post)" @click="approvePost(post, 'manager')" :title="!isPostDeliveryValid(post) ? 'لا يمكن الاعتماد بدون رابط تسليم صالح لملف درايف' : 'اعتماد نهائي'">✅ اعتماد</button>
+                  <button class="reject-btn" :disabled="!isPostDeliveryValid(post)" @click="openRejectModal(post, 'manager')" :title="!isPostDeliveryValid(post) ? 'لا يمكن الاعتماد بدون رابط تسليم صالح لملف درايف' : 'رفض'">❌ رفض</button>
                 </div>
                 
                 <span v-else class="badge pending">⏳ قيد الانتظار</span>
@@ -431,14 +431,18 @@
               </div>
             </td>
 
-            <td class="delivery-cell">
+            <td class="delivery-cell" 
+                :class="{ 'cell-invalid': isDeliveryInvalid(post) }"
+                :title="isDeliveryInvalid(post) ? getDeliveryError(post) : ''">
               <div class="textarea-link-wrapper lock-wrapper">
                 <textarea 
                   v-model="post.delivery_links" 
+                  @input="handleDeliveryInput(post)"
                   @blur="autoSave(post, 'delivery_links')" 
-                  placeholder="روابط التسليم (Drive/Notion)..." 
+                  placeholder="رابط ملف التسليم (Google Drive / Docs)..." 
                   dir="ltr" 
                   rows="2"
+                  :class="{ 'input-invalid': isDeliveryInvalid(post) }"
                   :disabled="!canEditDelivery(post) || isFieldDisabled(post, 'delivery_links')"
                 ></textarea>
                 <span v-if="hasLockIcon(post, 'delivery_links')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'delivery_links')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
@@ -452,6 +456,9 @@
                 <button 
                   v-if="(post.review_status === 'مرفوض' || post.manager_review_status === 'مرفوض') && canEditDelivery(post)"
                   @click="resubmitPost(post)"
+                  :disabled="!isPostDeliveryValid(post)"
+                  :class="{ 'disabled-delivery-btn': !isPostDeliveryValid(post) }"
+                  :title="!isPostDeliveryValid(post) ? (getDeliveryError(post) || 'لا يمكن إعادة الإرسال بدون رابط ملف درايف صالح') : 'إعادة إرسال للمراجعة'"
                   class="primary-btn reject-submit-btn w-100 mt-1"
                 >إعادة إرسال للمراجعة 🔄</button>
                 <div v-else-if="post.delivered_at" class="delivered-info">
@@ -459,13 +466,18 @@
                   <button 
                     v-if="canEditDelivery(post)" 
                     @click="markAsDelivered(post)" 
+                    :disabled="!isPostDeliveryValid(post)"
+                    :class="{ 'disabled-delivery-btn': !isPostDeliveryValid(post) }"
+                    :title="!isPostDeliveryValid(post) ? (getDeliveryError(post) || 'لا يمكن تحديث الوقت بدون رابط ملف درايف صالح') : 'تحديث وقت التسليم'"
                     class="update-time-btn"
-                    title="تحديث وقت التسليم"
                   >تحديث الوقت</button>
                 </div>
                 <button 
                   v-else-if="canEditDelivery(post)" 
                   @click="markAsDelivered(post)" 
+                  :disabled="!isPostDeliveryValid(post)"
+                  :class="{ 'disabled-delivery-btn': !isPostDeliveryValid(post) }"
+                  :title="!isPostDeliveryValid(post) ? (getDeliveryError(post) || 'لا يمكن تسجيل التسليم بدون رابط ملف درايف صالح') : 'تسجيل التسليم'"
                   class="primary-btn submit-delivery-btn"
                 >تسجيل التسليم</button>
               </div>
@@ -805,12 +817,55 @@
 
                   <div class="link-group">
                     <span class="group-label">روابط التسليم (Deliverables)</span>
+                    
+                    <!-- إدخال وتعديل رابط التسليم من داخل المودال إذا كان المستخدم مصرح له -->
+                    <div v-if="canEditDelivery(selectedPostForView)" class="modal-delivery-edit mt-2 mb-2">
+                      <div class="relative">
+                        <input 
+                          type="url" 
+                          v-model="selectedPostForView.delivery_links"
+                          @input="handleDeliveryInput(selectedPostForView)"
+                          @blur="autoSave(selectedPostForView, 'delivery_links')"
+                          placeholder="أدخل رابط ملف جوجل درايف أو دوكس للتسليم..." 
+                          dir="ltr"
+                          class="modal-delivery-input"
+                          :class="{ 'border-red-500': isDeliveryInvalid(selectedPostForView) }"
+                        />
+                      </div>
+                      <p v-if="isDeliveryInvalid(selectedPostForView)" class="modal-error-msg">
+                        <span>⚠️</span>
+                        <span>{{ getDeliveryError(selectedPostForView) }}</span>
+                      </p>
+                      
+                      <!-- زر التسليم / إعادة الإرسال من داخل المودال -->
+                      <div class="mt-2 flex gap-2">
+                        <button
+                          v-if="selectedPostForView.review_status === 'مرفوض' || selectedPostForView.manager_review_status === 'مرفوض'"
+                          @click="resubmitPost(selectedPostForView)"
+                          :disabled="!isPostDeliveryValid(selectedPostForView)"
+                          :class="{ 'disabled-delivery-btn': !isPostDeliveryValid(selectedPostForView) }"
+                          :title="!isPostDeliveryValid(selectedPostForView) ? (getDeliveryError(selectedPostForView) || 'رابط البوست غير صالح') : 'إعادة إرسال للمراجعة'"
+                          class="primary-btn reject-submit-btn"
+                          style="font-size: 11px; padding: 6px 12px;"
+                        >إعادة إرسال للمراجعة 🔄</button>
+                        <button
+                          v-else
+                          @click="markAsDelivered(selectedPostForView)"
+                          :disabled="!isPostDeliveryValid(selectedPostForView)"
+                          :class="{ 'disabled-delivery-btn': !isPostDeliveryValid(selectedPostForView) }"
+                          :title="!isPostDeliveryValid(selectedPostForView) ? (getDeliveryError(selectedPostForView) || 'رابط البوست غير صالح') : 'تسجيل التسليم'"
+                          class="primary-btn submit-delivery-btn"
+                          style="font-size: 11px; padding: 6px 12px;"
+                        >{{ selectedPostForView.delivered_at ? 'تحديث وقت التسليم' : 'تسجيل التسليم ✅' }}</button>
+                      </div>
+                    </div>
+
                     <div class="premium-links-container" v-if="extractUrls(selectedPostForView.delivery_links).length">
                       <a v-for="(url, i) in extractUrls(selectedPostForView.delivery_links)" :key="i" :href="url" target="_blank" class="premium-btn-link del-link">
                         <span class="link-icon">📁</span> {{ getUrlLabel(url, i) }}
                       </a>
                     </div>
-                    <div v-else class="no-data">لم يتم تسليم ملفات بعد</div>
+                    <div v-else-if="!canEditDelivery(selectedPostForView)" class="no-data">لم يتم تسليم ملفات بعد</div>
                   </div>
                   
                   <div class="link-group" v-if="hasPublishedLinks(selectedPostForView)">
@@ -853,6 +908,37 @@ import alertService from '../services/alertService';
 
 // استيراد المحرك الذكي
 import { getDeadlineStatus } from '../utils/timeHelper';
+// استيراد دالة التحقق من روابط درايف للبوست
+import { validatePostDriveLink } from '../utils/driveValidation';
+
+// دوال التحقق من صحة رابط تسليم البوست (Google Drive / Docs)
+const isDeliveryInvalid = (post) => {
+  if (!post) return false;
+  // إذا كان الحقل يحتوي على قيمة نصية، نتحقق مباشرة
+  if (post.delivery_links && String(post.delivery_links).trim() !== '') {
+    return !validatePostDriveLink(post.delivery_links).valid;
+  }
+  // إذا كان الحقل فارغاً، نعتبره غير صالح فقط إذا تم التعديل عليه (touched)
+  return Boolean(post._deliveryTouched);
+};
+
+const isPostDeliveryValid = (post) => {
+  if (!post || !post.delivery_links || !String(post.delivery_links).trim()) return false;
+  return validatePostDriveLink(post.delivery_links).valid;
+};
+
+const getDeliveryError = (post) => {
+  if (!post) return '';
+  const res = validatePostDriveLink(post.delivery_links);
+  return res.valid ? '' : res.message;
+};
+
+const handleDeliveryInput = (post) => {
+  if (!post) return;
+  post._deliveryTouched = true;
+  const res = validatePostDriveLink(post.delivery_links);
+  post._deliveryError = res.valid ? null : res.message;
+};
 
 const route = useRoute();
 const planId = route.params.id;
@@ -1305,6 +1391,13 @@ const formatDeliveryDate = (dateString) => {
 };
 
 const markAsDelivered = (post) => {
+  post._deliveryTouched = true;
+  const valResult = validatePostDriveLink(post.delivery_links);
+  if (!valResult.valid) {
+    showToast(valResult.message || 'رابط البوست غير صالح ولن يتم حفظه');
+    return;
+  }
+
   const d = new Date();
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -1318,6 +1411,13 @@ const markAsDelivered = (post) => {
 };
 
 const resubmitPost = async (post) => {
+  post._deliveryTouched = true;
+  const valResult = validatePostDriveLink(post.delivery_links);
+  if (!valResult.valid) {
+    showToast(valResult.message || 'رابط البوست غير صالح ولن يتم حفظه');
+    return;
+  }
+
   const confirmed = await alertService.confirm({
     title: 'إعادة إرسال للمراجعة',
     message: 'هل أنت متأكد من إعادة إرسال المنشور للمراجعة؟',
@@ -1598,6 +1698,18 @@ const deletePost = async (post, index) => {
 };
 
 const autoSave = async (post, field) => {
+  if (field === 'delivery_links') {
+    // التحقق الصارم من رابط تسليم البوست (Google Drive / Docs)
+    const valResult = validatePostDriveLink(post.delivery_links);
+    if (!valResult.valid) {
+      post._deliveryTouched = true;
+      post._deliveryError = valResult.message;
+      showToast('رابط البوست غير صالح ولن يتم حفظه');
+      return; // منع إرسال طلب الـ API
+    }
+    post._deliveryError = null;
+  }
+
   saving.value = true;
   try {
     const res = await api.put(`/plan-posts/${post.id}`, { [field]: post[field] });
@@ -2027,6 +2139,73 @@ input:disabled, select:disabled, textarea:disabled {
 }
 .update-time-btn:hover {
   color: #115293;
+}
+
+/* تنسيقات التحقق الصارم لخلية التسليم والـ Tooltip */
+.delivery-cell.cell-invalid {
+  background-color: #fef2f2 !important;
+  border: 1.5px solid #ef4444 !important;
+  box-shadow: inset 0 0 6px rgba(239, 68, 68, 0.15) !important;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.delivery-cell.cell-invalid textarea,
+.delivery-cell textarea.input-invalid {
+  border: 1.5px solid #ef4444 !important;
+  background-color: #fff5f5 !important;
+  border-radius: 4px;
+}
+
+.disabled-delivery-btn,
+.disabled-delivery-btn:disabled,
+button:disabled.submit-delivery-btn,
+button:disabled.reject-submit-btn,
+button:disabled.update-time-btn {
+  opacity: 0.45 !important;
+  cursor: not-allowed !important;
+  filter: grayscale(0.6) !important;
+}
+
+/* تنسيقات حقل التسليم داخل المودال */
+.modal-delivery-edit {
+  width: 100%;
+}
+
+.modal-delivery-input {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 13px;
+  background: #1e293b;
+  color: #fff;
+  border: 1.5px solid #334155;
+  border-radius: 8px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.modal-delivery-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.modal-delivery-input.border-red-500 {
+  border-color: #ef4444 !important;
+  background-color: rgba(239, 68, 68, 0.08) !important;
+}
+
+.modal-delivery-input.border-red-500:focus {
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2) !important;
+}
+
+.modal-error-msg {
+  color: #ef4444;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 6px 0 0 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
 input, select, textarea { width: 100%; height: 100%; min-height: 33px; border: none; outline: none; background: transparent; padding: 4px 6px; font-family: inherit; font-size: 11px; color: #222; text-align: center; resize: none; transition: 0.15s; }

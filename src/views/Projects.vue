@@ -826,8 +826,8 @@ onMounted(() => {
 /* Projects Grid & Modern Cards */
 .projects-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-  gap: 22px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 20px;
 }
 
 .project-card {
@@ -1213,6 +1213,22 @@ onMounted(() => {
 @media (max-width: 768px) {
   .summary-strip { grid-template-columns: 1fr; }
   .form-grid { grid-template-columns: 1fr; }
-  .page-topline { flex-direction: column; align-items: flex-start; }
+  .page-topline { flex-direction: column; align-items: stretch; gap: 14px; }
+  .primary-btn { width: 100%; }
+  .projects-toolbar { flex-direction: column; align-items: stretch; gap: 12px; }
+  .search-input-wrapper { flex: 1 1 100%; width: 100%; }
+  .status-filter-tabs { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
+  .filter-chip { white-space: nowrap; flex-shrink: 0; }
+  .project-card { padding: 18px 16px 14px; }
+  .modal-content { padding: 22px 16px; border-radius: 16px; }
+  .modal-actions { flex-direction: column; }
+  .modal-actions button { width: 100%; }
+}
+
+@media (max-width: 480px) {
+  .page-topline h2 { font-size: 22px; }
+  .card-header { flex-direction: column; align-items: flex-start; }
+  .project-header-left { width: 100%; }
+  .project-dates-row { flex-direction: column; gap: 6px; }
 }
 </style>

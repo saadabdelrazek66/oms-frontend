@@ -1933,6 +1933,7 @@ onMounted(() => {
 .spreadsheet-container { 
   flex-grow: 1; 
   overflow: auto; 
+  -webkit-overflow-scrolling: touch;
   background: #f8f9fa; 
   padding-bottom: 50px; 
   cursor: grab;
@@ -2917,6 +2918,27 @@ input:disabled, select:disabled, textarea:disabled, .custom-multiselect.disabled
     order: 3;
     width: 100%;
     justify-content: space-between;
+  }
+}
+
+@media (max-width: 600px) {
+  .page-topline {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 10px 14px;
+  }
+  .header-actions {
+    flex-wrap: wrap;
+    width: 100%;
+    justify-content: space-between;
+  }
+  .primary-btn {
+    flex: 1;
+    justify-content: center;
+  }
+  .urgent-banner-text {
+    font-size: 11px;
   }
 }
 

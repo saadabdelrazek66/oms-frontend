@@ -123,4 +123,98 @@ import GlobalAlertsProvider from './components/GlobalAlertsProvider.vue';
   box-shadow: none !important;
   background-color: transparent !important;
 }
+
+/* ==========================================================================
+   Global Responsive & UX Enhancements
+   ========================================================================== */
+
+/* 1. Prevent accidental horizontal viewport spill */
+html, body {
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+  scroll-behavior: smooth;
+}
+
+/* 2. Sleek Custom Scrollbars (Webkit & Firefox) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(125, 140, 224, 0.28) rgba(10, 16, 48, 0.4);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(10, 16, 48, 0.4);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(125, 140, 224, 0.28);
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(125, 232, 222, 0.6);
+}
+
+/* 3. Universal Table Responsiveness with Touch Momentum */
+.table-responsive {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  border-radius: 12px;
+}
+
+/* 4. Universal Responsive Modals */
+.modal-overlay,
+.details-overlay,
+.quick-task-modal-overlay {
+  position: fixed;
+  inset: 0 !important;
+  z-index: 1000 !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(10px, 3vw, 24px) !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  backdrop-filter: blur(8px);
+}
+
+.modal-content,
+.modal-card,
+.modal-container,
+.details-modal,
+.quick-task-modal {
+  width: 100% !important;
+  max-width: min(calc(100vw - 20px), var(--modal-max-width, 720px)) !important;
+  max-height: calc(100dvh - 30px) !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  margin: auto !important;
+}
+
+/* 5. Mobile Form Input Zoom Prevention (iOS Safari & Chrome) */
+@media (max-width: 768px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* Optimize touch target sizes */
+  button,
+  .btn,
+  .action-btn,
+  .icon-btn,
+  .nav-item {
+    touch-action: manipulation;
+  }
+}
 </style>

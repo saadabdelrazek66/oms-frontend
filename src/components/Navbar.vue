@@ -381,13 +381,21 @@ const logout = async () => {
   outline-offset: 2px;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .navbar {
     gap: 12px;
+    padding: 12px clamp(14px, 2.5vw, 24px);
   }
 
   .nav-actions {
-    gap: 10px;
+    gap: 8px;
+  }
+
+  .breadcrumb {
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .logout-btn {
@@ -395,10 +403,10 @@ const logout = async () => {
   }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 768px) {
   .navbar {
-    min-height: 70px;
-    padding: 11px max(16px, env(safe-area-inset-right)) 11px max(16px, env(safe-area-inset-left));
+    min-height: 66px;
+    padding: 10px max(14px, env(safe-area-inset-right)) 10px max(14px, env(safe-area-inset-left));
   }
 
   .breadcrumb,

@@ -41,7 +41,7 @@ import { useRoute } from 'vue-router'
 import Sidebar from '../components/Sidebar.vue'
 import Navbar from '../components/Navbar.vue'
 
-const MOBILE_QUERY = '(max-width: 760px)'
+const MOBILE_QUERY = '(max-width: 1024px)'
 const isSidebarOpen = ref(true)
 const isMobile = ref(false)
 const route = useRoute()
@@ -245,7 +245,7 @@ select {
   backdrop-filter: blur(3px);
 }
 
-@media (max-width: 760px) {
+@media (max-width: 1024px) {
   .layout-wrapper {
     display: block;
   }
@@ -282,7 +282,7 @@ select {
 
   .page-content {
     min-height: calc(100dvh - 70px);
-    padding: clamp(18px, 5vw, 24px) clamp(14px, 4vw, 20px) 28px;
+    padding: clamp(16px, 3vw, 28px) clamp(12px, 2.5vw, 24px);
   }
 }
 
@@ -300,7 +300,7 @@ select {
   z-index: 1000000 !important;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 1024px) {
   .sidebar-container:not(.open) {
     width: min(286px, 88vw);
     flex-basis: auto;

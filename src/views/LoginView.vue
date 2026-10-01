@@ -174,4 +174,5 @@ const handleLogin = async () => {
 @keyframes shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (max-width: 760px) { .auth-page { padding: 16px; }.auth-shell { display: block; min-height: auto; border-radius: 22px; }.brand-panel { display: none; }.form-panel { padding: 30px 24px 26px; }.mobile-brand { display: flex; justify-content: center; align-items: center; margin-bottom: 30px; }.mobile-logo { height: 75px; width: auto; max-width: 170px; object-fit: contain; filter: drop-shadow(0 6px 20px rgba(0, 216, 204, 0.35)); }.form-heading h2 { font-size: 27px; } }
+@media (max-width: 360px) { .auth-page { padding: 10px; } .form-panel { padding: 20px 14px 18px; } .form-heading h2 { font-size: 23px; } .mobile-logo { height: 58px; } }
 </style>

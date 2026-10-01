@@ -1264,6 +1264,35 @@ const formatLogTime = (log) => {
   }
 }
 
+@media (max-width: 640px) {
+  .quick-task-details {
+    padding: 16px 14px;
+    gap: 18px;
+    border-radius: 16px;
+  }
+  .task-title {
+    font-size: 18px !important;
+  }
+  .header-topline {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .meta-strip {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+  .meta-divider {
+    display: none;
+  }
+  .section-card {
+    padding: 14px 12px;
+  }
+  .chat-timeline-wrapper {
+    padding: 14px 12px;
+  }
+}
+
 .main-column, .side-column {
   display: flex;
   flex-direction: column;

@@ -858,6 +858,12 @@ input[type="date"].custom-select::-webkit-calendar-picker-indicator:hover {
 
 @media (max-width: 720px) {
   .page-topline { align-items: stretch; flex-direction: column; gap: 18px; }
+  .summary-strip { grid-template-columns: 1fr; }
+  .summary-item:last-child { grid-column: auto; }
+  .card-heading { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .manager-controls { width: 100%; }
+  .primary-btn { width: 100%; text-align: center; }
+  .pagination-controls { flex-wrap: wrap; gap: 10px; }
 }
 
 .plan-name-label {

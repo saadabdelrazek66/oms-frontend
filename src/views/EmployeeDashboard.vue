@@ -642,4 +642,15 @@ onMounted(() => {
   .page-topline h2 { font-size: 24px; }
   .card-header { flex-direction: column; align-items: flex-start; }
 }
+
+@media (max-width: 480px) {
+  .stats-grid { grid-template-columns: 1fr; }
+  .stat-card { padding: 14px 12px; }
+  .glass-card { padding: 16px 12px; }
+  .page-topline h2 { font-size: 20px; }
+  .item-header { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .item-footer { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .sla-indicator { width: 100%; min-width: auto; }
+  .action-link { width: 100%; text-align: center; }
+}
 </style>

@@ -739,8 +739,8 @@ onUnmounted(() => {
 .user-filter-select { background: rgba(6, 11, 37, 0.6); border: 1px solid rgba(137, 153, 226, 0.2); color: #aab5da; border-radius: 8px; padding: 6px 10px; font-family: 'Cairo'; font-size: 11px; outline: none; cursor: pointer; }
 .user-filter-select:focus { border-color: #7de8dc; color: #eef0ff; }
 
-.kanban-board { display: flex; gap: 20px; flex-grow: 1; align-items: stretch; overflow-x: auto; padding-bottom: 10px; }
-.kanban-column { flex: 1; min-width: 300px; background: rgba(15, 22, 61, .4); border: 1px solid rgba(137, 153, 226, .1); border-radius: 16px; display: flex; flex-direction: column; max-height: calc(100vh - 180px); }
+.kanban-board { display: flex; gap: 20px; flex-grow: 1; align-items: stretch; overflow-x: auto; padding-bottom: 12px; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
+.kanban-column { flex: 1; min-width: 300px; background: rgba(15, 22, 61, .4); border: 1px solid rgba(137, 153, 226, .1); border-radius: 16px; display: flex; flex-direction: column; max-height: calc(100vh - 180px); scroll-snap-align: start; }
 .column-header { padding: 15px 20px; border-bottom: 1px solid rgba(137, 153, 226, .1); background: rgba(6, 11, 37, .3); border-radius: 16px 16px 0 0; }
 .col-title { display: flex; align-items: center; gap: 8px; }
 .col-icon { font-size: 16px; }
@@ -887,10 +887,20 @@ onUnmounted(() => {
 .toast-enter-from, .toast-leave-to { opacity: 0; transform: translateY(20px); }
 
 @media (max-width: 900px) {
-  .filters-search-bar { flex-direction: column; align-items: stretch; }
+  .filters-search-bar { flex-direction: column; align-items: stretch; gap: 12px; }
   .search-box { max-width: none; }
-  .page-topline { flex-direction: column; }
-  .topline-actions { align-self: flex-start; margin-top: 15px; }
+  .page-topline { flex-direction: column; align-items: stretch; gap: 12px; }
+  .topline-actions { align-self: stretch; justify-content: space-between; margin-top: 10px; }
+  .kanban-column { min-width: 280px; }
+}
+
+@media (max-width: 600px) {
+  .kanban-column { min-width: min(85vw, 320px); }
+  .form-grid { grid-template-columns: 1fr; }
+  .modal-content { padding: 20px 16px; border-radius: 16px; }
+  .modal-actions { flex-direction: column; }
+  .modal-actions button { width: 100%; }
+  .comment-bubble { max-width: 92%; }
 }
 
 .chat-modal { width: min(600px, 100%) !important; display: flex; flex-direction: column; max-height: 85vh; }

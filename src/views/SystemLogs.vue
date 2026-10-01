@@ -420,4 +420,16 @@ onMounted(() => fetchLogs(1));
   .header-row { display: none; }
   .diff-col { padding: 8px; border-bottom: 1px solid rgba(137,153,226,0.05); }
 }
+
+@media (max-width: 600px) {
+  .page-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px;
+  }
+  .btn-danger-soft {
+    width: 100%;
+    text-align: center;
+  }
+}
 </style>

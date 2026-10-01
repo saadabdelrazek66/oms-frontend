@@ -1,13 +1,13 @@
 <template>
-  <div class="create-quick-task-card bg-[#10163a] p-6 sm:p-8 rounded-[2rem] shadow-[0_20px_60px_rgba(0,0,0,0.6),0_0_30px_rgba(125,232,220,0.1)] max-w-2xl mx-auto border border-[#8999e2]/20 w-full text-[#f1f4ff]" dir="rtl">
+  <div class="create-quick-task-card bg-[#10163a] p-4 sm:p-8 rounded-2xl sm:rounded-[2rem] shadow-[0_20px_60px_rgba(0,0,0,0.6),0_0_30px_rgba(125,232,220,0.1)] max-w-2xl mx-auto border border-[#8999e2]/20 w-full text-[#f1f4ff]" dir="rtl">
     <div class="mb-6 border-b border-[#8999e2]/15 pb-4 flex items-center justify-between">
       <div class="flex items-center gap-3">
         <div class="p-2 bg-[#7de8dc]/20 text-[#7de8dc] rounded-xl border border-[#7de8dc]/30">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
         </div>
         <div>
-          <h2 class="text-2xl font-extrabold text-[#f1f4ff]">إنشاء مهمة سريعة</h2>
-          <p class="text-[#8390be] text-sm mt-1 font-medium">أرسل توجيهاتك الصوتية أو النصية في ثوانٍ</p>
+          <h2 class="text-xl sm:text-2xl font-extrabold text-[#f1f4ff]">إنشاء مهمة سريعة</h2>
+          <p class="text-[#8390be] text-xs sm:text-sm mt-1 font-medium">أرسل توجيهاتك الصوتية أو النصية في ثوانٍ</p>
         </div>
       </div>
 
@@ -129,11 +129,11 @@
       </div>
 
       <!-- أزرار الإجراءات -->
-      <div class="flex justify-end space-x-3 space-x-reverse border-t border-[#8999e2]/15 pt-5 mt-6">
-        <button type="button" @click="$emit('cancel')" class="px-6 py-3 text-[#8390be] bg-[#141b48]/50 hover:bg-[#1c265c] hover:text-[#f1f4ff] border border-[#8999e2]/20 rounded-xl font-bold transition-all duration-300">
+      <div class="flex flex-col-reverse sm:flex-row justify-end gap-3 sm:space-x-3 sm:space-x-reverse border-t border-[#8999e2]/15 pt-5 mt-6">
+        <button type="button" @click="$emit('cancel')" class="w-full sm:w-auto px-6 py-3 text-[#8390be] bg-[#141b48]/50 hover:bg-[#1c265c] hover:text-[#f1f4ff] border border-[#8999e2]/20 rounded-xl font-bold transition-all duration-300 text-center">
           إلغاء
         </button>
-        <button type="submit" :disabled="isSubmitting" class="px-8 py-3 text-[#12183f] bg-gradient-to-r from-[#7de8dc] to-[#b28aff] hover:brightness-110 rounded-xl font-extrabold flex items-center disabled:opacity-70 transition-all duration-300 shadow-[0_4px_15px_rgba(125,232,220,0.25)] hover:shadow-[0_8px_25px_rgba(125,232,220,0.4)]">
+        <button type="submit" :disabled="isSubmitting" class="w-full sm:w-auto px-8 py-3 text-[#12183f] bg-gradient-to-r from-[#7de8dc] to-[#b28aff] hover:brightness-110 rounded-xl font-extrabold flex items-center justify-center disabled:opacity-70 transition-all duration-300 shadow-[0_4px_15px_rgba(125,232,220,0.25)] hover:shadow-[0_8px_25px_rgba(125,232,220,0.4)]">
           <svg v-if="isSubmitting" class="animate-spin -ml-1 mr-2 h-5 w-5 text-[#12183f]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
           <span v-if="!isSubmitting" class="ml-2">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>

@@ -797,13 +797,13 @@ const logout = () => {
   outline-offset: 2px;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 1024px) {
   .close-btn {
     display: grid;
   }
 }
 
-@media (max-height: 680px) and (max-width: 760px) {
+@media (max-height: 680px) and (max-width: 1024px) {
   .sidebar-inner {
     padding-top: max(16px, env(safe-area-inset-top));
   }

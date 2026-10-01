@@ -513,6 +513,16 @@ onMounted(() => {
 @media (max-width: 768px) {
   .stats-grid { grid-template-columns: 1fr; }
   .grid-5, .grid-6 { grid-template-columns: 1fr 1fr; }
+  .page-topline h2 { font-size: 26px; }
+}
+@media (max-width: 540px) {
+  .grid-5, .grid-6 { grid-template-columns: 1fr; }
+  .page-topline h2 { font-size: 22px; }
+  .glass-card { padding: 16px 14px; }
+  .stat-card { padding: 16px 14px; }
+  .stat-info strong { font-size: 22px; }
+  .card-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .pagination-controls { flex-wrap: wrap; gap: 10px; }
 }
 
 .quick-action-btn { border: none; padding: 6px 12px; border-radius: 8px; font-weight: bold; font-family: 'Cairo'; cursor: pointer; transition: 0.2s; font-size: 11px; display: flex; align-items: center; gap: 5px; }

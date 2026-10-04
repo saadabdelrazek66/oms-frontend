@@ -59,12 +59,8 @@
             <label>نوع الخطة</label>
             <select v-model="filters.plan_type">
               <option value="">الكل</option>
-              <option value="استراتيجية">استراتيجية</option>
-              <option value="محتوى">محتوى</option>
-              <option value="سوشيال ميديا">سوشيال ميديا</option>
-              <option value="إعلانات ممولة">إعلانات ممولة</option>
-              <option value="SEO">SEO</option>
-              <option value="خطة شاملة">خطة شاملة</option>
+              <option v-for="cat in planCategories" :key="cat.id" :value="cat.name">{{ cat.name }}</option>
+              <option v-for="legacyType in legacyPlanTypes" :key="legacyType" :value="legacyType">{{ legacyType }}</option>
             </select>
           </div>
           <!-- Status -->
@@ -237,10 +233,26 @@
                   <div class="client-title-line">
                     <h3 class="client-heading" :title="plan.client?.name">{{ plan.client?.name || 'عميل محذوف' }}</h3>
                     <span class="plan-type-tag">{{ plan.plan_type }}</span>
+                    <span v-if="Number(plan.total_estimated_hours) > 0" class="plan-hours-badge" :title="'إجمالي ساعات العمل التقديرية: ' + formatHours(plan.total_estimated_hours) + ' ساعة'">
+                      ⏱️ {{ formatHours(plan.total_estimated_hours) }}س
+                    </span>
                   </div>
                   <div class="plan-date-range" v-if="plan.start_date || plan.end_date">
                     <span class="range-icon">📅</span>
                     <span class="range-text">{{ formatShortDate(plan.start_date) }} ⭢ {{ formatShortDate(plan.end_date) }}</span>
+                  </div>
+
+                  <!-- عناصر ومخرجات الخطة على الكارت -->
+                  <div class="card-items-scope-pills" v-if="plan.items && plan.items.length > 0">
+                    <span 
+                      v-for="item in plan.items" 
+                      :key="item.id" 
+                      class="card-scope-pill"
+                      :title="item.quantity + ' ' + item.item_name + (item.total_hours ? ' (' + item.total_hours + 'س)' : '')"
+                    >
+                      <strong class="pill-qty">{{ item.quantity }}</strong>
+                      <span class="pill-name">{{ item.item_name }}</span>
+                    </span>
                   </div>
                 </div>
               </div>
@@ -617,7 +629,18 @@
                       rounded="9px"
                       class="plan-avatar"
                     />
-                    <div><strong>{{ plan.client?.name || 'عميل محذوف' }}</strong><span>{{ plan.plan_type }}</span></div>
+                    <div>
+                      <strong>{{ plan.client?.name || 'عميل محذوف' }}</strong>
+                      <span>{{ plan.plan_type }}</span>
+                      <span v-if="Number(plan.total_estimated_hours) > 0" class="plan-hours-badge-table" :title="'إجمالي ساعات العمل التقديرية: ' + formatHours(plan.total_estimated_hours) + ' ساعة'">
+                        ⏱️ {{ formatHours(plan.total_estimated_hours) }}س
+                      </span>
+                      <div class="table-items-scope-pills" v-if="plan.items && plan.items.length > 0">
+                        <span v-for="item in plan.items" :key="item.id" class="table-scope-pill">
+                          <strong>{{ item.quantity }}</strong> {{ item.item_name }}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </td>
                 <td><span class="people-cell">{{ getRoleNames(plan.users, 'responsible') }}</span></td>
@@ -1011,15 +1034,175 @@
               <div class="form-group" :class="{ 'has-field-error': managerFieldErrors.plan_type }">
                 <label>نوع الخطة <span class="text-red">*</span></label>
                 <select v-model="form.plan_type" required @change="clearFieldError('plan_type')">
-                  <option value="" disabled>اختر...</option>
-                  <option value="استراتيجية (Strategic)">استراتيجية</option>
-                  <option value="محتوى (Content)">محتوى</option>
-                  <option value="تسويق عبر السوشيال ميديا">سوشيال ميديا</option>
-                  <option value="إعلانات ممولة (Media Buying)">إعلانات ممولة</option>
-                  <option value="تحسين محركات البحث (SEO)">SEO</option>
-                  <option value="خطة شاملة">خطة شاملة</option>
+                  <option value="" disabled>اختر نوع الخطة...</option>
+                  <option v-for="cat in planCategories" :key="cat.id" :value="cat.name">
+                    {{ cat.name }}
+                  </option>
+                  <option 
+                    v-if="form.plan_type && !planCategories.some(c => c.name === form.plan_type)" 
+                    :value="form.plan_type"
+                  >
+                    {{ form.plan_type }}
+                  </option>
                 </select>
                 <span v-if="managerFieldErrors.plan_type" class="field-error-msg">{{ managerFieldErrors.plan_type }}</span>
+              </div>
+            </div>
+
+            <!-- عناصر ومخرجات الخطة وتقدير ساعات العمل للمنفذين -->
+            <div v-if="form.plan_type" class="plan-scope-section">
+              <div class="scope-header">
+                <div class="scope-title">
+                  <span class="scope-icon">📦</span>
+                  <div>
+                    <h4>عناصر ومخرجات الخطة وساعات العمل (Scope & Deliverables)</h4>
+                    <p>حدد مخرجات هذه الخطة لحساب إجمالي ساعات العمل المتوقعة من المنفذين تلقائياً</p>
+                  </div>
+                </div>
+                <div class="scope-stats" v-if="form.items.length > 0">
+                  <span class="stat-badge count-badge">
+                    <strong>{{ totalPlanItemsCount }}</strong> مخرجات
+                  </span>
+                  <span class="stat-badge hours-badge">
+                    ⏱️ <strong>{{ formatHours(totalPlanEstimatedHours) }}</strong> ساعة عمل
+                  </span>
+                </div>
+              </div>
+
+              <!-- شريط الإضافة السريعة من عناصر نوع الخطة المحدد -->
+              <div v-if="availableCategoryItems.length > 0" class="quick-add-bar">
+                <div class="quick-add-topline">
+                  <span class="quick-add-label">عناصر معيارية مقترحة لهذا النوع:</span>
+                  <div class="quick-add-actions">
+                    <button 
+                      type="button" 
+                      class="quick-batch-btn" 
+                      @click="fillAllCategoryItems"
+                      title="إضافة كافة العناصر المعيارية لهذا النوع بنقرة واحدة"
+                    >
+                      ⚡ إضافة الكل
+                    </button>
+                    <button 
+                      v-if="form.items.length > 0" 
+                      type="button" 
+                      class="quick-batch-btn clear-btn" 
+                      @click="clearAllScopeItems"
+                      title="مسح كافة العناصر المحددة"
+                    >
+                      🗑️ مسح
+                    </button>
+                  </div>
+                </div>
+
+                <div class="quick-chips-wrapper">
+                  <button 
+                    v-for="item in availableCategoryItems" 
+                    :key="item.id" 
+                    type="button" 
+                    class="quick-item-chip"
+                    :class="{ 'chip-selected': isItemInPlan(item.name) }"
+                    @click="addOrIncrementItem(item)"
+                    :title="'ساعات الوحدة: ' + item.estimated_hours + ' ساعة'"
+                  >
+                    <span class="chip-plus">＋</span>
+                    <span class="chip-name">{{ item.name }}</span>
+                    <span class="chip-hours">({{ item.estimated_hours }}س)</span>
+                    <span v-if="getItemCountInPlan(item.name) > 0" class="chip-count-tag">
+                      {{ getItemCountInPlan(item.name) }}
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- جدول العناصر المحددة للخطة -->
+              <div v-if="form.items.length > 0" class="scope-items-table-wrapper">
+                <table class="scope-items-table">
+                  <thead>
+                    <tr>
+                      <th>اسم المخرج / العنصر</th>
+                      <th style="width: 140px; text-align: center;">العدد</th>
+                      <th style="width: 120px; text-align: center;">ساعات الوحدة</th>
+                      <th style="width: 110px; text-align: center;">الإجمالي</th>
+                      <th style="width: 45px; text-align: center;">إزالة</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(item, index) in form.items" :key="index">
+                      <td>
+                        <input 
+                          type="text" 
+                          v-model="item.item_name" 
+                          class="scope-input" 
+                          placeholder="اسم المخرج..." 
+                          required 
+                        />
+                      </td>
+                      <td>
+                        <div class="qty-stepper">
+                          <button type="button" class="stepper-btn" @click="decrementQty(item)">−</button>
+                          <input 
+                            type="number" 
+                            v-model.number="item.quantity" 
+                            min="1" 
+                            class="stepper-input" 
+                            @change="onItemQtyChange(item)"
+                          />
+                          <button type="button" class="stepper-btn" @click="incrementQty(item)">＋</button>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="unit-hours-box">
+                          <input 
+                            type="number" 
+                            step="0.5" 
+                            min="0" 
+                            v-model.number="item.hours_per_unit" 
+                            class="scope-input hours-field" 
+                            @change="onItemHoursChange(item)"
+                          />
+                          <span class="unit-text">ساعة</span>
+                        </div>
+                      </td>
+                      <td style="text-align: center;">
+                        <span class="item-total-hours">
+                          {{ formatHours((item.quantity || 1) * (item.hours_per_unit || 0)) }} س
+                        </span>
+                      </td>
+                      <td style="text-align: center;">
+                        <button 
+                          type="button" 
+                          class="remove-scope-btn" 
+                          @click="removeScopeItem(index)" 
+                          title="حذف هذا العنصر"
+                        >
+                          ✕
+                        </button>
+                      </td>
+                    </tr>
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colspan="3" class="total-label">
+                        <strong>المجموع الكلي لساعات العمل التقديرية (المنفذين):</strong>
+                      </td>
+                      <td colspan="2" class="total-value">
+                        <strong>⏱️ {{ formatHours(totalPlanEstimatedHours) }} ساعة</strong>
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              <!-- تنبيه إذا كانت القائمة فارغة -->
+              <div v-else class="empty-scope-notice">
+                <span>💡</span> لم يتم تحديد أي مخرجات حتى الآن. يمكنك النقر على العناصر المقترحة أعلاه لإضافتها فوراً أو إضافة مخرج يدوي.
+              </div>
+
+              <!-- زر إضافة مخرج مخصص يدوي -->
+              <div class="add-custom-item-row">
+                <button type="button" class="btn-subtle add-custom-btn" @click="addCustomItem">
+                  <span>＋</span> إضافة مخرج مخصص آخر
+                </button>
               </div>
             </div>
 
@@ -1220,6 +1403,31 @@
                 <div v-if="currentDetailsPlan.actual_delivery_date" class="delivery-status-pill success">
                   <span class="pill-icon">✓</span>
                   <span>تم التسليم النهائي: <strong>{{ formatDate(currentDetailsPlan.actual_delivery_date) }}</strong></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- عناصر ومخرجات الخطة وساعات العمل التقديرية داخل تفاصيل الخطة -->
+            <div v-if="currentDetailsPlan.items && currentDetailsPlan.items.length > 0" class="details-scope-block">
+              <div class="details-scope-header">
+                <div class="details-scope-title">
+                  <span>📦</span> عناصر ومخرجات الخطة وساعات العمل ({{ currentDetailsPlan.items.length }})
+                </div>
+                <div class="details-scope-badge">
+                  ⏱️ <strong>{{ formatHours(currentDetailsPlan.total_estimated_hours || calculateItemsHours(currentDetailsPlan.items)) }}</strong> ساعة عمل
+                </div>
+              </div>
+              <div class="details-scope-grid">
+                <div v-for="item in currentDetailsPlan.items" :key="item.id" class="details-scope-card">
+                  <div class="scope-card-main">
+                    <span class="scope-item-bullet">•</span>
+                    <strong class="scope-card-title">{{ item.item_name }}</strong>
+                  </div>
+                  <div class="scope-card-metrics">
+                    <span class="scope-metric-badge qty-badge">العدد: <strong>{{ item.quantity }}</strong></span>
+                    <span class="scope-metric-badge hours-badge">{{ item.hours_per_unit }} س/وحدة</span>
+                    <span class="scope-metric-badge total-badge">الإجمالي: <strong>{{ formatHours(item.total_hours) }} س</strong></span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1789,6 +1997,19 @@ const changePage = (page) => {
 const plans = ref([]); 
 const allUsers = ref([]); 
 const allClients = ref([]); 
+const planCategories = ref([]);
+
+const legacyPlanTypes = computed(() => {
+  if (!plans.value || !Array.isArray(plans.value)) return [];
+  const known = new Set((planCategories.value || []).map(c => c.name));
+  const legacy = new Set();
+  plans.value.forEach(p => {
+    if (p.plan_type && !known.has(p.plan_type)) {
+      legacy.add(p.plan_type);
+    }
+  });
+  return Array.from(legacy);
+}); 
 const loading = ref(true); 
 const saving = ref(false); 
 const actionLoading = ref('');
@@ -2456,7 +2677,8 @@ const form = reactive({
   planned_delivery_date: '', planned_review_date: '', planned_initial_delivery_date: '',
   final_link: '', notes: '', reference_links: [], 
   responsible_ids: [], reviewer_ids: [], executor_ids: [],
-  required_brief_fields: Object.keys(availableBriefFields) 
+  required_brief_fields: Object.keys(availableBriefFields),
+  items: []
 });
 const detailsForm = reactive({ final_link: '', notes: '' });
 
@@ -2534,6 +2756,13 @@ const fetchResources = async () => {
     allUsers.value = resUsers.data.data || resUsers.data || [];
   } catch (error) {
     console.error('Error fetching users:', error);
+  }
+
+  try {
+    const resCats = await api.get('/plan-categories/options');
+    planCategories.value = resCats.data?.data || resCats.data || [];
+  } catch (error) {
+    console.error('Error fetching plan categories:', error);
   }
 
   if (isManager.value || user.value?.job_title === 'Account Manager') { 
@@ -2911,7 +3140,8 @@ const resetForm = () => Object.assign(form, {
   planned_delivery_date: '', planned_review_date: '', planned_initial_delivery_date: '',
   final_link: '', notes: '', reference_links: [],
   responsible_ids: [], reviewer_ids: [], executor_ids: [],
-  required_brief_fields: Object.keys(availableBriefFields) 
+  required_brief_fields: Object.keys(availableBriefFields),
+  items: []
 });
 
 const openManagerModal = (plan = null) => { 
@@ -2921,6 +3151,13 @@ const openManagerModal = (plan = null) => {
   }
   managerModalErrors.value = [];
   Object.keys(managerFieldErrors).forEach(key => delete managerFieldErrors[key]);
+
+  if (!planCategories.value || !planCategories.value.length) {
+    api.get('/plan-categories/options')
+      .then(res => { planCategories.value = res.data?.data || res.data || []; })
+      .catch(err => console.error('Error fetching plan categories in modal:', err));
+  }
+
   isEditing.value = Boolean(plan); 
   editId.value = plan?.id || null; 
   if (plan) { 
@@ -2941,7 +3178,15 @@ const openManagerModal = (plan = null) => {
       executor_ids: (plan.users || []).filter(user => user.pivot?.task_role === 'executor').map(user => user.id),
       required_brief_fields: plan.required_brief_fields === null 
         ? Object.keys(availableBriefFields) 
-        : (Array.isArray(plan.required_brief_fields) ? [...plan.required_brief_fields] : [])
+        : (Array.isArray(plan.required_brief_fields) ? [...plan.required_brief_fields] : []),
+      items: (plan.items || []).map(i => ({
+        plan_item_estimate_id: i.plan_item_estimate_id || null,
+        item_name: i.item_name,
+        quantity: i.quantity || 1,
+        hours_per_unit: Number(i.hours_per_unit) || 0,
+        total_hours: Number(i.total_hours) || 0,
+        unit: i.unit || 'hour'
+      }))
     }); 
   } else { 
     resetForm(); 
@@ -2989,6 +3234,14 @@ const saveManagerPlan = async () => {
 
   const payload = {
     ...form,
+    items: (form.items || []).filter(i => (i.item_name || '').trim() !== '').map(i => ({
+      plan_item_estimate_id: i.plan_item_estimate_id || null,
+      item_name: i.item_name.trim(),
+      quantity: Math.max(1, Number(i.quantity) || 1),
+      hours_per_unit: Math.max(0, Number(i.hours_per_unit) || 0),
+      total_hours: Math.max(1, Number(i.quantity) || 1) * Math.max(0, Number(i.hours_per_unit) || 0),
+      unit: i.unit || 'hour'
+    })),
     planned_initial_delivery_date: form.planned_initial_delivery_date || null,
     planned_review_date: form.planned_review_date || null,
   };
@@ -3214,6 +3467,132 @@ watch(() => loading.value, async () => {
 watch(isAnyModalOpen, () => {
   updateScrollState();
 });
+
+
+// ==========================================
+// منطق عناصر ومخرجات الخطة وتقدير ساعات العمل
+// ==========================================
+const selectedCategory = computed(() => {
+  if (!form.plan_type) return null;
+  return (planCategories.value || []).find(c => c.name === form.plan_type) || null;
+});
+
+const availableCategoryItems = computed(() => {
+  return selectedCategory.value?.items || [];
+});
+
+const totalPlanItemsCount = computed(() => {
+  return (form.items || []).reduce((acc, cur) => acc + (Number(cur.quantity) || 1), 0);
+});
+
+const totalPlanEstimatedHours = computed(() => {
+  const sum = (form.items || []).reduce((acc, cur) => {
+    const qty = Math.max(1, Number(cur.quantity) || 1);
+    const h = Math.max(0, Number(cur.hours_per_unit) || 0);
+    return acc + (qty * h);
+  }, 0);
+  return Number(sum.toFixed(2));
+});
+
+const isItemInPlan = (itemName) => {
+  return (form.items || []).some(i => i.item_name === itemName);
+};
+
+const getItemCountInPlan = (itemName) => {
+  const item = (form.items || []).find(i => i.item_name === itemName);
+  return item ? (Number(item.quantity) || 0) : 0;
+};
+
+const addOrIncrementItem = (catItem) => {
+  const existing = form.items.find(i => i.item_name === catItem.name);
+  if (existing) {
+    existing.quantity = (Number(existing.quantity) || 1) + 1;
+    existing.total_hours = existing.quantity * (Number(existing.hours_per_unit) || 0);
+  } else {
+    const qty = 1;
+    const hours = Number(catItem.estimated_hours) || 0;
+    form.items.push({
+      plan_item_estimate_id: catItem.id,
+      item_name: catItem.name,
+      quantity: qty,
+      hours_per_unit: hours,
+      total_hours: qty * hours,
+      unit: catItem.unit || 'hour'
+    });
+  }
+};
+
+const fillAllCategoryItems = () => {
+  if (!availableCategoryItems.value || availableCategoryItems.value.length === 0) return;
+  
+  availableCategoryItems.value.forEach(catItem => {
+    const existing = form.items.find(i => i.item_name === catItem.name);
+    if (!existing) {
+      const qty = 1;
+      const hours = Number(catItem.estimated_hours) || 0;
+      form.items.push({
+        plan_item_estimate_id: catItem.id,
+        item_name: catItem.name,
+        quantity: qty,
+        hours_per_unit: hours,
+        total_hours: qty * hours,
+        unit: catItem.unit || 'hour'
+      });
+    }
+  });
+};
+
+const clearAllScopeItems = () => {
+  form.items = [];
+};
+
+const addCustomItem = () => {
+  form.items.push({
+    plan_item_estimate_id: null,
+    item_name: '',
+    quantity: 1,
+    hours_per_unit: 1.0,
+    total_hours: 1.0,
+    unit: 'hour'
+  });
+};
+
+const incrementQty = (item) => {
+  item.quantity = (Number(item.quantity) || 0) + 1;
+  item.total_hours = item.quantity * (Number(item.hours_per_unit) || 0);
+};
+
+const decrementQty = (item) => {
+  if ((Number(item.quantity) || 1) > 1) {
+    item.quantity = Number(item.quantity) - 1;
+    item.total_hours = item.quantity * (Number(item.hours_per_unit) || 0);
+  }
+};
+
+const onItemQtyChange = (item) => {
+  if (!item.quantity || item.quantity < 1) item.quantity = 1;
+  item.total_hours = item.quantity * (Number(item.hours_per_unit) || 0);
+};
+
+const onItemHoursChange = (item) => {
+  if (item.hours_per_unit < 0) item.hours_per_unit = 0;
+  item.total_hours = (Number(item.quantity) || 1) * (Number(item.hours_per_unit) || 0);
+};
+
+const removeScopeItem = (index) => {
+  form.items.splice(index, 1);
+};
+
+const formatHours = (val) => {
+  if (val === undefined || val === null) return '0';
+  const num = Number(val);
+  return num % 1 === 0 ? num.toString() : num.toFixed(1);
+};
+
+const calculateItemsHours = (items) => {
+  if (!items || !Array.isArray(items)) return 0;
+  return items.reduce((sum, item) => sum + (Number(item.total_hours) || (Number(item.quantity) * Number(item.hours_per_unit))), 0);
+};
 
 onMounted(() => {
   fetchPlans();
@@ -4628,4 +5007,579 @@ button:disabled, .primary-btn:disabled, .confirm-btn:disabled {
   opacity: 0.5 !important;
   cursor: not-allowed !important;
 }
+
+
+/* ========================================================
+   Scope & Deliverables Styles (عناصر ومخرجات الخطة والساعات)
+   ======================================================== */
+.plan-scope-section {
+  background: rgba(13, 20, 48, 0.7);
+  border: 1px solid rgba(138, 155, 235, 0.25);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 14px 0 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.scope-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.scope-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.scope-icon {
+  font-size: 22px;
+  background: rgba(125, 232, 220, 0.12);
+  border: 1px solid rgba(125, 232, 220, 0.25);
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+}
+
+.scope-title h4 {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.scope-title p {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: #8fa0d4;
+}
+
+.scope-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stat-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11.5px;
+}
+
+.stat-badge.count-badge {
+  background: rgba(125, 232, 220, 0.12);
+  border: 1px solid rgba(125, 232, 220, 0.3);
+  color: #7de8dc;
+}
+
+.stat-badge.hours-badge {
+  background: rgba(251, 191, 36, 0.15);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  color: #fbbf24;
+  font-weight: 700;
+}
+
+.quick-add-bar {
+  background: rgba(10, 16, 40, 0.6);
+  border: 1px solid rgba(138, 155, 235, 0.18);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 14px;
+}
+
+.quick-add-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.quick-add-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #cbd5e1;
+}
+
+.quick-add-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.quick-batch-btn {
+  background: rgba(125, 232, 220, 0.12);
+  border: 1px solid rgba(125, 232, 220, 0.3);
+  color: #7de8dc;
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.quick-batch-btn:hover {
+  background: rgba(125, 232, 220, 0.25);
+  color: #ffffff;
+}
+
+.quick-batch-btn.clear-btn {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #f87171;
+}
+
+.quick-batch-btn.clear-btn:hover {
+  background: rgba(239, 68, 68, 0.25);
+  color: #ffffff;
+}
+
+.quick-chips-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.quick-item-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(99, 102, 241, 0.14);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  color: #c7d2fe;
+  font-size: 11.5px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.quick-item-chip:hover {
+  background: rgba(99, 102, 241, 0.28);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.quick-item-chip.chip-selected {
+  background: rgba(16, 185, 129, 0.18);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #6ee7b7;
+}
+
+.chip-plus {
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.chip-name {
+  font-weight: 600;
+}
+
+.chip-hours {
+  color: #fbbf24;
+  font-size: 10.5px;
+}
+
+.chip-count-tag {
+  background: #10b981;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scope-items-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid rgba(138, 155, 235, 0.2);
+  border-radius: 9px;
+  margin-bottom: 12px;
+  background: rgba(8, 12, 34, 0.6);
+}
+
+.scope-items-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.scope-items-table th {
+  background: rgba(138, 155, 235, 0.08);
+  color: #94a3b8;
+  padding: 8px 12px;
+  text-align: right;
+  font-weight: 700;
+  font-size: 11.5px;
+  border-bottom: 1px solid rgba(138, 155, 235, 0.15);
+}
+
+.scope-items-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid rgba(138, 155, 235, 0.08);
+  vertical-align: middle;
+}
+
+.scope-input {
+  background: rgba(10, 16, 42, 0.85);
+  border: 1px solid rgba(138, 155, 235, 0.25);
+  border-radius: 7px;
+  padding: 6px 10px;
+  color: #ffffff;
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+  width: 100%;
+  transition: border-color 0.2s;
+}
+
+.scope-input:focus {
+  border-color: #7de8dc;
+  box-shadow: 0 0 8px rgba(125, 232, 220, 0.25);
+}
+
+.qty-stepper {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(10, 16, 42, 0.85);
+  border: 1px solid rgba(138, 155, 235, 0.3);
+  border-radius: 7px;
+  overflow: hidden;
+}
+
+.stepper-btn {
+  background: rgba(138, 155, 235, 0.1);
+  border: none;
+  color: #7de8dc;
+  padding: 5px 9px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.stepper-btn:hover {
+  background: rgba(138, 155, 235, 0.25);
+}
+
+.stepper-input {
+  width: 44px;
+  text-align: center;
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 700;
+  outline: none;
+  -moz-appearance: textfield;
+}
+
+.stepper-input::-webkit-outer-spin-button,
+.stepper-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.unit-hours-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.hours-field {
+  width: 60px;
+  text-align: center;
+}
+
+.unit-text {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.item-total-hours {
+  color: #fbbf24;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.remove-scope-btn {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #f87171;
+  border-radius: 6px;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 11px;
+  transition: all 0.2s;
+}
+
+.remove-scope-btn:hover {
+  background: rgba(239, 68, 68, 0.3);
+  color: #ffffff;
+}
+
+.scope-items-table tfoot td {
+  background: rgba(138, 155, 235, 0.08);
+  border-top: 1px solid rgba(138, 155, 235, 0.2);
+  padding: 10px 12px;
+}
+
+.total-label {
+  text-align: left;
+  font-size: 12px;
+  color: #cbd5e1;
+}
+
+.total-value {
+  text-align: center;
+  color: #fbbf24;
+  font-size: 13.5px;
+}
+
+.empty-scope-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(10, 16, 40, 0.4);
+  border: 1px dashed rgba(138, 155, 235, 0.2);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 11.5px;
+  color: #8c9ac9;
+  margin-bottom: 12px;
+}
+
+.add-custom-item-row {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.add-custom-btn {
+  background: rgba(125, 232, 220, 0.08);
+  border: 1px dashed rgba(125, 232, 220, 0.35);
+  color: #7de8dc;
+  font-size: 11.5px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.add-custom-btn:hover {
+  background: rgba(125, 232, 220, 0.18);
+  color: #a0f5ec;
+}
+
+/* شارات الساعات على الكروت والجدول */
+.plan-hours-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 6px;
+  padding: 2px 7px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.plan-hours-badge-table {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 5px;
+  padding: 1px 5px;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+
+/* قسم مخرجات الخطة في نافذة التفاصيل */
+.details-scope-block {
+  background: rgba(14, 21, 52, 0.7);
+  border: 1px solid rgba(138, 155, 235, 0.2);
+  border-radius: 12px;
+  padding: 14px;
+  margin-top: 16px;
+}
+
+.details-scope-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(138, 155, 235, 0.15);
+}
+
+.details-scope-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.details-scope-badge {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  padding: 3px 9px;
+  border-radius: 20px;
+}
+
+.details-scope-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.details-scope-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(8, 12, 34, 0.6);
+  border: 1px solid rgba(138, 155, 235, 0.1);
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.scope-card-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.scope-item-bullet {
+  color: #7de8dc;
+  font-size: 14px;
+}
+
+.scope-card-title {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.scope-card-metrics {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.scope-metric-badge {
+  padding: 2px 7px;
+  border-radius: 5px;
+}
+
+.scope-metric-badge.qty-badge {
+  background: rgba(125, 232, 220, 0.12);
+  color: #7de8dc;
+  border: 1px solid rgba(125, 232, 220, 0.25);
+}
+
+.scope-metric-badge.hours-badge {
+  background: rgba(138, 155, 235, 0.1);
+  color: #cbd5e1;
+}
+
+.scope-metric-badge.total-badge {
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
+  font-weight: 700;
+  border: 1px solid rgba(251, 191, 36, 0.25);
+}
+
+
+
+/* عناصر ومخرجات الخطة على كروت ContentPlans */
+.card-items-scope-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.card-scope-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(125, 232, 220, 0.08);
+  border: 1px solid rgba(125, 232, 220, 0.22);
+  color: #e2e8f0;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 11px;
+  transition: all 0.2s ease;
+}
+
+.card-scope-pill:hover {
+  background: rgba(125, 232, 220, 0.18);
+  border-color: rgba(125, 232, 220, 0.4);
+  transform: translateY(-1px);
+}
+
+.card-scope-pill .pill-qty {
+  color: #7de8dc;
+  font-weight: 800;
+  font-size: 11px;
+}
+
+.card-scope-pill .pill-name {
+  color: #f8fafc;
+  font-weight: 600;
+}
+
+.table-items-scope-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.table-scope-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(125, 232, 220, 0.08);
+  border: 1px solid rgba(125, 232, 220, 0.2);
+  color: #cbd5e1;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 10px;
+}
+
+.table-scope-pill strong {
+  color: #7de8dc;
+}
+
 </style>

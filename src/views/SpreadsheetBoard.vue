@@ -30,6 +30,49 @@
       </div>
 
       <div class="header-actions">
+        <!-- روابط مجلدات درايف للعميل (رفع المراجعة والتسليم النهائي) -->
+        <div v-if="reviewFolderLink || finalDeliveryFolderLink" class="drive-folders-group">
+          <a
+            v-if="reviewFolderLink"
+            :href="formatExternalUrl(reviewFolderLink)"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="drive-folder-btn review-btn"
+            title="فتح مجلد رفع المراجعة على Google Drive للعميل"
+          >
+            <svg class="drive-icon" viewBox="0 0 87.3 78" width="15" height="15" aria-hidden="true">
+              <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
+              <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44c-.8 1.4-1.2 2.95-1.2 4.5h27.5z" fill="#00ac47"/>
+              <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
+              <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
+              <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
+              <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
+            </svg>
+            <span class="btn-text">مجلد رفع المراجعة</span>
+            <span class="external-arrow" aria-hidden="true">↗</span>
+          </a>
+
+          <a
+            v-if="finalDeliveryFolderLink"
+            :href="formatExternalUrl(finalDeliveryFolderLink)"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="drive-folder-btn final-btn"
+            title="فتح مجلد التسليم النهائي على Google Drive للعميل"
+          >
+            <svg class="drive-icon" viewBox="0 0 87.3 78" width="15" height="15" aria-hidden="true">
+              <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
+              <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44c-.8 1.4-1.2 2.95-1.2 4.5h27.5z" fill="#00ac47"/>
+              <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
+              <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
+              <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
+              <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
+            </svg>
+            <span class="btn-text">مجلد التسليم النهائي</span>
+            <span class="external-arrow" aria-hidden="true">↗</span>
+          </a>
+        </div>
+
         <!-- تفعيل التكرار التلقائي للمدير فقط -->
         <AutoRecurrenceToggle
           v-if="currentUser?.role === 'manager' && currentPlan"
@@ -965,6 +1008,89 @@ const currentUser = ref(getStoredUser());
 const currentPlan = ref(null);
 const isPlanResponsible = ref(false);
 
+const formatExternalUrl = (url) => {
+  if (!url) return '#';
+  const str = String(url).trim();
+  return /^https?:\/\//i.test(str) ? str : `https://${str}`;
+};
+
+// روابط مجلدات جوجل درايف للعميل (المراجعة والتسليم النهائي)
+const reviewFolderLink = computed(() => {
+  if (!currentPlan.value) return null;
+
+  // 1. من كائن folders المدمج في الخطة
+  const directLink = currentPlan.value.folders?.review_link;
+  if (directLink && typeof directLink === 'string' && directLink.trim() !== '') {
+    return directLink.trim();
+  }
+
+  // 2. من كائن العميل client
+  const clientReview = currentPlan.value.client?.review_link;
+  if (clientReview && typeof clientReview === 'string' && clientReview.trim() !== '') {
+    return clientReview.trim();
+  }
+
+  // 3. من مصفوفة أو كائن drive_links في بيانات العميل
+  const driveLinks = currentPlan.value.client?.drive_links || currentPlan.value.client?.driveLinks;
+  if (Array.isArray(driveLinks)) {
+    const rf = driveLinks.find(d => 
+      d && (d.title === 'رابط مراجعة خطط' || d.title?.includes('مراجعة خطط') || d.title?.includes('مراجعة') || d.type === 'review')
+    );
+    if (rf && (rf.url || rf.link) && String(rf.url || rf.link).trim() !== '') {
+      return String(rf.url || rf.link).trim();
+    }
+  } else if (driveLinks && typeof driveLinks === 'object') {
+    if (driveLinks.review_link && String(driveLinks.review_link).trim() !== '') {
+      return String(driveLinks.review_link).trim();
+    }
+  }
+
+  // 4. خيار احتياطي من الخطة مباشرة
+  if (currentPlan.value.review_link && typeof currentPlan.value.review_link === 'string' && currentPlan.value.review_link.trim() !== '') {
+    return currentPlan.value.review_link.trim();
+  }
+
+  return null;
+});
+
+const finalDeliveryFolderLink = computed(() => {
+  if (!currentPlan.value) return null;
+
+  // 1. من كائن folders المدمج في الخطة
+  const directLink = currentPlan.value.folders?.final_delivery_link;
+  if (directLink && typeof directLink === 'string' && directLink.trim() !== '') {
+    return directLink.trim();
+  }
+
+  // 2. من كائن العميل client
+  const clientFinal = currentPlan.value.client?.final_delivery_link;
+  if (clientFinal && typeof clientFinal === 'string' && clientFinal.trim() !== '') {
+    return clientFinal.trim();
+  }
+
+  // 3. من مصفوفة أو كائن drive_links في بيانات العميل
+  const driveLinks = currentPlan.value.client?.drive_links || currentPlan.value.client?.driveLinks;
+  if (Array.isArray(driveLinks)) {
+    const ff = driveLinks.find(d => 
+      d && (d.title === 'رابط تسليم نهائي خطط' || d.title?.includes('تسليم نهائي خطط') || d.title?.includes('تسليم نهائي') || d.type === 'final_delivery')
+    );
+    if (ff && (ff.url || ff.link) && String(ff.url || ff.link).trim() !== '') {
+      return String(ff.url || ff.link).trim();
+    }
+  } else if (driveLinks && typeof driveLinks === 'object') {
+    if (driveLinks.final_delivery_link && String(driveLinks.final_delivery_link).trim() !== '') {
+      return String(driveLinks.final_delivery_link).trim();
+    }
+  }
+
+  // 4. خيار احتياطي من الخطة مباشرة
+  if (currentPlan.value.final_delivery_link && typeof currentPlan.value.final_delivery_link === 'string' && currentPlan.value.final_delivery_link.trim() !== '') {
+    return currentPlan.value.final_delivery_link.trim();
+  }
+
+  return null;
+});
+
 const isMediaBuyer = computed(() => {
   return !isPlanResponsible.value && currentUser.value?.job_title === 'Media Buyer';
 });
@@ -1611,6 +1737,22 @@ const fetchCurrentPlan = async () => {
     if (checkIfResponsibleFromPlan(currentPlan.value)) {
       isPlanResponsible.value = true;
     }
+    // في حال لم ترجع دالة العرض المنفردة كائن الـ folders، نتحقق من قائمة الخطط
+    if (!currentPlan.value?.folders && !currentPlan.value?.client?.drive_links) {
+      try {
+        const fallbackRes = await api.get('/content-plans');
+        const allPlans = fallbackRes.data.data || fallbackRes.data || [];
+        const planFromIndex = allPlans.find(p => String(p.id) === String(planId));
+        if (planFromIndex) {
+          if (planFromIndex.folders) currentPlan.value.folders = planFromIndex.folders;
+          if (planFromIndex.client) {
+            currentPlan.value.client = { ...(planFromIndex.client || {}), ...(currentPlan.value.client || {}) };
+          }
+        }
+      } catch (e) {
+        // silent fallback
+      }
+    }
   } catch (error) {
     try {
       const fallbackRes = await api.get('/content-plans');
@@ -1920,6 +2062,82 @@ onMounted(() => {
 .page-topline p { margin: 2px 0 0; color: #666; font-size: 11px; }
 
 .header-actions { display: flex; align-items: center; gap: 15px; }
+
+/* أزرار مجلدات درايف للعميل */
+.drive-folders-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.drive-folder-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  white-space: nowrap;
+}
+
+.drive-folder-btn .drive-icon {
+  flex-shrink: 0;
+}
+
+.drive-folder-btn .btn-text {
+  line-height: 1.2;
+}
+
+.drive-folder-btn .external-arrow {
+  font-size: 11px;
+  font-weight: bold;
+  opacity: 0.65;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.drive-folder-btn:hover .external-arrow {
+  transform: translate(-1px, -1px);
+  opacity: 1;
+}
+
+/* زر مجلد رفع المراجعة */
+.drive-folder-btn.review-btn {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+}
+
+.drive-folder-btn.review-btn:hover {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  color: #78350f;
+  box-shadow: 0 3px 8px rgba(245, 158, 11, 0.18);
+  transform: translateY(-1px);
+}
+
+/* زر مجلد التسليم النهائي */
+.drive-folder-btn.final-btn {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+}
+
+.drive-folder-btn.final-btn:hover {
+  background: #d1fae5;
+  border-color: #10b981;
+  color: #047857;
+  box-shadow: 0 3px 8px rgba(16, 185, 129, 0.18);
+  transform: translateY(-1px);
+}
+
+.drive-folder-btn:active {
+  transform: translateY(0);
+}
+
 .saving-indicator { font-size: 11px; color: #ff9800; display: flex; align-items: center; gap: 5px; font-weight: bold; }
 .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid #ff9800; border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; }
 .spinner.large { width: 30px; height: 30px; border-width: 3px; border-color: #2196f3; border-top-color: transparent; margin-bottom: 10px; }
@@ -2932,6 +3150,19 @@ input:disabled, select:disabled, textarea:disabled, .custom-multiselect.disabled
     flex-wrap: wrap;
     width: 100%;
     justify-content: space-between;
+    gap: 10px;
+  }
+  .drive-folders-group {
+    width: 100%;
+    order: 1;
+    display: flex;
+    gap: 6px;
+  }
+  .drive-folder-btn {
+    flex: 1;
+    justify-content: center;
+    padding: 6px 8px;
+    font-size: 11px;
   }
   .primary-btn {
     flex: 1;

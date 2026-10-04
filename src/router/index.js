@@ -112,6 +112,16 @@ const router = createRouter({
             role: 'manager',
           },
         },
+        {
+          path: '/settings',
+          name: 'Settings',
+          component: () => import('@/views/Settings.vue'),
+          meta: {
+            requiresAuth: true,
+            role: 'manager',
+            title: 'إعدادات النظام',
+          },
+        },
       ],
     },
   ],

@@ -61,6 +61,13 @@
               >
                 {{ plan.plan_type }}
               </span>
+              <span 
+                class="plan-hours-pill" 
+                v-if="Number(plan.total_estimated_hours) > 0"
+                :title="'إجمالي ساعات العمل: ' + plan.total_estimated_hours + ' ساعة'"
+              >
+                ⏱️ {{ plan.total_estimated_hours }}س
+              </span>
               <span class="plan-id-pill">#{{ ((currentPage - 1) * perPage) + index + 1 }}</span>
             </div>
           </div>
@@ -85,6 +92,27 @@
               <span class="duration-chip" v-if="parsePlan(plan).duration">
                 {{ parsePlan(plan).duration }}
               </span>
+            </div>
+
+            <!-- مخرجات وعناصر الخطة (مثل: 5 كاروسيل، 6 بوست ثابت) -->
+            <div class="plan-items-scope-box" v-if="plan.items && plan.items.length > 0">
+              <div class="scope-items-title">
+                <span>📦 مخرجات الخطة:</span>
+                <span v-if="Number(plan.total_estimated_hours) > 0" class="scope-total-hours" :title="'إجمالي ساعات العمل التقديرية'">
+                  ⏱️ {{ plan.total_estimated_hours }}س
+                </span>
+              </div>
+              <div class="scope-items-pills">
+                <span 
+                  v-for="item in plan.items" 
+                  :key="item.id" 
+                  class="scope-item-pill"
+                  :title="item.quantity + ' ' + item.item_name + (item.total_hours ? ' (' + item.total_hours + ' ساعة)' : '')"
+                >
+                  <strong class="pill-qty">{{ item.quantity }}</strong>
+                  <span class="pill-name">{{ item.item_name }}</span>
+                </span>
+              </div>
             </div>
           </div>
 
@@ -735,4 +763,86 @@ onMounted(() => fetchPlans(1));
     justify-content: center;
   }
 }
+
+
+/* مخرجات الخطة على الكارت (5 كاروسيل، 6 بوست ثابت) */
+.plan-items-scope-box {
+  margin-top: 10px;
+  padding: 8px 10px;
+  background: rgba(13, 20, 48, 0.65);
+  border: 1px solid rgba(138, 155, 235, 0.18);
+  border-radius: 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.scope-items-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 700;
+  color: #8fa0d4;
+}
+
+.scope-total-hours {
+  color: #fbbf24;
+  font-weight: 800;
+  font-size: 10.5px;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.28);
+  padding: 1px 6px;
+  border-radius: 5px;
+}
+
+.scope-items-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.scope-item-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(125, 232, 220, 0.08);
+  border: 1px solid rgba(125, 232, 220, 0.25);
+  color: #e2e8f0;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 11px;
+  transition: all 0.2s ease;
+}
+
+.scope-item-pill:hover {
+  background: rgba(125, 232, 220, 0.18);
+  border-color: rgba(125, 232, 220, 0.4);
+  transform: translateY(-1px);
+}
+
+.scope-item-pill .pill-qty {
+  color: #7de8dc;
+  font-weight: 800;
+  font-size: 11.5px;
+}
+
+.scope-item-pill .pill-name {
+  color: #f8fafc;
+  font-weight: 600;
+}
+
+.plan-hours-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  color: #fbbf24;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
 </style>

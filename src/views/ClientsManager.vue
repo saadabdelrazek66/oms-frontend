@@ -191,7 +191,7 @@
                     aria-label="حذف العميل"
                     @click="deleteClient(client.id)"
                   >
-                    ⌫
+                    🗑️
                   </button>
                 </div>
               </td>
@@ -273,7 +273,7 @@
                         @click="removeLogo"
                         title="إزالة الصورة"
                       >
-                        ✕ إزالة
+                        🗑️ إزالة
                       </button>
                     </div>
                   </div>
@@ -354,7 +354,7 @@
                 @click="removePhone(index)"
                 title="حذف الرقم"
               >
-                ×
+                🗑️
               </button>
             </div>
             <span v-if="!form.phones.length" class="empty-hint">لم يتم إضافة أرقام هاتف.</span>
@@ -380,7 +380,7 @@
                 @click="removeEmail(index)"
                 title="حذف الإيميل"
               >
-                ×
+                🗑️
               </button>
             </div>
             <span v-if="!form.emails.length" class="empty-hint">لم يتم إضافة بريد إلكتروني.</span>
@@ -464,7 +464,7 @@
                   @click="removeDriveLink(index)"
                   title="حذف الرابط"
                 >
-                  ×
+                  🗑️
                 </button>
               </div>
             </TransitionGroup>
@@ -524,7 +524,7 @@
                   @click="removeSocialLink(index)"
                   title="حذف المنصة"
                 >
-                  ×
+                  🗑️
                 </button>
               </div>
               <transition name="slide-fade">
@@ -567,7 +567,7 @@
                 @click="removeContact(index)"
                 title="حذف الشخص"
               >
-                ×
+                🗑️
               </button>
             </div>
             <span v-if="!form.contacts.length" class="empty-hint"

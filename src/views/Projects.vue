@@ -178,7 +178,7 @@
                 title="حذف المشروع"
                 aria-label="حذف"
               >
-                ⌫
+                🗑️
               </button>
             </div>
 

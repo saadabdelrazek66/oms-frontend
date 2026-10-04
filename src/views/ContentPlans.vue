@@ -136,73 +136,12 @@
           <p>متابعة دورات الإنتاج، المراجعة، ومواعيد التسليم</p>
         </div>
 
-        <div class="heading-actions-bar">
-          <!-- أزرار تبديل نمط العرض (كروت / جدول) -->
-          <div class="view-switcher">
-            <button 
-              type="button" 
-              class="switcher-btn" 
-              :class="{ active: viewMode === 'cards' }" 
-              @click="setViewMode('cards')"
-              title="عرض الكروت المنظمة (حديث ومبهر)"
-            >
-              <span>🔲</span> الكروت
-            </button>
-            <button 
-              type="button" 
-              class="switcher-btn" 
-              :class="{ active: viewMode === 'table' }" 
-              @click="setViewMode('table')"
-              title="عرض الجدول الممتد"
-            >
-              <span>📑</span> الجدول
-            </button>
-          </div>
-
-          <!-- أدوات التمرير السريع للجدول (تظهر فقط في وضع الجدول عند وجود Overflow) -->
-          <div class="table-scroll-tools" v-if="viewMode === 'table' && isOverflowing">
-            <span class="drag-hint">
-              <span class="hint-icon">🖐️</span>
-              <span>اسحب بالماوس أو Shift + العجلة</span>
-            </span>
-            <div class="quick-nav-group">
-              <button
-                type="button"
-                class="quick-nav-btn"
-                :disabled="!canScrollRight"
-                @click="scrollTable('right')"
-                title="تمرير الجدول لليمين"
-                aria-label="تمرير الجدول لليمين"
-              >
-                <span>▶</span> لليمين
-              </button>
-              <button
-                type="button"
-                class="quick-nav-btn"
-                :disabled="!canScrollLeft"
-                @click="scrollTable('left')"
-                title="تمرير الجدول لليسار"
-                aria-label="تمرير الجدول لليسار"
-              >
-                لليسار <span>◀</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div class="legend" v-if="viewMode === 'table'">
-          <span><i class="green-dot"></i> مكتملة</span>
-          <span><i class="blue-dot"></i> جاهزة لمراجعة العميل</span>
-          <span><i class="purple-dot"></i> قيد المراجعة</span>
-          <span><i class="gray-dot"></i> قيد التنفيذ</span>
-          <span><i class="orange-dot"></i> مرفوضة</span>
-        </div>
       </div>
 
       <!-- ============================================== -->
-      <!-- 1. عرض الكروت المنظمة والحديثة (Cards View) -->
+      <!-- عرض الكروت المنظمة والحديثة (Cards View) -->
       <!-- ============================================== -->
-      <div v-if="viewMode === 'cards'" class="cards-view-container">
+      <div class="cards-view-container">
         <div v-if="loading" class="state-cell">
           <span class="spinner"></span> جارٍ تحميل خطط المحتوى...
         </div>
@@ -242,18 +181,6 @@
                     <span class="range-text">{{ formatShortDate(plan.start_date) }} ⭢ {{ formatShortDate(plan.end_date) }}</span>
                   </div>
 
-                  <!-- عناصر ومخرجات الخطة على الكارت -->
-                  <div class="card-items-scope-pills" v-if="plan.items && plan.items.length > 0">
-                    <span 
-                      v-for="item in plan.items" 
-                      :key="item.id" 
-                      class="card-scope-pill"
-                      :title="item.quantity + ' ' + item.item_name + (item.total_hours ? ' (' + item.total_hours + 'س)' : '')"
-                    >
-                      <strong class="pill-qty">{{ item.quantity }}</strong>
-                      <span class="pill-name">{{ item.item_name }}</span>
-                    </span>
-                  </div>
                 </div>
               </div>
 
@@ -264,38 +191,8 @@
                   <span>{{ getPlanStatusInfo(plan.status).text }}</span>
                 </div>
 
-                <!-- منطقة الإجراءات السريعة (Actions) الخاصة بكل خطة -->
+                <!-- أدوات الإدارة السريعة -->
                 <div class="card-quick-actions-bar">
-                  <!-- روابط مجلدات العميل (لوصول سريع للرفع) -->
-                  <div class="drive-quick-actions" v-if="getPlanFolders(plan).review_link || getPlanFolders(plan).final_delivery_link">
-                    <!-- الزر الأول: مجلد المراجعة -->
-                    <a 
-                      v-if="getPlanFolders(plan).review_link" 
-                      :href="formatExternalUrl(getPlanFolders(plan).review_link)" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      class="quick-icon-btn folder-review" 
-                      title="مجلد المراجعة 📁 (Google Drive) - لوصول سريع للرفع والمراجعة"
-                      aria-label="مجلد المراجعة"
-                    >
-                      📁
-                    </a>
-
-                    <!-- الزر الثاني: مجلد التسليم النهائي -->
-                    <a 
-                      v-if="getPlanFolders(plan).final_delivery_link" 
-                      :href="formatExternalUrl(getPlanFolders(plan).final_delivery_link)" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      class="quick-icon-btn folder-final" 
-                      title="مجلد التسليم النهائي 📁 (Google Drive) - لوصول سريع لملفات التسليم"
-                      aria-label="مجلد التسليم النهائي"
-                    >
-                      📂
-                    </a>
-                  </div>
-
-                  <!-- أدوات الإدارة للمدير السريعة -->
                   <div class="admin-quick-actions" v-if="user && (user.role === 'manager' || user.job_title === 'Account Manager')">
                     <button 
                       v-if="plan.status !== 'completed'"
@@ -309,247 +206,451 @@
                     </button>
                     <button class="quick-icon-btn duplicate" type="button" title="استنساخ كقالب" @click="openDuplicateModal(plan)">⎘</button>
                     <button class="quick-icon-btn edit" type="button" title="تعديل الخطة" @click="openManagerModal(plan)">✎</button>
-                    <button class="quick-icon-btn delete" type="button" title="حذف الخطة" @click="deletePlan(plan.id)">⌫</button>
+                    <button class="quick-icon-btn delete" type="button" title="حذف الخطة" @click="deletePlan(plan.id)">🗑️</button>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- صف الأدوار وفريق العمل -->
-            <div class="team-roles-panel">
-              <div class="team-role-item" :title="'المسؤول: ' + (getRoleNames(plan.users, 'responsible') || 'غير محدد')">
-                <span class="role-icon-crown">👑</span>
-                <div class="role-data">
-                  <span class="role-name-caption">المسؤول</span>
-                  <span class="role-user-val">{{ getRoleNames(plan.users, 'responsible') || '—' }}</span>
-                </div>
-              </div>
+            <!-- مخرجات وعناصر الخطة تظهر أفقياً جنب بعض لتوفير مساحة رأسية -->
+            <div class="card-items-scope-row" v-if="plan.items && plan.items.length > 0">
+              <span 
+                v-for="item in plan.items" 
+                :key="item.id || item.item_name" 
+                class="card-scope-pill"
+                :title="item.quantity + ' ' + item.item_name + (item.total_hours ? ' (' + item.total_hours + 'س)' : '')"
+              >
+                <strong class="pill-qty">{{ item.quantity }}</strong>
+                <span class="pill-name">{{ item.item_name }}</span>
+              </span>
+            </div>
 
-              <div class="team-role-item" :title="plan.requires_review ? ('المراجع: ' + (getRoleNames(plan.users, 'reviewer') || 'غير محدد')) : 'لا تتطلب مراجعة'">
-                <span class="role-icon-eye">👁️</span>
-                <div class="role-data">
-                  <span class="role-name-caption">المراجع</span>
-                  <span class="role-user-val" v-if="plan.requires_review">{{ getRoleNames(plan.users, 'reviewer') || '—' }}</span>
-                  <span class="role-user-val muted" v-else>بدون مراجعة</span>
-                </div>
-              </div>
+            <!-- شريط فريق العمل المدمج والأنيق -->
+            <div class="team-roles-strip">
+              <span class="role-inline-tag" :title="'المسؤول: ' + (getRoleNames(plan.users, 'responsible') || 'غير محدد')">
+                <span class="role-emoji">👑</span>
+                <span class="role-lbl">المسؤول:</span>
+                <span class="role-val">{{ getRoleNames(plan.users, 'responsible') || '—' }}</span>
+              </span>
 
-              <div class="team-role-item" :title="'المنفذين: ' + (getRoleNames(plan.users, 'executor') || 'غير محدد')">
-                <span class="role-icon-bolt">⚡</span>
-                <div class="role-data">
-                  <span class="role-name-caption">المنفذين</span>
-                  <span class="role-user-val">{{ getRoleNames(plan.users, 'executor') || '—' }}</span>
+              <span class="role-separator" v-if="plan.requires_review">·</span>
+
+              <span class="role-inline-tag" v-if="plan.requires_review" :title="'المراجع: ' + (getRoleNames(plan.users, 'reviewer') || 'غير محدد')">
+                <span class="role-emoji">👁️</span>
+                <span class="role-lbl">المراجع:</span>
+                <span class="role-val">{{ getRoleNames(plan.users, 'reviewer') || '—' }}</span>
+              </span>
+
+              <span class="role-separator">·</span>
+
+              <span class="role-inline-tag" :title="'المنفذين: ' + (getRoleNames(plan.users, 'executor') || 'غير محدد')">
+                <span class="role-emoji">⚡</span>
+                <span class="role-lbl">المنفذين:</span>
+                <span class="role-val">{{ getRoleNames(plan.users, 'executor') || '—' }}</span>
+              </span>
+            </div>
+
+            <!-- الأكورديون الزمني الذكي والمراحل المنسدلة (Chic Smart Timeline Accordion) -->
+            <div class="card-timeline-accordion" dir="rtl">
+              <!-- المراحل الأربعة المنسدلة (4 Collapsible Accordion Stages) -->
+              <div class="accordion-stages-list">
+                
+                <!-- ================= المرحلة 1: تسليم ابتدائي ================= -->
+                <div class="accordion-stage-card" :class="[getStageState(plan, 1).class, { 'is-expanded': isStageOpen(plan, 1) }]">
+                  <div class="stage-accordion-header" @click="toggleStage(plan, 1)">
+                    <div class="header-main-info">
+                      <span class="stage-node-badge">{{ getStageState(plan, 1).icon }}</span>
+                      <span class="stage-header-title">1. تسليم ابتدائي</span>
+                      <span class="current-stage-tag" v-if="getActiveStageNumber(plan) === 1 && plan.status !== 'completed'">● النشطة</span>
+                      <span class="stage-header-date" v-if="plan.planned_initial_delivery_date">
+                        ({{ formatDate(plan.planned_initial_delivery_date) }})
+                      </span>
+                    </div>
+
+                    <div class="header-status-side">
+                      <span class="stage-status-chip" :class="getStageState(plan, 1).class">
+                        {{ getStageState(plan, 1).label }}
+                      </span>
+                      <span class="chevron-arrow" :class="{ 'open': isStageOpen(plan, 1) }">▾</span>
+                    </div>
+                  </div>
+
+                  <!-- المحتوى المنسدل للمرحلة 1 -->
+                  <div class="stage-accordion-drawer" v-show="isStageOpen(plan, 1)">
+                    <div class="drawer-inner-content">
+                      <div class="drawer-info-grid">
+                        <div class="drawer-meta-item">
+                          <span class="meta-label">موعد التسليم:</span>
+                          <span class="meta-val" :class="{ 'highlight': plan.planned_initial_delivery_date }">
+                            {{ plan.planned_initial_delivery_date ? formatDate(plan.planned_initial_delivery_date) : 'غير محدد' }}
+                          </span>
+                        </div>
+                        <div class="drawer-meta-item" v-if="plan.actual_initial_delivery_date">
+                          <span class="meta-label">تم التسليم الفعلي:</span>
+                          <span class="meta-val success-val">{{ formatDate(plan.actual_initial_delivery_date) }}</span>
+                        </div>
+                      </div>
+
+                      <!-- عداد SLA للتسليم الابتدائي -->
+                      <div class="drawer-sla-bar" v-if="plan.planned_initial_delivery_date && (plan.status === 'pending' || plan.status === 'rejected')">
+                        <div class="sla-meta-row">
+                          <span class="sla-caption">مؤشر الإنجاز:</span>
+                          <span class="sla-msg" :class="getDeadlineStatus(plan.created_at || plan.start_date, plan.planned_initial_delivery_date, plan.status, currentTime).class + '-text'">
+                            {{ getDeadlineStatus(plan.created_at || plan.start_date, plan.planned_initial_delivery_date, plan.status, currentTime).message }}
+                          </span>
+                        </div>
+                        <div class="sla-progress-track">
+                          <div class="sla-progress-fill" :class="getDeadlineStatus(plan.created_at || plan.start_date, plan.planned_initial_delivery_date, plan.status, currentTime).class + '-bg'" :style="{ width: getDeadlineStatus(plan.created_at || plan.start_date, plan.planned_initial_delivery_date, plan.status, currentTime).percentage + '%' }"></div>
+                        </div>
+                      </div>
+
+                      <!-- أزرار وروابط المرحلة 1 -->
+                      <div class="drawer-actions-row">
+                        <!-- زر تسليم للمراجعة للمسؤول أو المنفذ -->
+                        <div v-if="canSubmitForReview(plan) && (plan.status === 'pending' || plan.status === 'rejected')" class="main-action-wrap">
+                          <div v-if="!hasPlanLink(plan)" class="plan-link-warning-pill" @click="submitForReview(plan)" title="اضغط لإضافة رابط البلان والتسليم للمراجعة">
+                            <span>⚠️ يجب إضافة رابط البلان أولاً</span>
+                          </div>
+                          <button 
+                            class="drawer-primary-btn" 
+                            :class="{ 'btn-missing-link': !hasPlanLink(plan) }" 
+                            type="button" 
+                            :disabled="actionLoading === `submit-review-${plan.id}`" 
+                            @click="submitForReview(plan)"
+                            :title="!hasPlanLink(plan) ? 'اضغط لإضافة رابط البلان والتسليم للمراجعة' : 'تسليم الخطة للمراجعة'"
+                          >
+                            {{ actionLoading === `submit-review-${plan.id}` ? 'جارٍ...' : 'تسليم للمراجعة 📤' }}
+                          </button>
+                        </div>
+
+                        <div v-else-if="plan.actual_initial_delivery_date || ['under_review', 'reviewed', 'completed'].includes(plan.status)" class="drawer-status-pill success-pill">
+                          ✓ تم تسليم البلان للمراجعة
+                        </div>
+
+                        <div class="drawer-links-group">
+                          <a 
+                            v-if="getPlanFolders(plan).review_link" 
+                            class="drawer-link-pill folder-rev" 
+                            :href="formatExternalUrl(getPlanFolders(plan).review_link)" 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            title="مجلد المراجعة (Google Drive) - لرفع ملفات البوستات"
+                          >
+                            <span>📁</span> مجلد الرفع
+                          </a>
+                          <a 
+                            v-if="hasPlanLink(plan)" 
+                            class="drawer-link-pill plan-link" 
+                            :href="getPlanFileLink(plan).startsWith('http') ? getPlanFileLink(plan) : 'https://' + getPlanFileLink(plan)" 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            title="فتح رابط البلان"
+                          >
+                            <span>🔗</span> رابط البلان
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
+
+                <!-- ================= المرحلة 2: مراجعة داخلية ================= -->
+                <div class="accordion-stage-card" :class="[getStageState(plan, 2).class, { 'is-expanded': isStageOpen(plan, 2) }]">
+                  <div class="stage-accordion-header" @click="toggleStage(plan, 2)">
+                    <div class="header-main-info">
+                      <span class="stage-node-badge">{{ getStageState(plan, 2).icon }}</span>
+                      <span class="stage-header-title">2. مراجعة داخلية</span>
+                      <span class="current-stage-tag" v-if="getActiveStageNumber(plan) === 2 && plan.status !== 'completed'">● النشطة</span>
+                      <span class="stage-header-date" v-if="plan.requires_review && plan.planned_review_date">
+                        ({{ formatDate(plan.planned_review_date) }})
+                      </span>
+                    </div>
+
+                    <div class="header-status-side">
+                      <span class="stage-status-chip" :class="getStageState(plan, 2).class">
+                        {{ getStageState(plan, 2).label }}
+                      </span>
+                      <span class="chevron-arrow" :class="{ 'open': isStageOpen(plan, 2) }">▾</span>
+                    </div>
+                  </div>
+
+                  <!-- المحتوى المنسدل للمرحلة 2 -->
+                  <div class="stage-accordion-drawer" v-show="isStageOpen(plan, 2)">
+                    <div class="drawer-inner-content">
+                      <template v-if="plan.requires_review">
+                        <div class="drawer-info-grid">
+                          <div class="drawer-meta-item">
+                            <span class="meta-label">موعد الإنهاء:</span>
+                            <span class="meta-val">{{ plan.planned_review_date ? formatDate(plan.planned_review_date) : 'غير محدد' }}</span>
+                          </div>
+                          <div class="drawer-meta-item" v-if="plan.actual_review_date">
+                            <span class="meta-label">تم الاعتماد في:</span>
+                            <span class="meta-val success-val">{{ formatDate(plan.actual_review_date) }}</span>
+                          </div>
+                        </div>
+
+                        <!-- عداد SLA أثناء المراجعة -->
+                        <div class="drawer-sla-bar" v-if="plan.planned_review_date && (plan.status === 'under_review' || (!plan.planned_initial_delivery_date && ['pending', 'rejected'].includes(plan.status)))">
+                          <div class="sla-meta-row">
+                            <span class="sla-caption">مؤشر ديدلاين المراجعة:</span>
+                            <span class="sla-msg" :class="getDeadlineStatus(plan.actual_initial_delivery_date || plan.created_at || plan.start_date, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).class + '-text'">
+                              {{ getDeadlineStatus(plan.actual_initial_delivery_date || plan.created_at || plan.start_date, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).message }}
+                            </span>
+                          </div>
+                          <div class="sla-progress-track" v-if="!['reviewed', 'completed'].includes(plan.status)">
+                            <div class="sla-progress-fill" :class="getDeadlineStatus(plan.actual_initial_delivery_date || plan.created_at || plan.start_date, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).class + '-bg'" :style="{ width: getDeadlineStatus(plan.actual_initial_delivery_date || plan.created_at || plan.start_date, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).percentage + '%' }"></div>
+                          </div>
+                        </div>
+                      </template>
+                      <div v-else class="drawer-skipped-msg">
+                        <span>— هذه الخطة لا تتطلب مراجعة داخلية —</span>
+                      </div>
+
+                      <!-- أزرار المرحلة 2 -->
+                      <div class="drawer-actions-row">
+                        <!-- أزرار الاعتماد والرفض للمراجع أو المدير -->
+                        <div v-if="isUserReviewer(plan) && plan.status === 'under_review'" class="duo-action-btns">
+                          <button class="drawer-action-btn accept-btn" :disabled="actionLoading === `approve-${plan.id}`" @click="approvePlan(plan)">
+                            اعتماد الخطة ✅
+                          </button>
+                          <button class="drawer-action-btn reject-btn" :disabled="actionLoading === `reject-${plan.id}`" @click="openRejectModal(plan)">
+                            طلب تعديلات ❌
+                          </button>
+                        </div>
+
+                        <!-- شارة قيد المراجعة للآخرين -->
+                        <div v-else-if="plan.status === 'under_review'" class="drawer-status-pill warning-pill">
+                          <span>⏳ الخطة قيد المراجعة الداخلية حالياً</span>
+                        </div>
+
+                        <!-- زر أسباب الرفض -->
+                        <div v-else-if="plan.status === 'rejected'" class="main-action-wrap">
+                          <button class="drawer-action-btn rejections-btn" type="button" @click="openRejectionsModal(plan)">
+                            عرض أسباب الرفض والملاحظات 📄
+                          </button>
+                        </div>
+
+                        <span v-else-if="plan.requires_review && plan.status === 'pending'" class="drawer-muted-hint">
+                          بانتظار التسليم الابتدائي للمراجعة
+                        </span>
+                        <span v-else-if="plan.requires_review && ['reviewed', 'completed'].includes(plan.status)" class="drawer-status-pill success-pill">
+                          ✓ تم إنهاء المراجعة والاعتماد بنجاح
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ================= المرحلة 3: متابعة مع العميل ================= -->
+                <div class="accordion-stage-card" :class="[getStageState(plan, 3).class, { 'is-expanded': isStageOpen(plan, 3) }]">
+                  <div class="stage-accordion-header" @click="toggleStage(plan, 3)">
+                    <div class="header-main-info">
+                      <span class="stage-node-badge">{{ getStageState(plan, 3).icon }}</span>
+                      <span class="stage-header-title">3. متابعة مع العميل</span>
+                      <span class="current-stage-tag" v-if="getActiveStageNumber(plan) === 3 && plan.status !== 'completed'">● النشطة</span>
+                      <span class="stage-header-count" v-if="getFollowUps(plan).length > 0">
+                        ({{ getFollowUps(plan).length }} ملاحظة)
+                      </span>
+                    </div>
+
+                    <div class="header-status-side">
+                      <span class="stage-status-chip" :class="getStageState(plan, 3).class">
+                        {{ getStageState(plan, 3).label }}
+                      </span>
+                      <span class="chevron-arrow" :class="{ 'open': isStageOpen(plan, 3) }">▾</span>
+                    </div>
+                  </div>
+
+                  <!-- المحتوى المنسدل للمرحلة 3 -->
+                  <div class="stage-accordion-drawer" v-show="isStageOpen(plan, 3)">
+                    <div class="drawer-inner-content">
+                      <div class="followup-drawer-info">
+                        <div class="followup-count-tag" :class="{ 'has-items': getFollowUps(plan).length > 0 }">
+                          <span class="badge-num">{{ getFollowUps(plan).length }}</span>
+                          <span>ملاحظات وتحديثات مسجلة مع العميل</span>
+                        </div>
+
+                        <div v-if="getFollowUps(plan).length > 0" class="latest-feedback-card" :title="getFollowUps(plan)[getFollowUps(plan).length - 1]?.client_feedback">
+                          <span class="quote-icon">💬</span>
+                          <span class="feedback-text">
+                            آخر ملاحظة: {{ getFollowUps(plan)[getFollowUps(plan).length - 1]?.client_feedback ? (getFollowUps(plan)[getFollowUps(plan).length - 1]?.client_feedback.length > 55 ? getFollowUps(plan)[getFollowUps(plan).length - 1]?.client_feedback.slice(0, 55) + '...' : getFollowUps(plan)[getFollowUps(plan).length - 1]?.client_feedback) : 'تحديث مسجل' }}
+                          </span>
+                        </div>
+                        <span v-else-if="plan.status === 'completed'" class="drawer-muted-hint success-text">
+                          تمت المتابعة مع العميل واستكمال الخطة
+                        </span>
+                        <span v-else-if="plan.status === 'reviewed'" class="drawer-muted-hint ready-text">
+                          الخطة معتمدة داخلياً وجاهزة لإرسالها للعميل وتدوين الملاحظات
+                        </span>
+                        <span v-else class="drawer-muted-hint">
+                          تُتاح المتابعة بعد استكمال المراجعة الداخلية
+                        </span>
+                      </div>
+
+                      <div class="drawer-actions-row">
+                        <button 
+                          class="drawer-action-btn followup-btn" 
+                          type="button" 
+                          :disabled="plan.requires_review && !['reviewed', 'completed'].includes(plan.status) && getFollowUps(plan).length === 0"
+                          :title="plan.requires_review && !['reviewed', 'completed'].includes(plan.status) && getFollowUps(plan).length === 0 ? 'غير متاح قبل انتهاء المراجعة الداخلية' : 'فتح سجل ومتابعات العميل'"
+                          @click="openFollowUpsModal(plan)"
+                        >
+                          <span>💬</span> إدارة متابعات وملاحظات العميل ({{ getFollowUps(plan).length }})
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ================= المرحلة 4: التسليم النهائي ================= -->
+                <div class="accordion-stage-card" :class="[getStageState(plan, 4).class, { 'is-expanded': isStageOpen(plan, 4) }]">
+                  <div class="stage-accordion-header" @click="toggleStage(plan, 4)">
+                    <div class="header-main-info">
+                      <span class="stage-node-badge">{{ getStageState(plan, 4).icon }}</span>
+                      <span class="stage-header-title">4. التسليم النهائي</span>
+                      <span class="current-stage-tag" v-if="getActiveStageNumber(plan) === 4 && plan.status !== 'completed'">● النشطة</span>
+                      <span class="stage-header-date" v-if="plan.planned_delivery_date">
+                        ({{ formatDate(plan.planned_delivery_date) }})
+                      </span>
+                    </div>
+
+                    <div class="header-status-side">
+                      <span class="stage-status-chip" :class="getStageState(plan, 4).class">
+                        {{ getStageState(plan, 4).label }}
+                      </span>
+                      <span class="chevron-arrow" :class="{ 'open': isStageOpen(plan, 4) }">▾</span>
+                    </div>
+                  </div>
+
+                  <!-- المحتوى المنسدل للمرحلة 4 -->
+                  <div class="stage-accordion-drawer" v-show="isStageOpen(plan, 4)">
+                    <div class="drawer-inner-content">
+                      <div class="drawer-info-grid">
+                        <div class="drawer-meta-item">
+                          <span class="meta-label">موعد التسليم النهائي:</span>
+                          <span class="meta-val" :class="{ 'highlight': plan.planned_delivery_date }">
+                            {{ plan.planned_delivery_date ? formatDate(plan.planned_delivery_date) : 'غير محدد' }}
+                          </span>
+                        </div>
+                        <div class="drawer-meta-item" v-if="plan.actual_delivery_date">
+                          <span class="meta-label">تم التسليم في:</span>
+                          <span class="meta-val success-val">{{ formatDate(plan.actual_delivery_date) }}</span>
+                        </div>
+                      </div>
+
+                      <!-- عداد SLA النهائي -->
+                      <div class="drawer-sla-bar" v-if="plan.planned_delivery_date">
+                        <div class="sla-meta-row">
+                          <span class="sla-caption">ديدلاين العميل:</span>
+                          <span class="sla-msg" :class="getDeadlineStatus(plan.created_at || plan.start_date, plan.planned_delivery_date, plan.status, currentTime).class + '-text'">
+                            {{ getDeadlineStatus(plan.created_at || plan.start_date, plan.planned_delivery_date, plan.status, currentTime).message }}
+                          </span>
+                        </div>
+                        <div class="sla-progress-track" v-if="plan.status !== 'completed'">
+                          <div class="sla-progress-fill" :class="getDeadlineStatus(plan.created_at || plan.start_date, plan.planned_delivery_date, plan.status, currentTime).class + '-bg'" :style="{ width: getDeadlineStatus(plan.created_at || plan.start_date, plan.planned_delivery_date, plan.status, currentTime).percentage + '%' }"></div>
+                        </div>
+                      </div>
+
+                      <!-- أزرار المرحلة 4 -->
+                      <div class="drawer-actions-row">
+                        <!-- شارة اكتمال التسليم النهائي -->
+                        <div v-if="plan.status === 'completed'" class="drawer-status-pill success-pill">
+                          <span>🎉 تم التسليم النهائي للعميل بنجاح</span>
+                        </div>
+
+                        <!-- زر تأكيد التسليم النهائي -->
+                        <div v-else-if="isUserResponsible(plan) && (plan.status === 'reviewed' || (!plan.requires_review && (plan.status === 'pending' || plan.status === 'rejected')))" class="main-action-wrap">
+                          <div v-if="!hasPlanLink(plan)" class="plan-link-warning-pill" @click="submitFinalDelivery(plan)" title="اضغط لإضافة رابط البلان والتسليم النهائي">
+                            <span>⚠️ يجب إضافة رابط البلان أولاً</span>
+                          </div>
+                          <button 
+                            class="drawer-primary-btn final-btn" 
+                            :class="{ 'btn-missing-link': !hasPlanLink(plan) }"
+                            type="button" 
+                            :disabled="actionLoading === `delivery-${plan.id}`" 
+                            @click="submitFinalDelivery(plan)"
+                            :title="!hasPlanLink(plan) ? 'اضغط لإضافة رابط البلان والتسليم النهائي للعميل' : 'تأكيد التسليم النهائي للعميل'"
+                          >
+                            {{ actionLoading === `delivery-${plan.id}` ? 'جارٍ...' : 'تأكيد التسليم النهائي للعميل ✅' }}
+                          </button>
+                        </div>
+
+                        <span v-else-if="plan.requires_review && !['reviewed', 'completed'].includes(plan.status)" class="drawer-muted-hint">
+                          بانتظار إنهاء المراجعة الداخلية
+                        </span>
+                        <span v-else class="drawer-muted-hint">
+                          بانتظار إنهاء الدورة
+                        </span>
+
+                        <!-- رابط مجلد التسليم النهائي في درايف -->
+                        <div class="drawer-links-group" v-if="getPlanFolders(plan).final_delivery_link">
+                          <a 
+                            class="drawer-link-pill folder-final" 
+                            :href="formatExternalUrl(getPlanFolders(plan).final_delivery_link)" 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            title="مجلد التسليم النهائي 📂 (Google Drive)"
+                          >
+                            <span>📂</span> مجلد التسليم النهائي
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
               </div>
             </div>
 
-            <!-- شبكة معالم الإنجاز والـ SLA المزدوجة -->
-            <div class="milestones-card-grid">
-              <!-- 1. المراجعة الداخلية (المرحلة الأولى) -->
-              <div class="milestone-card-block review-block">
-                <div class="block-top">
-                  <span class="block-label">🔍 المراجعة الداخلية</span>
-                  <span class="block-date" v-if="plan.requires_review">إنهاء: {{ formatDate(plan.planned_review_date) }}</span>
-                  <span class="block-date muted" v-else>— غير مطلوبة —</span>
-                </div>
-
-                <!-- تفاصيل موعد التسليم الابتدائي للمراجعة (ديدلاين المنفذ) -->
-                <div v-if="plan.requires_review" class="initial-delivery-box">
-                  <div class="initial-delivery-row">
-                    <span class="id-label">موعد التسليم الابتدائي:</span>
-                    <span class="id-val" :class="{ 'id-highlight': plan.planned_initial_delivery_date }">
-                      {{ plan.planned_initial_delivery_date ? formatDate(plan.planned_initial_delivery_date) : 'غير محدد' }}
-                    </span>
-                  </div>
-
-                  <!-- شارة التسليم الفعلي إذا تم التسليم الابتدائي -->
-                  <div v-if="plan.actual_initial_delivery_date" class="actual-delivery-tag">
-                    <span class="tag-icon">✓</span>
-                    <span>تم التسليم الابتدائي: {{ formatDate(plan.actual_initial_delivery_date) }}</span>
-                  </div>
-
-                  <!-- عداد SLA للتسليم الابتدائي إذا لم يُسلّم بعد للمراجعة -->
-                  <div class="sla-indicator" v-else-if="plan.planned_initial_delivery_date && (plan.status === 'pending' || plan.status === 'rejected')">
-                    <span class="sla-msg" :class="getDeadlineStatus(plan.created_at || plan.start_date, plan.planned_initial_delivery_date, plan.status, currentTime).class + '-text'">
-                      {{ getDeadlineStatus(plan.created_at || plan.start_date, plan.planned_initial_delivery_date, plan.status, currentTime).message }}
-                    </span>
-                    <div class="sla-progress-bg">
-                      <div class="sla-progress-fill" :class="getDeadlineStatus(plan.created_at || plan.start_date, plan.planned_initial_delivery_date, plan.status, currentTime).class + '-bg'" :style="{ width: getDeadlineStatus(plan.created_at || plan.start_date, plan.planned_initial_delivery_date, plan.status, currentTime).percentage + '%' }"></div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- مؤشر SLA لإنهاء المراجعة عند دخول الخطة للمراجعة أو كاحتياطي -->
-                <div class="sla-indicator" v-if="plan.requires_review && plan.planned_review_date && (plan.status === 'under_review' || (!plan.planned_initial_delivery_date && ['pending', 'rejected'].includes(plan.status)))">
-                  <span class="sla-msg" :class="getDeadlineStatus(plan.actual_initial_delivery_date || plan.created_at || plan.start_date, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).class + '-text'">
-                    {{ getDeadlineStatus(plan.actual_initial_delivery_date || plan.created_at || plan.start_date, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).message }}
-                  </span>
-                  <div class="sla-progress-bg" v-if="!['reviewed', 'completed'].includes(plan.status)">
-                    <div class="sla-progress-fill" :class="getDeadlineStatus(plan.actual_initial_delivery_date || plan.created_at || plan.start_date, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).class + '-bg'" :style="{ width: getDeadlineStatus(plan.actual_initial_delivery_date || plan.created_at || plan.start_date, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).percentage + '%' }"></div>
-                  </div>
-                </div>
-                <div v-else-if="!plan.requires_review" class="no-review-placeholder">
-                  لا تتطلب مراجعة داخلية
-                </div>
-
-                <div class="block-action-slot">
-                  <!-- زر تسليم للمراجعة للمسؤول أو المنفذ أو الـ Account Manager أو المدير -->
-                  <div v-if="canSubmitForReview(plan) && plan.requires_review && (plan.status === 'pending' || plan.status === 'rejected')">
-                    <div v-if="!hasPlanLink(plan)" class="plan-link-warning-pill" @click="submitForReview(plan)" title="اضغط لإضافة رابط البلان والتسليم للمراجعة">
-                      <span>⚠️ يجب إضافة رابط البلان أولاً</span>
-                    </div>
-                    <button class="confirm-btn review full-w-btn" :class="{ 'btn-missing-link': !hasPlanLink(plan) }" type="button" :disabled="actionLoading === `submit-review-${plan.id}`" @click="submitForReview(plan)" :title="!hasPlanLink(plan) ? 'اضغط لإضافة رابط البلان والتسليم للمراجعة' : 'تسليم الخطة للمراجعة'">
-                      {{ actionLoading === `submit-review-${plan.id}` ? 'جارٍ...' : 'تسليم للمراجعة 📤' }}
-                    </button>
-                  </div>
-
-                  <!-- أزرار القبول والرفض للمراجع أو المدير -->
-                  <div v-if="isUserReviewer(plan) && plan.status === 'under_review'" class="review-btn-duo">
-                    <button class="confirm-btn accept-btn" :disabled="actionLoading === `approve-${plan.id}`" @click="approvePlan(plan)">قبول ✅</button>
-                    <button class="confirm-btn reject-btn" :disabled="actionLoading === `reject-${plan.id}`" @click="openRejectModal(plan)">رفض ❌</button>
-                  </div>
-                  <!-- شارة واضحة إذا كانت الخطة قيد المراجعة ولمن ليس لديه صلاحية مراجعة -->
-                  <div v-else-if="plan.status === 'under_review'" class="status-badge status-yellow full-w-badge text-center" style="justify-content:center;">
-                    <i></i> قيد المراجعة الداخلية حالياً
-                  </div>
-
-                  <div v-if="plan.status === 'rejected'">
-                    <button class="reject-reasons-btn full-w-btn mt-1" type="button" @click="openRejectionsModal(plan)">عرض أسباب الرفض 📄</button>
-                  </div>
-
-                  <span v-if="plan.requires_review && (plan.status === 'reviewed' || plan.status === 'completed')" class="review-done-badge">
-                    تمت المراجعة: {{ formatDate(plan.actual_review_date) }}
-                  </span>
-                </div>
-              </div>
-
-              <!-- 2. التسليم النهائي (المرحلة الثانية) -->
-              <div class="milestone-card-block delivery-block">
-                <div class="block-top">
-                  <span class="block-label">🏁 التسليم النهائي</span>
-                  <span class="block-date">{{ formatDate(plan.planned_delivery_date) }}</span>
-                </div>
-
-                <div class="sla-indicator" v-if="plan.planned_delivery_date">
-                  <span class="sla-msg" :class="getDeadlineStatus(plan.created_at || plan.start_date, plan.planned_delivery_date, plan.status, currentTime).class + '-text'">
-                    {{ getDeadlineStatus(plan.created_at || plan.start_date, plan.planned_delivery_date, plan.status, currentTime).message }}
-                  </span>
-                  <div class="sla-progress-bg" v-if="plan.status !== 'completed'">
-                    <div class="sla-progress-fill" :class="getDeadlineStatus(plan.created_at || plan.start_date, plan.planned_delivery_date, plan.status, currentTime).class + '-bg'" :style="{ width: getDeadlineStatus(plan.created_at || plan.start_date, plan.planned_delivery_date, plan.status, currentTime).percentage + '%' }"></div>
-                  </div>
-                </div>
-
-                <div class="block-action-slot">
-                  <div v-if="plan.status === 'completed'" class="status-badge status-green">
-                    <i></i> تم التسليم <small>{{ formatDate(plan.actual_delivery_date) }}</small>
-                  </div>
-                  <div v-else-if="isUserResponsible(plan) && (plan.status === 'reviewed' || (!plan.requires_review && (plan.status === 'pending' || plan.status === 'rejected')))">
-                    <div v-if="!hasPlanLink(plan)" class="plan-link-warning-pill" @click="submitFinalDelivery(plan)" title="اضغط لإضافة رابط البلان والتسليم النهائي">
-                      <span>⚠️ يجب إضافة رابط البلان أولاً</span>
-                    </div>
-                    <button 
-                      class="confirm-btn full-w-btn" 
-                      :class="{ 'btn-missing-link': !hasPlanLink(plan) }"
-                      type="button" 
-                      :disabled="actionLoading === `delivery-${plan.id}`" 
-                      @click="submitFinalDelivery(plan)"
-                      :title="!hasPlanLink(plan) ? 'اضغط لإضافة رابط البلان والتسليم النهائي للعميل' : 'تأكيد التسليم النهائي للعميل'"
-                    >
-                      {{ actionLoading === `delivery-${plan.id}` ? 'جارٍ...' : 'تأكيد التسليم النهائي ✅' }}
-                    </button>
-                  </div>
-                  <span v-else-if="plan.requires_review && !['reviewed', 'completed'].includes(plan.status)" class="muted-slot-text">بانتظار إنهاء المراجعة</span>
-                  <span v-else class="muted-slot-text">بانتظار إنهاء الدورة</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- فوتر الكارت: المتابعات والروابط المساعدة والزر المباشر للوحة -->
+            <!-- فوتر الكارت المنظم: الأدوات الثانوية والتكرار ورابط اللوحة -->
             <div class="card-footer-controls">
-              <div class="card-links-cluster">
-                <button 
-                  class="cluster-btn followup" 
-                  type="button" 
-                  :disabled="plan.requires_review && !['reviewed', 'completed'].includes(plan.status)"
-                  :title="plan.requires_review && !['reviewed', 'completed'].includes(plan.status) ? 'غير متاح قبل انتهاء المراجعة الداخلية' : 'متابعات العميل'"
-                  @click="openFollowUpsModal(plan)"
-                >
-                  <span>💬</span> متابعة العميل ({{ getFollowUps(plan).length }})
-                </button>
+              <div class="card-utilities-bar">
+                <div class="secondary-actions-group">
+                  <button 
+                    v-if="getReviewHistories(plan).length > 0" 
+                    class="cluster-btn history" 
+                    type="button" 
+                    @click="openHistoryModal(plan)"
+                    title="سجل حركات واعتمادات الخطة"
+                  >
+                    <span>📋</span> سجل الحركات ({{ getReviewHistories(plan).length }})
+                  </button>
 
-                <button 
-                  v-if="plan.reference_links && plan.reference_links.length > 0" 
-                  class="cluster-btn references" 
-                  type="button" 
-                  @click="openReferencesModal(plan)"
-                  title="المراجع المساعدة المرفقة"
-                >
-                  <span>🔗</span> المراجع ({{ plan.reference_links.length }})
-                </button>
+                  <button 
+                    v-if="plan.reference_links && plan.reference_links.length > 0" 
+                    class="cluster-btn references" 
+                    type="button" 
+                    @click="openReferencesModal(plan)"
+                    title="المراجع المساعدة المرفقة"
+                  >
+                    <span>🔗</span> المراجع ({{ plan.reference_links.length }})
+                  </button>
 
-                <button 
-                  v-if="getReviewHistories(plan).length > 0" 
-                  class="cluster-btn history" 
-                  type="button" 
-                  @click="openHistoryModal(plan)"
-                  title="سجل حركات واعتمادات الخطة"
-                >
-                  <span>📋</span> سجل الحركات
-                </button>
+                  <button 
+                    class="cluster-btn details" 
+                    type="button" 
+                    @click="openDetailsModal(plan)"
+                    title="عرض تفاصيل الخطة والديدلاين والملاحظات"
+                  >
+                    <span>✎</span> تفاصيل الخطة
+                  </button>
+                </div>
 
-                <button 
-                  class="cluster-btn details" 
-                  type="button" 
-                  @click="openDetailsModal(plan)"
-                  title="عرض تفاصيل الخطة والديدلاين والملاحظات"
-                >
-                  <span>✎</span> تفاصيل الخطة
-                </button>
-
-                <!-- روابط مجلدات العميل المباشرة -->
-                <a 
-                  v-if="getPlanFolders(plan).review_link" 
-                  class="cluster-btn folder-link folder-review" 
-                  :href="formatExternalUrl(getPlanFolders(plan).review_link)" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  title="مجلد المراجعة 📁 (Google Drive) - لوصول سريع للرفع والمراجعة"
-                >
-                  <span>📁</span> مجلد المراجعة
-                </a>
-
-                <a 
-                  v-if="getPlanFolders(plan).final_delivery_link" 
-                  class="cluster-btn folder-link folder-final" 
-                  :href="formatExternalUrl(getPlanFolders(plan).final_delivery_link)" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  title="مجلد التسليم النهائي 📂 (Google Drive) - لوصول سريع لملفات التسليم"
-                >
-                  <span>📂</span> مجلد التسليم النهائي
-                </a>
-
-                <a 
-                  v-if="hasPlanLink(plan)" 
-                  class="cluster-btn plan-link" 
-                  :href="getPlanFileLink(plan).startsWith('http') ? getPlanFileLink(plan) : 'https://' + getPlanFileLink(plan)" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  title="فتح رابط البلان النهائي في نافذة جديدة"
-                >
-                  <span>🔗</span> رابط البلان
-                </a>
+                <AutoRecurrenceToggle
+                  v-if="user?.role === 'manager'"
+                  :plan-id="plan.id"
+                  :model-value="Boolean(plan.is_recurring)"
+                  @update:model-value="plan.is_recurring = $event"
+                  compact
+                  class="compact-recurrence-toggle"
+                />
               </div>
 
-              <AutoRecurrenceToggle
-                v-if="user?.role === 'manager'"
-                :plan-id="plan.id"
-                :model-value="Boolean(plan.is_recurring)"
-                @update:model-value="plan.is_recurring = $event"
-                compact
-                style="margin-bottom: 8px; width: 100%;"
-              />
-              <router-link :to="`/plan-board/${plan.id}`" class="spreadsheet-link-banner">
+              <router-link 
+                v-if="canOpenSpreadsheet(plan)"
+                :to="`/plan-board/${plan.id}`" 
+                class="spreadsheet-link-banner"
+              >
                 <span>فتح لوحة المحتوى (Spreadsheet)</span>
                 <span class="rocket-icon">🚀</span>
               </router-link>
@@ -558,225 +659,9 @@
         </div>
       </div>
 
-      <!-- ============================================== -->
-      <!-- 2. عرض الجدول الكلاسيكي (Table View) -->
-      <!-- ============================================== -->
-      <div v-else-if="viewMode === 'table'" class="table-view-container">
-        <div class="table-scroll-wrapper" ref="tableScrollWrapper">
-          <!-- أزرار التمرير العائمة على حواف الجدول -->
-          <button
-            v-if="isOverflowing && canScrollRight"
-            type="button"
-            class="edge-scroll-btn btn-right"
-            @click="scrollTable('right')"
-            title="تمرير الجدول لليمين"
-            aria-label="تمرير الجدول لليمين"
-          >
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-          </button>
-
-          <button
-            v-if="isOverflowing && canScrollLeft"
-            type="button"
-            class="edge-scroll-btn btn-left"
-            @click="scrollTable('left')"
-            title="تمرير الجدول لليسار"
-            aria-label="تمرير الجدول لليسار"
-          >
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-          </button>
-
-          <!-- ظلال أطراف الجدول لتوضيح وجود محتوى مخفي -->
-          <div class="scroll-edge-shadow shadow-right" :class="{ 'is-active': isOverflowing && canScrollRight }"></div>
-          <div class="scroll-edge-shadow shadow-left" :class="{ 'is-active': isOverflowing && canScrollLeft }"></div>
-
-          <div
-            class="table-responsive"
-            ref="tableContainer"
-            tabindex="0"
-            aria-label="جدول خطط المحتوى قابل للتمرير أفقيًا"
-            @mousedown="onTableMouseDown"
-            @mousemove="onTableMouseMove"
-            @mouseup="onTableMouseUp"
-            @wheel="onTableWheel"
-            @scroll="onTableScroll"
-          >
-            <table class="plans-table" :aria-busy="loading">
-            <thead>
-              <tr>
-                <th scope="col" style="width: 50px; text-align: center;">#</th>
-                <th scope="col">العميل والخطة</th>
-                <th scope="col">المسؤول</th>
-                <th scope="col">المراجع الداخلي</th>
-                <th scope="col">القائم بالخطة (المنفذ)</th>
-                <th scope="col">التسليم النهائي</th>
-                <th scope="col">المراجعة وحالة الخطة</th>
-                <th scope="col">الروابط والمتابعة</th>
-                <th v-if="user && (user.role === 'manager' || user.job_title === 'Account Manager')">إدارة</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="loading"><td :colspan="(user && (user.role === 'manager' || user.job_title === 'Account Manager')) ? 9 : 8" class="state-cell"><span class="spinner"></span> جارٍ التحميل...</td></tr>
-              <tr v-else-if="plans.length === 0"><td :colspan="(user && (user.role === 'manager' || user.job_title === 'Account Manager')) ? 9 : 8" class="state-cell">لا توجد خطط مسجلة حاليًا</td></tr>
-              <tr v-for="(plan, index) in plans" v-else :key="plan.id">
-                <td class="text-center row-num-cell" style="font-weight: 700; color: #8792be; width: 50px; vertical-align: middle;">{{ ((pagination.current_page - 1) * (pagination.per_page || 10)) + index + 1 }}</td>
-                <td>
-                  <div class="plan-cell">
-                    <ClientAvatar
-                      :logo-url="plan.client?.logo_url"
-                      :name="plan.client?.name"
-                      size="32"
-                      rounded="9px"
-                      class="plan-avatar"
-                    />
-                    <div>
-                      <strong>{{ plan.client?.name || 'عميل محذوف' }}</strong>
-                      <span>{{ plan.plan_type }}</span>
-                      <span v-if="Number(plan.total_estimated_hours) > 0" class="plan-hours-badge-table" :title="'إجمالي ساعات العمل التقديرية: ' + formatHours(plan.total_estimated_hours) + ' ساعة'">
-                        ⏱️ {{ formatHours(plan.total_estimated_hours) }}س
-                      </span>
-                      <div class="table-items-scope-pills" v-if="plan.items && plan.items.length > 0">
-                        <span v-for="item in plan.items" :key="item.id" class="table-scope-pill">
-                          <strong>{{ item.quantity }}</strong> {{ item.item_name }}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </td>
-                <td><span class="people-cell">{{ getRoleNames(plan.users, 'responsible') }}</span></td>
-                <td><span v-if="plan.requires_review" class="people-cell">{{ getRoleNames(plan.users, 'reviewer') }}</span><span v-else class="muted">—</span></td>
-                <td><span class="people-cell">{{ getRoleNames(plan.users, 'executor') }}</span></td>
-                
-                <td>
-                  <div class="milestone">
-                    <span class="date">{{ formatDate(plan.planned_delivery_date) }}</span>
-                    
-                    <div class="sla-indicator" v-if="plan.planned_delivery_date">
-                      <span class="sla-msg" :class="getDeadlineStatus(plan.created_at || plan.start_date, plan.planned_delivery_date, plan.status, currentTime).class + '-text'">
-                        {{ getDeadlineStatus(plan.created_at || plan.start_date, plan.planned_delivery_date, plan.status, currentTime).message }}
-                      </span>
-                      <div class="sla-progress-bg" v-if="plan.status !== 'completed'">
-                        <div class="sla-progress-fill" :class="getDeadlineStatus(plan.created_at || plan.start_date, plan.planned_delivery_date, plan.status, currentTime).class + '-bg'" :style="{ width: getDeadlineStatus(plan.created_at || plan.start_date, plan.planned_delivery_date, plan.status, currentTime).percentage + '%' }"></div>
-                      </div>
-                    </div>
-
-                    <div v-if="plan.status === 'completed'" class="status-badge status-green mt-2">
-                      <i></i> تم التسليم <small>{{ formatDate(plan.actual_delivery_date) }}</small>
-                    </div>
-                    <div v-else-if="isUserResponsible(plan) && (plan.status === 'reviewed' || (!plan.requires_review && (plan.status === 'pending' || plan.status === 'rejected')))">
-                      <div v-if="!hasPlanLink(plan)" class="plan-link-warning-pill table-pill" @click="submitFinalDelivery(plan)" title="اضغط لإضافة رابط البلان والتسليم النهائي">
-                        <span>⚠️ رابط البلان مطلوب</span>
-                      </div>
-                      <button class="confirm-btn mt-1" :class="{ 'btn-missing-link': !hasPlanLink(plan) }" type="button" :disabled="actionLoading === `delivery-${plan.id}`" @click="submitFinalDelivery(plan)" :title="!hasPlanLink(plan) ? 'اضغط لإضافة رابط البلان والتسليم النهائي' : 'تأكيد التسليم النهائي'">
-                        {{ actionLoading === `delivery-${plan.id}` ? 'جارٍ...' : 'تأكيد التسليم النهائي' }}
-                      </button>
-                    </div>
-                    <span v-else class="muted mt-2 d-block">بانتظار إنهاء الدورة</span>
-                  </div>
-                </td>
-                
-                <td>
-                  <div class="milestone" style="min-width: 175px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                      <span v-if="plan.requires_review" class="date-header-badge">المراجعة الداخلية</span>
-                      <span v-else class="muted mb-1" style="display:block;">— لا تتطلب مراجعة —</span>
-                      
-                      <button v-if="isManager && plan.status !== 'completed'" title="تنبيه واتساب الذكي" aria-label="إرسال تنبيه واتساب ذكي" class="wa-quick-btn" type="button" @click="smartNotify(plan)">
-                        <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
-                      </button>
-                    </div>
-
-                    <div v-if="plan.requires_review" class="table-milestone-dates">
-                      <div class="table-date-line">
-                        <span class="t-label">التسليم الابتدائي:</span>
-                        <span class="t-val">{{ plan.planned_initial_delivery_date ? formatDate(plan.planned_initial_delivery_date) : 'غير محدد' }}</span>
-                      </div>
-                      <div v-if="plan.actual_initial_delivery_date" class="t-actual-badge">
-                        ✓ تم التسليم: {{ formatDate(plan.actual_initial_delivery_date) }}
-                      </div>
-                      <div class="table-date-line">
-                        <span class="t-label">إنهاء المراجعة:</span>
-                        <span class="t-val">{{ formatDate(plan.planned_review_date) }}</span>
-                      </div>
-                    </div>
-                    
-                    <div class="sla-indicator mb-2" v-if="plan.requires_review && plan.planned_review_date">
-                      <span class="sla-msg" :class="getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).class + '-text'">
-                        {{ getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).message }}
-                      </span>
-                      <div class="sla-progress-bg" v-if="!['reviewed', 'completed'].includes(plan.status)">
-                        <div class="sla-progress-fill" :class="getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).class + '-bg'" :style="{ width: getDeadlineStatus(plan.start_date || plan.created_at, plan.planned_review_date, ['reviewed', 'completed'].includes(plan.status) ? 'completed' : plan.status, currentTime).percentage + '%' }"></div>
-                      </div>
-                    </div>
-
-                    <div v-if="canSubmitForReview(plan) && plan.requires_review && (plan.status === 'pending' || plan.status === 'rejected')" class="mt-1 mb-1">
-                      <div v-if="!hasPlanLink(plan)" class="plan-link-warning-pill table-pill" @click="submitForReview(plan)" title="اضغط لإضافة رابط البلان والتسليم للمراجعة">
-                        <span>⚠️ رابط البلان مطلوب</span>
-                      </div>
-                      <button class="confirm-btn review" :class="{ 'btn-missing-link': !hasPlanLink(plan) }" type="button" :disabled="actionLoading === `submit-review-${plan.id}`" @click="submitForReview(plan)" :title="!hasPlanLink(plan) ? 'اضغط لإضافة رابط البلان والتسليم للمراجعة' : 'تسليم للمراجعة'">
-                        {{ actionLoading === `submit-review-${plan.id}` ? 'جارٍ...' : 'تسليم للمراجعة 📤' }}
-                      </button>
-                    </div>
-                    
-                    <div v-if="isUserReviewer(plan) && plan.status === 'under_review'" class="review-actions mt-1 mb-1">
-                      <button class="confirm-btn accept-btn" :disabled="actionLoading === `approve-${plan.id}`" @click="approvePlan(plan)">قبول ✅</button>
-                      <button class="confirm-btn reject-btn" :disabled="actionLoading === `reject-${plan.id}`" @click="openRejectModal(plan)">رفض ❌</button>
-                    </div>
-
-                    <div :class="['status-badge', getPlanStatusInfo(plan.status).class]">
-                      <i></i>{{ getPlanStatusInfo(plan.status).text }}
-                      <small v-if="plan.requires_review && (plan.status === 'reviewed' || plan.status === 'completed')">{{ formatDate(plan.actual_review_date) }}</small>
-                    </div>
-
-                    <div v-if="plan.status === 'rejected'" class="mt-2">
-                      <button class="reject-reasons-btn" type="button" @click="openRejectionsModal(plan)">عرض أسباب الرفض 📄</button>
-                    </div>
-                  </div>
-                </td>
-                
-                <td class="details-cell">
-                  <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-start;">
-                    <button class="followup-btn" type="button" 
-                            :disabled="plan.requires_review && !['reviewed', 'completed'].includes(plan.status)"
-                            :title="plan.requires_review && !['reviewed', 'completed'].includes(plan.status) ? 'غير متاح قبل انتهاء المراجعة الداخلية' : ''"
-                            @click="openFollowUpsModal(plan)">
-                      متابعة العميل 💬 ({{ getFollowUps(plan).length }})
-                    </button>
-                    <button v-if="plan.reference_links && plan.reference_links.length > 0" class="ref-links-btn" type="button" @click="openReferencesModal(plan)">
-                      المراجع المساعدة 🔗 ({{ plan.reference_links.length }})
-                    </button>
-                    <button v-if="getReviewHistories(plan).length > 0" @click="openHistoryModal(plan)" class="history-btn">سجل الحركات 📋</button>
-                    <button class="details-btn" type="button" @click="openDetailsModal(plan)">تفاصيل الخطة</button>
-                    <a v-if="getPlanFolders(plan).review_link" :href="formatExternalUrl(getPlanFolders(plan).review_link)" target="_blank" rel="noopener noreferrer" class="plan-link-table-btn folder-review-btn" title="مجلد المراجعة 📁 (Google Drive)">
-                      📁 مجلد المراجعة
-                    </a>
-                    <a v-if="getPlanFolders(plan).final_delivery_link" :href="formatExternalUrl(getPlanFolders(plan).final_delivery_link)" target="_blank" rel="noopener noreferrer" class="plan-link-table-btn folder-final-btn" title="مجلد التسليم النهائي 📂 (Google Drive)">
-                      📂 مجلد التسليم
-                    </a>
-                    <a v-if="hasPlanLink(plan)" :href="getPlanFileLink(plan).startsWith('http') ? getPlanFileLink(plan) : 'https://' + getPlanFileLink(plan)" target="_blank" rel="noopener noreferrer" class="plan-link-table-btn" title="فتح رابط البلان النهائي">
-                      رابط البلان 🔗
-                    </a>
-                  </div>
-                </td>
-                
-                <td v-if="user && (user.role === 'manager' || user.job_title === 'Account Manager')">
-                  <div class="actions-cell">
-                    <button class="action duplicate" type="button" title="استنساخ كقالب" aria-label="استنساخ الخطة" @click="openDuplicateModal(plan)">⎘</button>
-                    <button class="action edit" type="button" title="تعديل" aria-label="تعديل خطة المحتوى" @click="openManagerModal(plan)">✎</button>
-                    <button class="action delete" type="button" title="حذف" aria-label="حذف خطة المحتوى" @click="deletePlan(plan.id)">⌫</button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        </div>
-      </div>
     </div>
 
-    
-
-    <!-- Pagination -->
+        <!-- Pagination -->
     <div class="pagination-controls" v-if="pagination.last_page > 1">
       <button class="secondary-btn" :disabled="pagination.current_page === 1" @click="changePage(pagination.current_page - 1)">السابق</button>
       <span class="page-info">صفحة {{ pagination.current_page }} من {{ pagination.last_page }} (إجمالي {{ pagination.total }})</span>
@@ -857,7 +742,7 @@
             
             <div v-if="imagePreview" class="image-preview-wrapper">
               <img :src="imagePreview" alt="preview" class="image-preview" />
-              <button type="button" class="remove-image-btn" @click="clearImage" title="إلغاء الصورة">×</button>
+              <button type="button" class="remove-image-btn" @click="clearImage" title="إلغاء الصورة">🗑️</button>
             </div>
           </div>
 
@@ -888,7 +773,7 @@
 
               <div class="fu-actions" v-if="isManager">
                 <button type="button" @click="editFollowUp(followUp)" class="fu-btn edit-fu">✎ تعديل</button>
-                <button type="button" @click="deleteFollowUp(followUp.id)" class="fu-btn delete-fu">⌫ حذف</button>
+                <button type="button" @click="deleteFollowUp(followUp.id)" class="fu-btn delete-fu">🗑️ حذف</button>
               </div>
             </div>
           </div>
@@ -1175,7 +1060,7 @@
                           @click="removeScopeItem(index)" 
                           title="حذف هذا العنصر"
                         >
-                          ✕
+                          🗑️
                         </button>
                       </td>
                     </tr>
@@ -1257,7 +1142,7 @@
             <div class="reference-links-container">
               <div v-for="(link, index) in form.reference_links" :key="index" class="link-input-group">
                 <input v-model="form.reference_links[index]" type="url" placeholder="أدخل رابط المرجع (مثال: Google Drive, Notion, etc...)" required />
-                <button type="button" class="remove-link-btn" @click="removeReferenceLink(index)" title="حذف الرابط">⌫</button>
+                <button type="button" class="remove-link-btn" @click="removeReferenceLink(index)" title="حذف الرابط">🗑️</button>
               </div>
               <p v-if="form.reference_links.length === 0" class="muted text-center" style="font-size:10px; margin-top:10px;">لا توجد روابط مرجعية (اختياري)</p>
             </div>
@@ -1777,21 +1662,7 @@
     </Teleport>
 
 
-    <!-- شريط التمرير الأفقي العائم الذكي (Sticky Floating Mirror Scrollbar) -->
-    <Teleport to="body">
-      <div
-        v-show="showFloatingScrollbar"
-        class="floating-sticky-scrollbar"
-        :style="floatingScrollbarStyle"
-        ref="floatingScrollbarTrack"
-        @scroll="onFloatingScroll"
-        dir="rtl"
-        title="شريط تمرير أفقي عائم - اسحب للتحرك بالجدول"
-        aria-label="شريط تمرير أفقي عائم"
-      >
-        <div class="floating-scrollbar-spacer" :style="{ width: tableScrollWidth + 'px' }"></div>
-      </div>
-    </Teleport>
+
 
     <!-- Image Preview Lightbox (Teleported to Body at end to be on top of all modals) -->
     <Teleport to="body">
@@ -1915,6 +1786,98 @@ const hasPlanLink = (plan) => {
   return validateDriveLink(link).valid;
 };
 
+// حساب حالة كل مرحلة من المراحل الأربعة في الشريط الزمني للخطة
+const getStageState = (plan, stageNumber) => {
+  if (!plan) return { status: 'waiting', label: 'بالانتظار', icon: '⏳', class: 'state-waiting' };
+
+  if (stageNumber === 1) { // 1. تسليم ابتدائي
+    if (plan.status === 'completed' || plan.actual_initial_delivery_date || ['under_review', 'reviewed'].includes(plan.status)) {
+      return { status: 'completed', label: 'مكتمل', icon: '✓', class: 'state-completed' };
+    }
+    if (plan.status === 'rejected') {
+      return { status: 'rejected', label: 'تعديل مطلوب', icon: '⚠️', class: 'state-rejected' };
+    }
+    return { status: 'active', label: 'قيد التنفيذ', icon: '1', class: 'state-active' };
+  }
+
+  if (stageNumber === 2) { // 2. مراجعة داخلية
+    if (!plan.requires_review) {
+      return { status: 'skipped', label: 'غير مطلوبة', icon: '⊘', class: 'state-skipped' };
+    }
+    if (plan.status === 'completed' || plan.status === 'reviewed' || plan.actual_review_date) {
+      return { status: 'completed', label: 'معتمدة', icon: '✓', class: 'state-completed' };
+    }
+    if (plan.status === 'rejected') {
+      return { status: 'rejected', label: 'مرفوضة', icon: '❌', class: 'state-rejected' };
+    }
+    if (plan.status === 'under_review') {
+      return { status: 'active', label: 'قيد المراجعة', icon: '2', class: 'state-active' };
+    }
+    return { status: 'waiting', label: 'بالانتظار', icon: '2', class: 'state-waiting' };
+  }
+
+  if (stageNumber === 3) { // 3. متابعة مع العميل
+    if (plan.status === 'completed') {
+      return { status: 'completed', label: 'مكتملة', icon: '✓', class: 'state-completed' };
+    }
+    const isStageActive = plan.status === 'reviewed' || (!plan.requires_review && (plan.actual_initial_delivery_date || plan.status !== 'pending')) || getFollowUps(plan).length > 0;
+    if (isStageActive) {
+      return { status: 'active', label: 'متابعة نشطة', icon: '3', class: 'state-active' };
+    }
+    return { status: 'waiting', label: 'بالانتظار', icon: '3', class: 'state-waiting' };
+  }
+
+  if (stageNumber === 4) { // 4. التسليم النهائي
+    if (plan.status === 'completed' || plan.actual_delivery_date) {
+      return { status: 'completed', label: 'تم التسليم', icon: '✓', class: 'state-completed' };
+    }
+    const canBeDelivered = plan.status === 'reviewed' || (!plan.requires_review && (plan.status === 'pending' || plan.status === 'rejected'));
+    if (canBeDelivered) {
+      return { status: 'active', label: 'جاهز للتسليم', icon: '4', class: 'state-active' };
+    }
+    return { status: 'waiting', label: 'بالانتظار', icon: '4', class: 'state-waiting' };
+  }
+
+  return { status: 'waiting', label: 'بالانتظار', icon: '⏳', class: 'state-waiting' };
+};
+
+// إدارة المرحلة المفتوحة لكل خطة في الأكورديون الزمني (سدل وطي المراحل)
+const openPlanStages = ref({});
+
+const getActiveStageNumber = (plan) => {
+  if (!plan) return 1;
+  if (plan.status === 'completed') return 4;
+  if (plan.status === 'under_review') return 2;
+  if (plan.status === 'rejected') return 1;
+  if (plan.status === 'reviewed') return 3;
+  return 1;
+};
+
+const isStageOpen = (plan, stageNum) => {
+  if (!plan) return false;
+  return openPlanStages.value[plan.id] === stageNum;
+};
+
+// التحقق من صلاحية فتح لوحة المحتوى (Spreadsheet):
+// الموظف لا يمكنه فتح الخطة إلا بعد اعتمادها داخلياً (أو إذا كانت لا تتطلب مراجعة)
+// بينما المدير يمكنه فتح أي خطة دائماً
+const canOpenSpreadsheet = (plan) => {
+  if (isManager.value || user.value?.role === 'manager') return true;
+  if (!plan) return false;
+  if (!plan.requires_review) return true;
+  return ['reviewed', 'completed'].includes(plan.status);
+};
+
+const toggleStage = (plan, stageNum) => {
+  if (!plan) return;
+  const currentOpen = isStageOpen(plan, stageNum);
+  if (currentOpen) {
+    openPlanStages.value = { ...openPlanStages.value, [plan.id]: 0 };
+  } else {
+    openPlanStages.value = { ...openPlanStages.value, [plan.id]: stageNum };
+  }
+};
+
 const planLinkInputRef = ref(null);
 
 const onDetailsLinkInput = () => {
@@ -1947,15 +1910,7 @@ const toggleAdvancedFilters = () => showAdvancedFilters.value = !showAdvancedFil
 const currentTime = ref(Date.now());
 let countdownInterval = null;
 
-// نمط العرض (كروت أو جدول) مع حفظ تفضيل المستخدم
-const viewMode = ref(localStorage.getItem('content_plans_view_mode') || 'cards');
-const setViewMode = (mode) => {
-  viewMode.value = mode;
-  localStorage.setItem('content_plans_view_mode', mode);
-  if (mode === 'table') {
-    nextTick(() => updateScrollState());
-  }
-};
+
 
 const formatShortDate = (dateStr) => {
   if (!dateStr) return '—';
@@ -2308,183 +2263,6 @@ const rejectNotes = ref('');
 const selectedHistoryPlan = ref(null);
 const selectedRejections = ref([]);
 const selectedFollowUpPlan = ref(null);
-
-// --- أدوات التمرير الأفقي الذكي وسحب الماوس (Horizontal Scroll & Pan) ---
-const tableContainer = ref(null);
-const floatingScrollbarTrack = ref(null);
-const showFloatingScrollbar = ref(false);
-const isOverflowing = ref(false);
-const canScrollRight = ref(false);
-const canScrollLeft = ref(false);
-const tableScrollWidth = ref(0);
-const tableRect = reactive({ left: 0, width: 0 });
-
-let isSyncingFromTable = false;
-let isSyncingFromFloating = false;
-let resizeObserver = null;
-
-// حالة السحب بالماوس
-let isMouseDown = false;
-let dragStartX = 0;
-let dragStartScrollLeft = 0;
-let hasDraggedDistance = false;
-
-const isAnyModalOpen = computed(() => {
-  return showManagerModal.value ||
-    showDetailsModal.value ||
-    showRejectModal.value ||
-    showHistoryModal.value ||
-    showRejectionsModal.value ||
-    showFollowUpsModal.value ||
-    showDeliverySuccessModal.value ||
-    showCreationSuccessModal.value ||
-    showReferencesModal.value ||
-    showWaPromptModal.value ||
-    showDuplicateModal.value ||
-    showImageViewer.value;
-});
-
-const updateScrollState = () => {
-  if (!tableContainer.value || isAnyModalOpen.value) {
-    showFloatingScrollbar.value = false;
-    if (!tableContainer.value) {
-      isOverflowing.value = false;
-      canScrollRight.value = false;
-      canScrollLeft.value = false;
-    }
-    return;
-  }
-
-  const el = tableContainer.value;
-  const maxScroll = el.scrollWidth - el.clientWidth;
-  tableScrollWidth.value = el.scrollWidth;
-
-  if (maxScroll <= 5) {
-    isOverflowing.value = false;
-    canScrollRight.value = false;
-    canScrollLeft.value = false;
-    showFloatingScrollbar.value = false;
-    return;
-  }
-
-  isOverflowing.value = true;
-
-  // في نظام RTL: 0 في أقصى اليمين، وتصبح القيمة سالبة كلما تمررنا لليسار
-  const absScroll = Math.abs(el.scrollLeft);
-  canScrollRight.value = absScroll > 5;
-  canScrollLeft.value = absScroll < maxScroll - 5;
-
-  // فحص موضع شريط التمرير العائم المتزامن
-  const rect = el.getBoundingClientRect();
-  const windowHeight = window.innerHeight;
-
-  // يظهر الشريط العائم عندما يكون الجدول معروضاً في الشاشة ولكن أسفله خارج حدود الشاشة السفلية
-  const isTableInView = rect.top < windowHeight - 40 && rect.bottom > 120;
-  const isBottomOffscreen = rect.bottom > windowHeight + 15;
-
-  showFloatingScrollbar.value = isTableInView && isBottomOffscreen;
-
-  if (showFloatingScrollbar.value) {
-    tableRect.left = Math.max(0, rect.left);
-    tableRect.width = rect.width;
-
-    if (floatingScrollbarTrack.value && !isSyncingFromFloating) {
-      isSyncingFromTable = true;
-      floatingScrollbarTrack.value.scrollLeft = el.scrollLeft;
-      requestAnimationFrame(() => {
-        isSyncingFromTable = false;
-      });
-    }
-  }
-};
-
-const floatingScrollbarStyle = computed(() => {
-  return {
-    left: `${tableRect.left}px`,
-    width: `${tableRect.width}px`
-  };
-});
-
-const onFloatingScroll = () => {
-  if (isSyncingFromTable) return;
-  if (!tableContainer.value || !floatingScrollbarTrack.value) return;
-  isSyncingFromFloating = true;
-  tableContainer.value.scrollLeft = floatingScrollbarTrack.value.scrollLeft;
-  requestAnimationFrame(() => {
-    isSyncingFromFloating = false;
-    updateScrollState();
-  });
-};
-
-const onTableScroll = () => {
-  if (!tableContainer.value) return;
-  const el = tableContainer.value;
-  const maxScroll = el.scrollWidth - el.clientWidth;
-  const absScroll = Math.abs(el.scrollLeft);
-  canScrollRight.value = absScroll > 5;
-  canScrollLeft.value = absScroll < maxScroll - 5;
-
-  if (isSyncingFromFloating) return;
-  if (floatingScrollbarTrack.value) {
-    isSyncingFromTable = true;
-    floatingScrollbarTrack.value.scrollLeft = el.scrollLeft;
-    requestAnimationFrame(() => {
-      isSyncingFromTable = false;
-    });
-  }
-};
-
-const scrollTable = (direction) => {
-  if (!tableContainer.value) return;
-  const amount = 380;
-  // في نظام RTL: الحركة لليسار بالسالب ولليمين بالموجب
-  const delta = direction === 'left' ? -amount : amount;
-  tableContainer.value.scrollBy({ left: delta, behavior: 'smooth' });
-};
-
-// السحب والإفلات بالماوس (Mouse Drag & Pan)
-const onTableMouseDown = (e) => {
-  if (!tableContainer.value || e.button !== 0) return;
-
-  const targetTag = e.target.tagName?.toLowerCase();
-  if (['input', 'select', 'button', 'textarea', 'a', 'label'].includes(targetTag)) return;
-  if (e.target.closest('button, a, input, select, textarea, label, .modal-overlay, .wa-quick-btn, .action, .confirm-btn, .details-btn, .history-btn, .ref-links-btn, .followup-btn')) return;
-
-  isMouseDown = true;
-  hasDraggedDistance = false;
-  dragStartX = e.pageX;
-  dragStartScrollLeft = tableContainer.value.scrollLeft;
-};
-
-const onTableMouseMove = (e) => {
-  if (!isMouseDown || !tableContainer.value) return;
-  const deltaX = e.pageX - dragStartX;
-  if (Math.abs(deltaX) > 4) {
-    hasDraggedDistance = true;
-    tableContainer.value.classList.add('table-is-dragging');
-    e.preventDefault();
-  }
-  if (hasDraggedDistance) {
-    tableContainer.value.scrollLeft = dragStartScrollLeft - deltaX;
-  }
-};
-
-const onTableMouseUp = () => {
-  if (!isMouseDown) return;
-  isMouseDown = false;
-  if (tableContainer.value) {
-    tableContainer.value.classList.remove('table-is-dragging');
-  }
-};
-
-const onTableWheel = (e) => {
-  if (!tableContainer.value) return;
-  // إذا ضغط المستخدم على Shift أثناء تدوير العجلة، يتم تحويل التمرير العمودي إلى تمرير أفقي
-  if (e.shiftKey) {
-    e.preventDefault();
-    tableContainer.value.scrollLeft += e.deltaY * 1.2;
-  }
-};
 
 const showDuplicateModal = ref(false);
 const planToDuplicate = ref(null);
@@ -3454,19 +3232,7 @@ watch(showManagerModal, async (open) => {
   }
 })
 
-watch(() => plans.value, async () => {
-  await nextTick();
-  updateScrollState();
-}, { deep: false });
 
-watch(() => loading.value, async () => {
-  await nextTick();
-  updateScrollState();
-});
-
-watch(isAnyModalOpen, () => {
-  updateScrollState();
-});
 
 
 // ==========================================
@@ -3597,18 +3363,6 @@ const calculateItemsHours = (items) => {
 onMounted(() => {
   fetchPlans();
   fetchResources();
-  window.addEventListener('scroll', updateScrollState, { passive: true });
-  window.addEventListener('resize', updateScrollState, { passive: true });
-  window.addEventListener('mouseup', onTableMouseUp);
-  window.addEventListener('blur', onTableMouseUp);
-
-  if (window.ResizeObserver && tableContainer.value) {
-    resizeObserver = new ResizeObserver(() => {
-      updateScrollState();
-    });
-    resizeObserver.observe(tableContainer.value);
-  }
-  nextTick(() => updateScrollState());
 
   // تشغيل المؤقت الحي كل 30 ثانية لتحديث العداد التنازلي
   countdownInterval = setInterval(() => {
@@ -3625,14 +3379,6 @@ onBeforeUnmount(() => {
     countdownInterval = null;
   }
   document.body.classList.remove('modal-is-open');
-  window.removeEventListener('scroll', updateScrollState);
-  window.removeEventListener('resize', updateScrollState);
-  window.removeEventListener('mouseup', onTableMouseUp);
-  window.removeEventListener('blur', onTableMouseUp);
-  if (resizeObserver) {
-    resizeObserver.disconnect();
-    resizeObserver = null;
-  }
 });
 </script>
 
@@ -3894,19 +3640,19 @@ onBeforeUnmount(() => {
 
 .plans-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(390px, 1fr));
-  gap: 22px;
-  padding: 22px;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 16px;
+  padding: 16px;
 }
 
 .plan-card {
   background: linear-gradient(160deg, rgba(20, 27, 72, 0.75), rgba(11, 17, 49, 0.85));
   border: 1px solid rgba(137, 153, 226, 0.16);
-  border-radius: 18px;
-  padding: 20px;
+  border-radius: 14px;
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 10px;
   position: relative;
   overflow: hidden;
   box-shadow: 0 10px 30px rgba(4, 7, 27, 0.35);
@@ -5522,11 +5268,47 @@ button:disabled, .primary-btn:disabled, .confirm-btn:disabled {
 
 
 /* عناصر ومخرجات الخطة على كروت ContentPlans */
-.card-items-scope-pills {
+.card-items-scope-row {
   display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
   flex-wrap: wrap;
-  gap: 5px;
-  margin-top: 8px;
+  width: 100%;
+  margin: 0;
+}
+
+.card-scope-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(125, 232, 220, 0.08);
+  border: 1px solid rgba(125, 232, 220, 0.22);
+  color: #cbd5e1;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  line-height: 1.3;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.card-scope-pill:hover {
+  background: rgba(125, 232, 220, 0.16);
+  border-color: rgba(125, 232, 220, 0.45);
+  color: #ffffff;
+}
+
+.card-scope-pill .pill-qty {
+  color: #7de8dc;
+  font-weight: 800;
+  font-size: 11px;
+}
+
+.card-scope-pill .pill-name {
+  font-size: 10px;
+  color: #cbd5e1;
+  font-weight: 600;
 }
 
 .card-scope-pill {
@@ -5580,6 +5362,684 @@ button:disabled, .primary-btn:disabled, .confirm-btn:disabled {
 
 .table-scope-pill strong {
   color: #7de8dc;
+}
+
+
+/* ========================================================= */
+
+/* شريط فريق العمل المدمج */
+.team-roles-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(8, 13, 38, 0.45);
+  padding: 6px 11px;
+  border-radius: 8px;
+  border: 1px solid rgba(137, 153, 226, 0.08);
+  font-size: 10px;
+  color: #aeb9e3;
+  flex-wrap: wrap;
+}
+
+.role-inline-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.role-emoji {
+  font-size: 10px;
+}
+
+.role-lbl {
+  color: #8b97c6;
+  font-weight: 700;
+  font-size: 9.5px;
+}
+
+.role-val {
+  color: #f1f5f9;
+  font-weight: 700;
+}
+
+.role-separator {
+  color: #475569;
+  font-size: 10px;
+}
+
+.current-stage-tag {
+  font-size: 8.5px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(59, 130, 246, 0.18);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  white-space: nowrap;
+}
+
+/* الأكورديون الزمني الذكي والمراحل المنسدلة (Chic Timeline Accordion) */
+/* ========================================================= */
+.card-timeline-accordion {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* شريط التحكم السريع (أيقونات المراحل وزر الطي السريع) */
+.timeline-summary-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: rgba(8, 14, 44, 0.65);
+  border: 1px solid rgba(137, 153, 226, 0.14);
+  border-radius: 10px;
+  gap: 6px;
+}
+
+.timeline-dots-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.timeline-dot-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(137, 153, 226, 0.08);
+  border: 1px solid rgba(137, 153, 226, 0.16);
+  color: #94a3b8;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.timeline-dot-btn:hover {
+  background: rgba(137, 153, 226, 0.18);
+  color: #f1f5f9;
+  transform: translateY(-1px);
+}
+
+.timeline-dot-btn.active-step {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+}
+
+.timeline-dot-btn.state-completed {
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #34d399;
+}
+
+.timeline-dot-btn.state-completed.active-step {
+  background: rgba(16, 185, 129, 0.2);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+}
+
+.timeline-dot-btn.state-rejected {
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #f87171;
+}
+
+.dot-num {
+  font-weight: 800;
+  font-size: 10.5px;
+}
+
+.dot-name {
+  font-size: 9.5px;
+}
+
+.accordion-toggle-all-btn {
+  background: transparent;
+  border: none;
+  color: #8b97c6;
+  font-family: inherit;
+  font-size: 9.5px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 5px;
+  transition: all 0.2s ease;
+}
+
+.accordion-toggle-all-btn:hover {
+  color: #7de8dc;
+  background: rgba(125, 232, 220, 0.1);
+}
+
+/* قائمة بطاقات الأكورديون الرأسية المنسدلة */
+.accordion-stages-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.accordion-stage-card {
+  background: rgba(10, 16, 47, 0.65);
+  border: 1px solid rgba(137, 153, 226, 0.12);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: all 0.25s ease;
+}
+
+.accordion-stage-card:hover {
+  border-color: rgba(137, 153, 226, 0.25);
+}
+
+.accordion-stage-card.is-expanded {
+  border-color: rgba(137, 153, 226, 0.32);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+/* ألوان الحالة للحافة الجانبية (Right Border) */
+.accordion-stage-card.state-completed {
+  border-right: 3px solid #10b981;
+}
+
+.accordion-stage-card.state-active {
+  border-right: 3px solid #3b82f6;
+}
+
+.accordion-stage-card.state-rejected {
+  border-right: 3px solid #ef4444;
+}
+
+.accordion-stage-card.state-skipped {
+  border-right: 3px solid #64748b;
+  opacity: 0.8;
+}
+
+.accordion-stage-card.state-waiting {
+  border-right: 3px solid #334155;
+  opacity: 0.88;
+}
+
+/* شريط رأس المرحلة (قابل للضغط للسدل والطي) */
+.stage-accordion-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  cursor: pointer;
+  user-select: none;
+  background: rgba(15, 23, 62, 0.45);
+  transition: background 0.2s ease;
+  gap: 8px;
+}
+
+.stage-accordion-header:hover {
+  background: rgba(137, 153, 226, 0.1);
+}
+
+.header-main-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.stage-node-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 10.5px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.state-completed .stage-node-badge {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+}
+
+.state-active .stage-node-badge {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #fff;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.45);
+}
+
+.state-rejected .stage-node-badge {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #fff;
+}
+
+.state-skipped .stage-node-badge {
+  background: rgba(100, 116, 139, 0.25);
+  color: #94a3b8;
+  border: 1px dashed rgba(148, 163, 184, 0.4);
+}
+
+.state-waiting .stage-node-badge {
+  background: rgba(30, 41, 59, 0.8);
+  color: #64748b;
+  border: 1px solid rgba(71, 85, 105, 0.35);
+}
+
+.stage-header-title {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #f1f5f9;
+  white-space: nowrap;
+}
+
+.stage-header-date, .stage-header-count {
+  font-size: 10px;
+  color: #8b97c6;
+  white-space: nowrap;
+}
+
+.header-status-side {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.stage-status-chip {
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+
+.stage-status-chip.state-completed {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.stage-status-chip.state-active {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.stage-status-chip.state-rejected {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.stage-status-chip.state-skipped {
+  background: rgba(100, 116, 139, 0.15);
+  color: #94a3b8;
+  border: 1px solid rgba(100, 116, 139, 0.3);
+}
+
+.stage-status-chip.state-waiting {
+  background: rgba(51, 65, 85, 0.25);
+  color: #64748b;
+  border: 1px solid rgba(71, 85, 105, 0.25);
+}
+
+.chevron-arrow {
+  font-size: 12px;
+  color: #8b97c6;
+  transition: transform 0.25s ease;
+  display: inline-block;
+}
+
+.chevron-arrow.open {
+  transform: rotate(180deg);
+  color: #7de8dc;
+}
+
+/* المحتوى المنسدل للبطاقة (Drawer Content) */
+.stage-accordion-drawer {
+  border-top: 1px solid rgba(137, 153, 226, 0.1);
+  background: rgba(6, 10, 32, 0.45);
+}
+
+.drawer-inner-content {
+  padding: 11px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.drawer-info-grid {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 10.5px;
+}
+
+.drawer-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.meta-label {
+  color: #8b97c6;
+  font-weight: 700;
+}
+
+.meta-val {
+  color: #cbd5e1;
+  font-weight: 600;
+}
+
+.meta-val.highlight {
+  color: #7de8dc;
+  font-weight: 700;
+}
+
+.meta-val.success-val {
+  color: #34d399;
+  font-weight: 700;
+}
+
+/* مؤشر SLA داخل الدرج المنسدل */
+.drawer-sla-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sla-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 9.5px;
+  font-weight: 700;
+}
+
+.sla-caption {
+  color: #8b97c6;
+}
+
+.sla-progress-track {
+  width: 100%;
+  height: 5px;
+  background: rgba(15, 23, 42, 0.7);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.sla-progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.drawer-skipped-msg {
+  font-size: 10px;
+  color: #64748b;
+  text-align: center;
+  padding: 6px 0;
+}
+
+/* تفاصيل المتابعات في مرحلة 3 */
+.followup-drawer-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.followup-count-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: #cbd5e1;
+}
+
+.followup-count-tag .badge-num {
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: rgba(137, 153, 226, 0.15);
+  color: #7de8dc;
+}
+
+.followup-count-tag.has-items .badge-num {
+  background: rgba(178, 138, 255, 0.2);
+  color: #d8b4fe;
+}
+
+.latest-feedback-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  background: rgba(10, 16, 47, 0.55);
+  border: 1px dashed rgba(178, 138, 255, 0.25);
+  border-radius: 7px;
+  padding: 6px 9px;
+  font-size: 9.5px;
+  color: #cbd5e1;
+  line-height: 1.4;
+}
+
+.quote-icon {
+  font-size: 11px;
+}
+
+.feedback-text {
+  flex: 1;
+}
+
+/* صف أزرار التحكم والروابط داخل الدرج المنسدل */
+.drawer-actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.main-action-wrap {
+  flex: 1;
+  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.drawer-primary-btn {
+  width: 100%;
+  padding: 7px 12px;
+  border-radius: 7px;
+  font-family: inherit;
+  font-size: 10.5px;
+  font-weight: 800;
+  text-align: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.drawer-primary-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.45);
+}
+
+.drawer-primary-btn.final-btn {
+  background: linear-gradient(135deg, #10b981, #059669);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
+}
+
+.duo-action-btns {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+}
+
+.drawer-action-btn {
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: 7px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  justify-content: center;
+}
+
+.duo-action-btns .accept-btn {
+  flex: 1;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+}
+
+.duo-action-btns .reject-btn {
+  flex: 1;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #fff;
+}
+
+.rejections-btn {
+  width: 100%;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+}
+
+.rejections-btn:hover {
+  background: rgba(239, 68, 68, 0.25);
+  color: #ffffff;
+}
+
+.followup-btn {
+  width: 100%;
+  background: rgba(178, 138, 255, 0.14);
+  border: 1px solid rgba(178, 138, 255, 0.3);
+  color: #d8b4fe;
+}
+
+.followup-btn:hover:not(:disabled) {
+  background: rgba(178, 138, 255, 0.25);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.drawer-status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 9px;
+  border-radius: 6px;
+  font-size: 9.5px;
+  font-weight: 700;
+}
+
+.drawer-status-pill.success-pill {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #34d399;
+}
+
+.drawer-status-pill.warning-pill {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #fcd34d;
+}
+
+.drawer-muted-hint {
+  font-size: 10px;
+  color: #64748b;
+  display: block;
+}
+
+.drawer-muted-hint.success-text { color: #34d399; }
+.drawer-muted-hint.ready-text { color: #60a5fa; }
+
+/* الروابط المساعدة داخل الدرج */
+.drawer-links-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.drawer-link-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 9.5px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.drawer-link-pill.folder-rev {
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.28);
+  color: #93c5fd;
+}
+
+.drawer-link-pill.folder-rev:hover {
+  background: rgba(59, 130, 246, 0.22);
+  color: #ffffff;
+}
+
+.drawer-link-pill.folder-final {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.28);
+  color: #6ee7b7;
+}
+
+.drawer-link-pill.folder-final:hover {
+  background: rgba(16, 185, 129, 0.22);
+  color: #ffffff;
+}
+
+.drawer-link-pill.plan-link {
+  background: rgba(125, 232, 220, 0.12);
+  border: 1px solid rgba(125, 232, 220, 0.28);
+  color: #7de8dc;
+}
+
+.drawer-link-pill.plan-link:hover {
+  background: rgba(125, 232, 220, 0.22);
+  color: #ffffff;
+}
+
+/* فوتر الكارت المنظم */
+.card-utilities-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.secondary-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.compact-recurrence-toggle {
+  margin-bottom: 0 !important;
 }
 
 </style>

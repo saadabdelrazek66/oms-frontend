@@ -259,12 +259,6 @@
       </router-link>
     </nav>
 
-    <p class="section-label workspace-label">مساحتك</p>
-    <div class="quick-links">
-      <a href="#" @click.prevent><span class="quick-icon teal">◷</span> الإشعارات <b>3</b></a>
-      <a href="#" @click.prevent><span class="quick-icon orange">?</span> المساعدة والدعم</a>
-    </div>
-
       <div class="sidebar-bottom">
         <div class="ocean-tip">
           <span aria-hidden="true">✧</span>

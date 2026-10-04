@@ -119,6 +119,7 @@
           <!-- أسفل الكارت: زر الدخول التفاعلي المحسن -->
           <div class="bc-footer">
             <button 
+              v-if="canOpenBoard(plan)"
               type="button" 
               class="open-board-btn" 
               @click.stop="goToBoard(plan.id)"
@@ -130,6 +131,10 @@
               </div>
               <span class="btn-arrow">←</span>
             </button>
+            <div v-else class="board-locked-pill" title="بانتظار الاعتماد الداخلي من قِبل الإدارة 🔒">
+              <span class="locked-icon">🔒</span>
+              <span>بانتظار الاعتماد الداخلي</span>
+            </div>
           </div>
         </div>
       </div>
@@ -172,9 +177,27 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../axios';
+import alertService from '../services/alertService';
 import ClientAvatar from '@/components/ClientAvatar.vue';
 
 const router = useRouter();
+
+const getUserData = () => {
+  try {
+    return JSON.parse(localStorage.getItem('user') || 'null');
+  } catch (e) {
+    return null;
+  }
+};
+const currentUser = ref(getUserData());
+
+const canOpenBoard = (plan) => {
+  const isManager = currentUser.value?.role === 'manager';
+  if (isManager) return true;
+  if (!plan) return false;
+  if (!plan.requires_review) return true;
+  return ['reviewed', 'completed'].includes(plan.status);
+};
 
 const plans = ref([]);
 const loading = ref(true);
@@ -289,6 +312,11 @@ const parsePlan = (plan) => {
 
 const goToBoard = (planId) => {
   if (!planId) return;
+  const plan = plans.value.find(p => p.id === planId);
+  if (!canOpenBoard(plan)) {
+    alertService.toast('عذراً، لا يمكن للموظفين فتح لوحة المحتوى قبل اعتماد الخطة داخلياً من قِبل الإدارة.', 'warning');
+    return;
+  }
   router.push(`/plan-board/${planId}`);
 };
 
@@ -843,6 +871,26 @@ onMounted(() => fetchPlans(1));
   font-weight: 700;
   padding: 2px 6px;
   border-radius: 6px;
+}
+
+
+.board-locked-pill {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px dashed rgba(239, 68, 68, 0.35);
+  border-radius: 9px;
+  color: #ef4444;
+  font-size: 12.5px;
+  font-weight: 700;
+  user-select: none;
+}
+.board-locked-pill .locked-icon {
+  font-size: 14px;
 }
 
 </style>

@@ -72,7 +72,7 @@
                 <div class="cred-platform"><strong>{{ cred.platform }}</strong></div>
                 <div class="cred-actions">
                   <button type="button" @click="openCredModal(client.id, cred)" class="icon-btn edit-icon" title="تعديل" aria-label="تعديل بيانات الحساب">✎</button>
-                  <button type="button" @click="deleteCred(cred.id)" class="icon-btn delete-icon" title="حذف" aria-label="حذف الحساب">⌫</button>
+                  <button type="button" @click="deleteCred(cred.id)" class="icon-btn delete-icon" title="حذف" aria-label="حذف الحساب">🗑️</button>
                 </div>
               </div>
               

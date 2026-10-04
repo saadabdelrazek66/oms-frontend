@@ -115,7 +115,7 @@
                     <button v-if="canViewChat(element)" type="button" @click.stop="openChatModal(element)" class="t-btn" title="تفاصيل ومحادثة المهمة">💬</button>
                     <template v-if="isManager">
                       <button type="button" @click.stop="openTaskModal(element)" class="t-btn" title="تعديل البيانات">✎</button>
-                      <button type="button" @click.stop="deleteTask(element.id)" class="t-btn text-red" title="حذف">⌫</button>
+                      <button type="button" @click.stop="deleteTask(element.id)" class="t-btn text-red" title="حذف">🗑️</button>
                     </template>
                   </div>
                 </div>

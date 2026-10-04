@@ -46,7 +46,7 @@
           @click.stop="clearDeadline"
           title="مسح الديدلاين"
         >
-          ×
+          🗑️
         </button>
       </div>
 

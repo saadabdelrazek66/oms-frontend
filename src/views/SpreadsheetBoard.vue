@@ -1,5 +1,20 @@
 <template>
-  <section class="spreadsheet-page" dir="rtl">
+  <!-- شاشة منع وصول الموظفين قبل الاعتماد الداخلي -->
+  <div v-if="accessDenied" class="access-denied-wrapper" dir="rtl">
+    <div class="access-denied-card">
+      <div class="lock-icon-badge">🔒</div>
+      <h2>الوصول غير متاح حالياً</h2>
+      <p class="denied-text">{{ accessDeniedMessage || 'عذراً، لا يمكن للموظفين فتح لوحة المحتوى قبل اعتماد الخطة داخلياً من قِبل الإدارة.' }}</p>
+      <div class="denied-actions">
+        <router-link to="/plan-contents" class="return-plans-btn">
+          <span>العودة إلى محتويات الخطط</span>
+          <span style="font-size: 16px;">↩️</span>
+        </router-link>
+      </div>
+    </div>
+  </div>
+
+  <section v-else class="spreadsheet-page" dir="rtl">
     <div class="page-topline">
       <div class="topline-info">
         <div class="breadcrumbs">
@@ -152,10 +167,41 @@
             <td class="text-center readonly-cell row-num-cell " style="font-weight: 700; width: 45px; color: #8792be; vertical-align: middle;">{{ index + 1 }}</td>
             
             <!-- 2. حالة المنشور وموعد النشر الذكي -->
-            <td class="readonly-cell position-relative " :class="getDeadlineStatus(currentPlan?.start_date || post.created_at, post.target_date, post.actual_publish_status).class + '-border'">
+            <td class="readonly-cell position-relative target-date-td" :class="getDeadlineStatus(currentPlan?.start_date || post.created_at, post.target_date, post.actual_publish_status).class + '-border'">
               <button class="icon-btn view-btn" @click="openViewModal(post)" title="عرض التفاصيل">👁️</button>
-              <strong>{{ getDayName(post.target_date) }}</strong>
-              <small>{{ formatDate(post.target_date) }}</small>
+              
+              <!-- صندوق تاريخ النشر المخطط (تفاعلي للمدير والأكونت مانجر قبل التسليم النهائي) -->
+              <div 
+                v-if="canEditTargetDate(post)" 
+                class="target-date-interactive-box"
+                @click="onTargetDateContainerClick(post.id)"
+                title="اضغط لتعديل تاريخ النشر المخطط 📅"
+              >
+                <strong class="target-day-name">{{ getDayName(post.target_date) }}</strong>
+                <span class="target-date-badge">
+                  <small>{{ formatDate(post.target_date) }}</small>
+                  <span class="cal-mini-icon">📅</span>
+                </span>
+                <input 
+                  type="date"
+                  :ref="el => registerDateInput(post.id, el)"
+                  class="target-date-native-overlay"
+                  :value="formatForDateInput(post.target_date)"
+                  @click.stop="onDateInputClick($event)"
+                  @change="handleTargetDateChange(post, $event)"
+                  title="اختر تاريخ النشر المخطط"
+                />
+              </div>
+
+              <!-- عرض ثابت إذا كان مسلماً نهائياً أو مستخدم غير مصرح له -->
+              <div v-else class="target-date-static-box" :title="isPlanDelivered ? 'تم قفل تعديل تاريخ النشر بعد إتمام التسليم النهائي للخطة 🔒' : ''">
+                <strong class="target-day-name">{{ getDayName(post.target_date) }}</strong>
+                <small>{{ formatDate(post.target_date) }}</small>
+                <div v-if="isPlanDelivered" class="plan-delivered-lock-tag" title="تم قفل تاريخ النشر المخطط نظراً لإتمام التسليم النهائي للخطة">
+                  🔒 مقفل نهائياً
+                </div>
+              </div>
+
               <div v-if="post.is_urgent" class="urgent-badge" title="هذا المنشور ذو أولوية قصوى وعاجلة">🚨 عاجل</div>
               
               <!-- SLA Smart Indicator لموعد النشر -->
@@ -753,8 +799,21 @@
                   <li>
                     <span class="info-icon">📅</span>
                     <div class="info-data">
-                      <span class="info-label">تاريخ النشر</span>
-                      <strong class="info-value">{{ getDayName(selectedPostForView.target_date) }} - {{ formatDate(selectedPostForView.target_date) }}</strong>
+                      <span class="info-label">تاريخ النشر المخطط</span>
+                      <div v-if="canEditTargetDate(selectedPostForView)" style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+                        <strong class="info-value">{{ getDayName(selectedPostForView.target_date) }} - {{ formatDate(selectedPostForView.target_date) }}</strong>
+                        <input 
+                          type="date" 
+                          class="modal-target-date-picker" 
+                          :value="formatForDateInput(selectedPostForView.target_date)"
+                          @change="handleTargetDateChange(selectedPostForView, $event)"
+                          title="تعديل تاريخ النشر المخطط"
+                        />
+                      </div>
+                      <div v-else>
+                        <strong class="info-value">{{ getDayName(selectedPostForView.target_date) }} - {{ formatDate(selectedPostForView.target_date) }}</strong>
+                        <span v-if="isPlanDelivered" class="plan-delivered-lock-tag" style="margin-right: 6px;">🔒 مقفل بعد التسليم النهائي</span>
+                      </div>
                     </div>
                   </li>
                   <li v-if="selectedPostForView.publishing_time">
@@ -1007,6 +1066,8 @@ const allUsers = ref([]);
 const currentUser = ref(getStoredUser());
 const currentPlan = ref(null);
 const isPlanResponsible = ref(false);
+const accessDenied = ref(false);
+const accessDeniedMessage = ref('');
 
 const formatExternalUrl = (url) => {
   if (!url) return '#';
@@ -1214,7 +1275,7 @@ let scrollLeft;
 const onMouseDown = (e) => {
   if (!spreadsheetContainer.value) return;
   const targetTag = e.target.tagName.toLowerCase();
-  if (['input', 'select', 'button', 'textarea', 'a', 'path', 'svg', 'label'].includes(targetTag) || e.target.closest('.icon-btn, .primary-btn, .secondary-btn, .custom-multiselect, .dropdown-menu, .multiselect-toggle, .smart-deadline-cell, .deadline-active-chip, .deadline-empty-btn, .deadline-popover-card')) return;
+  if (['input', 'select', 'button', 'textarea', 'a', 'path', 'svg', 'label'].includes(targetTag) || e.target.closest('.icon-btn, .primary-btn, .secondary-btn, .custom-multiselect, .dropdown-menu, .multiselect-toggle, .smart-deadline-cell, .deadline-active-chip, .deadline-empty-btn, .deadline-popover-card, .target-date-interactive-box')) return;
 
   isDown = true;
   spreadsheetContainer.value.classList.add('dragging');
@@ -1409,6 +1470,97 @@ const checkIfResponsibleFromPlan = (plan) => {
     return plan.users.some(u => Number(u.id) === uid && u.pivot?.task_role === 'responsible');
   }
   return false;
+};
+
+// الأكونت مانجر: بالمسمى الوظيفي أو بالمسؤولية عن هذه الخطة
+const isAccountManager = computed(() => {
+  if (!currentUser.value) return false;
+  if (currentUser.value.job_title === 'Account Manager') return true;
+  return isPlanResponsible.value || checkIfResponsibleFromPlan(currentPlan.value);
+});
+
+// هل تم التسليم النهائي للخطة؟
+const isPlanDelivered = computed(() => {
+  if (!currentPlan.value) return false;
+  return currentPlan.value.status === 'completed' || !!currentPlan.value.actual_delivery_date;
+});
+
+// صلاحية تعديل تاريخ النشر المخطط: للمدير والأكونت مانجر فقط ويقفل بعد التسليم النهائي للخطة
+const canEditTargetDate = (post) => {
+  if (isPlanDelivered.value) return false;
+  return isManager.value || isAccountManager.value;
+};
+
+const dateInputRefs = ref({});
+const registerDateInput = (postId, el) => {
+  if (el) {
+    dateInputRefs.value[postId] = el;
+  }
+};
+
+const formatForDateInput = (dateStr) => {
+  if (!dateStr) return '';
+  if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateStr.trim())) {
+    return dateStr.trim();
+  }
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  } catch (e) {
+    return '';
+  }
+};
+
+const onTargetDateContainerClick = (postId) => {
+  const el = dateInputRefs.value[postId];
+  if (el) {
+    if (typeof el.showPicker === 'function') {
+      try {
+        el.showPicker();
+      } catch (err) {
+        el.focus();
+      }
+    } else {
+      el.focus();
+    }
+  }
+};
+
+const onDateInputClick = (event) => {
+  const el = event.target;
+  if (el && typeof el.showPicker === 'function') {
+    try {
+      el.showPicker();
+    } catch (e) {
+      // fallback
+    }
+  }
+};
+
+const handleTargetDateChange = async (post, event) => {
+  const newDate = event.target.value;
+  if (!newDate) return;
+  if (formatForDateInput(post.target_date) === newDate) return;
+
+  const oldDate = post.target_date;
+  post.target_date = newDate;
+
+  saving.value = true;
+  try {
+    const res = await api.put(`/plan-posts/${post.id}`, { target_date: newDate });
+    showToast('تم تحديث تاريخ النشر المخطط بنجاح ✅', 'success');
+    posts.value.sort((a, b) => new Date(a.target_date) - new Date(b.target_date));
+  } catch (error) {
+    post.target_date = oldDate;
+    const msg = error.response?.data?.message || 'تعذر تحديث تاريخ النشر المخطط!';
+    showToast(msg, 'error');
+  } finally {
+    saving.value = false;
+  }
 };
 
 const canDeletePosts = computed(() => {
@@ -1734,6 +1886,14 @@ const fetchCurrentPlan = async () => {
   try {
     const res = await api.get(`/content-plans/${planId}`);
     currentPlan.value = res.data.data || res.data;
+    
+    // التحقق من صلاحية الموظف: منع الفتح إذا كانت الخطة تتطلب مراجعة ولم تُعتمد داخلياً بعد
+    if (!isManager.value && currentPlan.value?.requires_review && !['reviewed', 'completed'].includes(currentPlan.value?.status)) {
+      accessDenied.value = true;
+      accessDeniedMessage.value = 'عذراً، لا يمكن للموظفين فتح لوحة المحتوى قبل اعتماد الخطة داخلياً من قِبل الإدارة.';
+      return;
+    }
+
     if (checkIfResponsibleFromPlan(currentPlan.value)) {
       isPlanResponsible.value = true;
     }
@@ -1754,10 +1914,20 @@ const fetchCurrentPlan = async () => {
       }
     }
   } catch (error) {
+    if (error.response?.status === 403) {
+      accessDenied.value = true;
+      accessDeniedMessage.value = error.response.data?.message || 'عذراً، لا يمكن للموظفين فتح لوحة المحتوى قبل اعتماد الخطة داخلياً من قِبل الإدارة.';
+      return;
+    }
     try {
       const fallbackRes = await api.get('/content-plans');
       const allPlans = fallbackRes.data.data || fallbackRes.data || [];
       currentPlan.value = allPlans.find(p => p.id == planId) || null;
+      if (!isManager.value && currentPlan.value?.requires_review && !['reviewed', 'completed'].includes(currentPlan.value?.status)) {
+        accessDenied.value = true;
+        accessDeniedMessage.value = 'عذراً، لا يمكن للموظفين فتح لوحة المحتوى قبل اعتماد الخطة داخلياً من قِبل الإدارة.';
+        return;
+      }
       if (checkIfResponsibleFromPlan(currentPlan.value)) {
         isPlanResponsible.value = true;
       }
@@ -1793,6 +1963,11 @@ const fetchPosts = async () => {
     isPlanResponsible.value = res.data.is_responsible || checkIfResponsibleFromPlan(currentPlan.value) || isPlanResponsible.value || false;
     
   } catch (error) {
+    if (error.response?.status === 403) {
+      accessDenied.value = true;
+      accessDeniedMessage.value = error.response.data?.message || 'عذراً، لا يمكن للموظفين فتح لوحة المحتوى قبل اعتماد الخطة داخلياً من قِبل الإدارة.';
+      return;
+    }
     showToast('تعذر تحميل بيانات اللوحة.');
   } finally {
     loading.value = false;
@@ -3173,5 +3348,198 @@ input:disabled, select:disabled, textarea:disabled, .custom-multiselect.disabled
   }
 }
 
+
+
+/* واجهة منع الوصول للموظفين قبل الاعتماد الداخلي */
+.access-denied-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 450px;
+  padding: 40px 20px;
+}
+
+.access-denied-card {
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  background: rgba(14, 21, 56, 0.85);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 16px;
+  padding: 35px 25px;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+.lock-icon-badge {
+  font-size: 36px;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(239, 68, 68, 0.14);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  box-shadow: 0 0 18px rgba(239, 68, 68, 0.25);
+}
+
+.access-denied-card h2 {
+  font-size: 20px;
+  font-weight: 800;
+  color: #f1f5f9;
+  margin: 0;
+}
+
+.denied-text {
+  font-size: 13.5px;
+  color: #94a3b8;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.denied-actions {
+  margin-top: 10px;
+}
+
+.return-plans-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35);
+}
+
+.return-plans-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(59, 130, 246, 0.5);
+}
+
+
+
+/* صندوق تاريخ النشر المخطط التفاعلي للمدير والأكونت مانجر */
+.target-date-td {
+  vertical-align: middle;
+}
+
+.target-date-interactive-box {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px dashed rgba(59, 130, 246, 0.4);
+  transition: all 0.2s ease;
+  margin: 3px 0;
+  user-select: none;
+}
+
+.target-date-interactive-box:hover {
+  background: rgba(59, 130, 246, 0.16);
+  border-color: #3b82f6;
+  border-style: solid;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(59, 130, 246, 0.25);
+}
+
+.target-day-name {
+  font-size: 11.5px;
+  color: #1e293b;
+  display: block;
+}
+
+.target-date-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #ffffff;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-top: 2px;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.target-date-badge small {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #2563eb;
+}
+
+.cal-mini-icon {
+  font-size: 10px;
+}
+
+.target-date-native-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 5;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.target-date-static-box {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 2px 0;
+}
+
+.target-date-static-box strong {
+  font-size: 11px;
+  display: block;
+}
+
+.target-date-static-box small {
+  font-size: 10px;
+  color: #555;
+  display: block;
+}
+
+.plan-delivered-lock-tag {
+  font-size: 9px;
+  font-weight: 800;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-top: 3px;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.modal-target-date-picker {
+  background: #ffffff;
+  border: 1px solid #3b82f6;
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  color: #1e293b;
+  cursor: pointer;
+}
 
 </style>

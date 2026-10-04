@@ -117,7 +117,7 @@
               <td>
                 <div class="actions-cell">
                   <button class="action edit" type="button" title="تعديل" aria-label="تعديل بيانات المستخدم" @click="openModal(user)"><span aria-hidden="true">✎</span></button>
-                  <button class="action delete" type="button" title="حذف" aria-label="حذف المستخدم" @click="deleteUser(user.id)"><span aria-hidden="true">⌫</span></button>
+                  <button class="action delete" type="button" title="حذف" aria-label="حذف المستخدم" @click="deleteUser(user.id)"><span aria-hidden="true">🗑️</span></button>
                 </div>
               </td>
             </tr>

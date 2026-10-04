@@ -189,7 +189,7 @@
                   title="حذف هذا العنصر"
                   @click="confirmDeleteItem(item, category)"
                 >
-                  ×
+                  🗑️
                 </button>
               </div>
 

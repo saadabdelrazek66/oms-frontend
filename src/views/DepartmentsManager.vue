@@ -96,7 +96,7 @@
                     title="حذف"
                     @click="deleteDepartment(dept.id)"
                   >
-                    <span aria-hidden="true">⌫</span>
+                    <span aria-hidden="true">🗑️</span>
                   </button>
                 </div>
               </td>

@@ -82,6 +82,50 @@ export function formatTimeAgo(dateStr) {
   return date.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' })
 }
 
+/**
+ * Normalizes notification target URLs to guarantee users land on valid, role-appropriate pages.
+ * Handles legacy URLs like /content-plans/12, /plans/10, etc.
+ */
+export function normalizeNotificationUrl(rawUrl) {
+  if (!rawUrl || typeof rawUrl !== 'string') return null
+  const trimmed = rawUrl.trim()
+  if (!trimmed) return null
+
+  // If external absolute URL, leave untouched
+  if (/^https?:\/\//i.test(trimmed)) return trimmed
+
+  const role = localStorage.getItem('role')
+  let user = null
+  try {
+    user = JSON.parse(localStorage.getItem('user') || 'null')
+  } catch (e) {}
+  const isManagerOrAM = role === 'manager' || user?.role === 'manager' || user?.job_title === 'Account Manager'
+
+  // 1. Matches /content-plans/:id or /plans/:id (with optional query params)
+  const planMatch = trimmed.match(/^\/(?:content-plans|plans)\/(\d+)\/?(?:\?(.*))?$/)
+  if (planMatch) {
+    const planId = planMatch[1]
+    const queryPart = planMatch[2] ? `&${planMatch[2]}` : ''
+    if (isManagerOrAM) {
+      return `/content-plans?plan_id=${planId}${queryPart}`
+    } else {
+      return `/plan-board/${planId}${planMatch[2] ? `?${planMatch[2]}` : ''}`
+    }
+  }
+
+  // 2. Matches /plans or /content-plans (without ID)
+  if (trimmed === '/plans' || trimmed === '/plans/' || trimmed === '/content-plans' || trimmed === '/content-plans/') {
+    return isManagerOrAM ? '/content-plans' : '/plan-contents'
+  }
+
+  // 3. Matches /plan-board without ID
+  if (trimmed === '/plan-board' || trimmed === '/plan-board/') {
+    return '/plan-contents'
+  }
+
+  return trimmed
+}
+
 export function useNotifications() {
   /**
    * Fetches the current unread notifications count from backend:
@@ -213,16 +257,17 @@ export function useNotifications() {
     isDropdownOpen.value = false
 
     // Route / URL redirect
-    const targetUrl = notification.data?.url
-    if (targetUrl) {
-      if (router && typeof router.push === 'function') {
+    const rawTargetUrl = notification.data?.url
+    if (rawTargetUrl) {
+      const targetUrl = normalizeNotificationUrl(rawTargetUrl)
+      if (targetUrl) {
         if (targetUrl.startsWith('http://') || targetUrl.startsWith('https://')) {
           window.location.href = targetUrl
-        } else {
+        } else if (router && typeof router.push === 'function') {
           router.push(targetUrl)
+        } else {
+          window.location.href = targetUrl
         }
-      } else {
-        window.location.href = targetUrl
       }
     }
   }

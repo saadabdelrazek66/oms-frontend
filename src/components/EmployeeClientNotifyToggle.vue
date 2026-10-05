@@ -256,26 +256,45 @@ const togglePermission = async () => {
 
 /* Compact Mode */
 .notify-toggle-wrapper.compact-mode {
-  padding: 5px 10px;
-  border-radius: 8px;
+  padding: 3px 8px;
+  border-radius: 6px;
 }
 
 .notify-toggle-wrapper.compact-mode .toggle-label {
+  font-size: 10px;
+}
+
+.notify-toggle-wrapper.compact-mode .notify-icon {
   font-size: 11px;
 }
 
+.notify-toggle-wrapper.compact-mode .toggle-action-row {
+  gap: 6px;
+}
+
+.notify-toggle-wrapper.compact-mode .notify-status-pill {
+  padding: 1px 5px;
+  font-size: 9px;
+  border-radius: 4px;
+}
+
+.notify-toggle-wrapper.compact-mode .status-dot {
+  width: 5px;
+  height: 5px;
+}
+
 .notify-toggle-wrapper.compact-mode .switch-track {
-  width: 36px;
-  height: 19px;
+  width: 28px;
+  height: 15px;
 }
 
 .notify-toggle-wrapper.compact-mode .switch-thumb {
-  width: 14px;
-  height: 14px;
-  right: 2.5px;
+  width: 11px;
+  height: 11px;
+  right: 2px;
 }
 
 .notify-toggle-wrapper.compact-mode .switch-thumb.thumb-checked {
-  transform: translateX(-16px);
+  transform: translateX(-13px);
 }
 </style>

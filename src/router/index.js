@@ -122,7 +122,53 @@ const router = createRouter({
             title: 'إعدادات النظام',
           },
         },
+        {
+          path: '/content-plans/:id',
+          name: 'ContentPlanRedirect',
+          redirect: (to) => {
+            const role = localStorage.getItem('role')
+            let user = null
+            try {
+              user = JSON.parse(localStorage.getItem('user') || 'null')
+            } catch (e) {}
+            const isManagerOrAM = role === 'manager' || user?.role === 'manager' || user?.job_title === 'Account Manager'
+            if (isManagerOrAM) {
+              return { path: '/content-plans', query: { plan_id: to.params.id } }
+            }
+            return { path: `/plan-board/${to.params.id}` }
+          },
+        },
+        {
+          path: '/plans/:id',
+          name: 'PlanLegacyRedirect',
+          redirect: (to) => {
+            const role = localStorage.getItem('role')
+            let user = null
+            try {
+              user = JSON.parse(localStorage.getItem('user') || 'null')
+            } catch (e) {}
+            const isManagerOrAM = role === 'manager' || user?.role === 'manager' || user?.job_title === 'Account Manager'
+            if (isManagerOrAM) {
+              return { path: '/content-plans', query: { plan_id: to.params.id } }
+            }
+            return { path: `/plan-board/${to.params.id}` }
+          },
+        },
+        {
+          path: '/plans',
+          redirect: '/content-plans',
+        },
       ],
+    },
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'NotFound',
+      redirect: () => {
+        const token = localStorage.getItem('token')
+        const role = localStorage.getItem('role')
+        if (!token) return '/'
+        return role === 'manager' ? '/manager/dashboard' : '/employee/dashboard'
+      },
     },
   ],
 })

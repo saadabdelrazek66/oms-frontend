@@ -35,6 +35,12 @@
           <small>روابط اجتماعية</small><strong>{{ linksTotal }}</strong>
         </div>
       </div>
+      <div>
+        <span class="summary-icon green">👥</span>
+        <div>
+          <small>جروبات العمل</small><strong>{{ groupsTotal }}</strong>
+        </div>
+      </div>
       <div class="sync-status"><i></i> بيانات محدثة من مساحة العمل</div>
     </div>
 
@@ -57,18 +63,19 @@
               <th scope="col">التواصل الأساسي</th>
               <th scope="col">البيانات المالية</th>
               <th scope="col">جهات الاتصال</th>
+              <th scope="col">جروبات العميل</th>
               <th scope="col">السوشيال ميديا</th>
               <th scope="col">إجراءات</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="loading">
-              <td colspan="7" class="state-cell">
+              <td colspan="8" class="state-cell">
                 <span class="spinner"></span> جارٍ تحميل البيانات...
               </td>
             </tr>
             <tr v-else-if="clients.length === 0">
-              <td colspan="7" class="state-cell">لا يوجد عملاء مسجلون حاليًا</td>
+              <td colspan="8" class="state-cell">لا يوجد عملاء مسجلون حاليًا</td>
             </tr>
             <tr v-for="(client, index) in clients" v-else :key="client.id">
               <td class="text-center" style="font-weight: 700; color: #8792be; width: 50px; vertical-align: middle;">{{ index + 1 }}</td>
@@ -147,6 +154,28 @@
                   <em v-if="client.contacts.length > 2">+{{ client.contacts.length - 2 }}</em>
                 </div>
                 <span v-else class="muted">لم تتم الإضافة</span>
+              </td>
+              <td>
+                <div v-if="client.group_links?.length" class="client-group-badges">
+                  <a
+                    v-for="(grp, gIdx) in client.group_links.slice(0, 3)"
+                    :key="gIdx"
+                    :href="grp.url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="group-badge-pill"
+                    :class="`platform-${grp.platform || 'other'}`"
+                    :title="grp.title ? `${grp.title} (${getGroupPlatformLabel(grp.platform)})` : getGroupPlatformLabel(grp.platform)"
+                  >
+                    <span>{{ getGroupPlatformIcon(grp.platform) }}</span>
+                    <strong>{{ grp.title || getGroupPlatformLabel(grp.platform) }}</strong>
+                    <small>↗</small>
+                  </a>
+                  <span v-if="client.group_links.length > 3" class="more-groups-tag">
+                    +{{ client.group_links.length - 3 }}
+                  </span>
+                </div>
+                <span v-else class="muted">لا توجد جروبات</span>
               </td>
               <td>
                 <div v-if="client.social_links?.length" class="social-links">
@@ -539,6 +568,65 @@
             >
           </div>
 
+          <!-- جروبات ومجموعات العمل مع العميل (واتساب، تليجرام، إلخ) -->
+          <div class="form-section">
+            <div class="section-head">
+              <h4>جروبات ومجموعات العمل مع العميل (واتساب، تليجرام، إلخ)</h4>
+              <button type="button" class="outline-btn" @click="addGroupLink">
+                ＋ إضافة رابط جروب
+              </button>
+            </div>
+            <div
+              v-for="(grp, index) in form.group_links"
+              :key="'g' + index"
+              class="group-link-wrapper"
+            >
+              <div class="dynamic-row">
+                <select
+                  v-model="grp.platform"
+                  class="platform-select"
+                  required
+                  style="flex: 1; min-width: 140px"
+                >
+                  <option value="" disabled>اختر المنصة...</option>
+                  <option
+                    v-for="p in groupPlatformOptions"
+                    :key="p.value"
+                    :value="p.value"
+                  >
+                    {{ p.icon }} {{ p.label }}
+                  </option>
+                </select>
+                <input
+                  v-model="grp.title"
+                  type="text"
+                  placeholder="اسم أو وصف الجروب (مثال: جروب المحتوى)"
+                  style="flex: 1.2; min-width: 130px"
+                />
+                <input
+                  v-model="grp.url"
+                  type="url"
+                  placeholder="رابط الجروب (https://chat.whatsapp.com/... أو https://t.me/...)"
+                  required
+                  dir="ltr"
+                  style="flex: 2"
+                  @blur="handleGroupUrlBlur(grp)"
+                />
+                <button
+                  type="button"
+                  class="remove-btn"
+                  @click="removeGroupLink(index)"
+                  title="حذف رابط الجروب"
+                >
+                  🗑️
+                </button>
+              </div>
+            </div>
+            <span v-if="!form.group_links.length" class="empty-hint"
+              >لم يتم إضافة أي روابط جروبات للعميل.</span
+            >
+          </div>
+
           <!-- جهات الاتصال (الأشخاص) -->
           <div class="form-section">
             <div class="section-head">
@@ -747,6 +835,37 @@
 
         <section class="details-section full-detail">
           <div class="section-heading-row">
+            <h4><span class="section-symbol green-symbol">👥</span> جروبات ومجموعات العميل</h4>
+            <span class="links-count">{{ selectedClient.group_links?.length || 0 }} جروبات</span>
+          </div>
+          <div v-if="selectedClient.group_links?.length" class="detail-links group-detail-links">
+            <a
+              v-for="(grp, index) in selectedClient.group_links"
+              :key="'gl' + index"
+              :href="grp.url"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="group-detail-card"
+              :class="`platform-${grp.platform || 'other'}`"
+            >
+              <div class="group-detail-left">
+                <span class="group-platform-icon">{{ getGroupPlatformIcon(grp.platform) }}</span>
+                <div>
+                  <strong>{{ grp.title || getGroupPlatformLabel(grp.platform) }}</strong>
+                  <span class="group-platform-label">{{ getGroupPlatformLabel(grp.platform) }}</span>
+                </div>
+              </div>
+              <div class="group-detail-right">
+                <small dir="ltr">{{ grp.url }}</small>
+                <span class="open-btn">فتح الجروب ↗</span>
+              </div>
+            </a>
+          </div>
+          <span v-else class="empty-detail">لا توجد روابط جروبات مسجلة لهذا العميل</span>
+        </section>
+
+        <section class="details-section full-detail">
+          <div class="section-heading-row">
             <h4><span class="section-symbol purple-symbol">↗</span> منصات السوشيال ميديا</h4>
             <span class="links-count">{{ selectedClient.social_links?.length || 0 }} منصات</span>
           </div>
@@ -867,6 +986,7 @@ const form = reactive({
   instapay: '',
   wallet: '',
   social_links: [], // مصفوفة { platform, url }
+  group_links: [], // مصفوفة { platform, title, url }
   drive_links: [],
   contacts: [],
 })
@@ -876,6 +996,9 @@ const contactsTotal = computed(() =>
 )
 const linksTotal = computed(() =>
   clients.value.reduce((total, client) => total + (client.social_links?.length || 0), 0),
+)
+const groupsTotal = computed(() =>
+  clients.value.reduce((total, client) => total + (client.group_links?.length || 0), 0),
 )
 
 const getInitials = (name = '') =>
@@ -1089,6 +1212,47 @@ const removeSocialLink = (index) => {
   }
 }
 
+// منصات ودوال إدارة جروبات ومجموعات العميل
+const groupPlatformOptions = [
+  { value: 'whatsapp', label: 'واتساب (WhatsApp Group)', icon: '💬' },
+  { value: 'telegram', label: 'تليجرام (Telegram Group)', icon: '✈️' },
+  { value: 'facebook', label: 'فيسبوك (Facebook Group)', icon: '👥' },
+  { value: 'discord', label: 'ديسكورد (Discord Server)', icon: '🎮' },
+  { value: 'slack', label: 'سلاك (Slack Workspace)', icon: '💼' },
+  { value: 'other', label: 'منصة أخرى (Other)', icon: '🔗' },
+]
+
+const getGroupPlatformIcon = (platform) => {
+  const p = (platform || '').toLowerCase()
+  if (p.includes('whatsapp') || p.includes('واتس')) return '💬'
+  if (p.includes('telegram') || p.includes('تليجرام') || p.includes('تيليجرام')) return '✈️'
+  if (p.includes('facebook') || p.includes('فيسبوك')) return '👥'
+  if (p.includes('discord') || p.includes('ديسكورد')) return '🎮'
+  if (p.includes('slack') || p.includes('سلاك')) return '💼'
+  return '🔗'
+}
+
+const getGroupPlatformLabel = (platform) => {
+  const match = groupPlatformOptions.find((o) => o.value === platform || o.label === platform)
+  return match ? match.label.split(' ')[0] : (platform || 'جروب')
+}
+
+const handleGroupUrlBlur = (grp) => {
+  if (grp && grp.url && grp.url.trim()) {
+    const u = grp.url.trim()
+    if (!/^https?:\/\//i.test(u)) {
+      grp.url = 'https://' + u
+    }
+  }
+}
+
+const addGroupLink = () => form.group_links.push({ platform: 'whatsapp', title: '', url: '' })
+const removeGroupLink = (index) => {
+  if (window.confirm('هل أنت متأكد من حذف رابط هذا الجروب؟')) {
+    form.group_links.splice(index, 1)
+  }
+}
+
 const addContact = () =>
   form.contacts.push({ contact_name: '', contact_method: '', contact_details: '' })
 const removeContact = (index) => {
@@ -1113,6 +1277,7 @@ const resetForm = () => {
     instapay: '',
     wallet: '',
     social_links: [],
+    group_links: [],
     drive_links: [],
     contacts: [],
   })
@@ -1144,6 +1309,13 @@ const openModal = (client) => {
         ? client.social_links.map((link) => ({
             platform: normalizePlatform(link.platform),
             url: link.url || '',
+          }))
+        : [],
+      group_links: client.group_links
+        ? client.group_links.map((grp) => ({
+            platform: grp.platform || 'whatsapp',
+            title: grp.title || '',
+            url: grp.url || '',
           }))
         : [],
       drive_links: client.drive_links ? JSON.parse(JSON.stringify(client.drive_links)) : [],
@@ -1212,6 +1384,13 @@ const saveClient = async () => {
     form.social_links.forEach((link, index) => {
       formData.append(`social_links[${index}][platform]`, link.platform || '')
       formData.append(`social_links[${index}][url]`, link.url || '')
+    })
+
+    // روابط جروبات العميل (واتساب، تليجرام، إلخ)
+    form.group_links.forEach((group, index) => {
+      formData.append(`group_links[${index}][platform]`, group.platform || 'other')
+      formData.append(`group_links[${index}][title]`, group.title || '')
+      formData.append(`group_links[${index}][url]`, group.url || '')
     })
 
     // روابط درايف
@@ -2677,6 +2856,212 @@ onBeforeUnmount(() => {
 .slide-fade-leave-to {
   transform: translateY(-6px);
   opacity: 0;
+}
+
+/* تنسيقات شارات وروابط جروبات العميل */
+.client-group-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  max-width: 220px;
+}
+
+.group-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.group-badge-pill strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-badge-pill.platform-whatsapp {
+  background: rgba(37, 211, 102, 0.12);
+  color: #25d366;
+  border: 1px solid rgba(37, 211, 102, 0.28);
+}
+.group-badge-pill.platform-whatsapp:hover {
+  background: rgba(37, 211, 102, 0.24);
+  color: #ffffff;
+  border-color: #25d366;
+  box-shadow: 0 0 10px rgba(37, 211, 102, 0.3);
+}
+
+.group-badge-pill.platform-telegram {
+  background: rgba(0, 136, 204, 0.12);
+  color: #38bdf8;
+  border: 1px solid rgba(0, 136, 204, 0.28);
+}
+.group-badge-pill.platform-telegram:hover {
+  background: rgba(0, 136, 204, 0.24);
+  color: #ffffff;
+  border-color: #38bdf8;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+}
+
+.group-badge-pill.platform-facebook {
+  background: rgba(24, 119, 242, 0.12);
+  color: #60a5fa;
+  border: 1px solid rgba(24, 119, 242, 0.28);
+}
+.group-badge-pill.platform-facebook:hover {
+  background: rgba(24, 119, 242, 0.24);
+  color: #ffffff;
+}
+
+.group-badge-pill.platform-discord {
+  background: rgba(88, 101, 242, 0.12);
+  color: #c084fc;
+  border: 1px solid rgba(88, 101, 242, 0.28);
+}
+.group-badge-pill.platform-discord:hover {
+  background: rgba(88, 101, 242, 0.24);
+  color: #ffffff;
+}
+
+.group-badge-pill.platform-slack {
+  background: rgba(234, 179, 8, 0.12);
+  color: #facc15;
+  border: 1px solid rgba(234, 179, 8, 0.28);
+}
+.group-badge-pill.platform-slack:hover {
+  background: rgba(234, 179, 8, 0.24);
+  color: #ffffff;
+}
+
+.group-badge-pill.platform-other {
+  background: rgba(125, 232, 220, 0.12);
+  color: #7de8dc;
+  border: 1px solid rgba(125, 232, 220, 0.28);
+}
+.group-badge-pill.platform-other:hover {
+  background: rgba(125, 232, 220, 0.24);
+  color: #ffffff;
+}
+
+.more-groups-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 800;
+  color: #8792be;
+  padding: 3px 6px;
+  border-radius: 5px;
+  background: rgba(135, 146, 190, 0.12);
+}
+
+.group-link-wrapper {
+  margin-bottom: 10px;
+}
+
+.group-detail-links {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.group-detail-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: rgba(14, 21, 62, 0.45);
+  border: 1px solid rgba(137, 153, 226, 0.15);
+  border-radius: 10px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  gap: 12px;
+}
+
+.group-detail-card:hover {
+  background: rgba(14, 21, 62, 0.75);
+  transform: translateY(-1px);
+  border-color: rgba(125, 232, 220, 0.4);
+}
+
+.group-detail-card.platform-whatsapp {
+  border-right: 3px solid #25d366;
+}
+.group-detail-card.platform-telegram {
+  border-right: 3px solid #0088cc;
+}
+.group-detail-card.platform-facebook {
+  border-right: 3px solid #1877f2;
+}
+.group-detail-card.platform-discord {
+  border-right: 3px solid #5865f2;
+}
+.group-detail-card.platform-slack {
+  border-right: 3px solid #eab308;
+}
+.group-detail-card.platform-other {
+  border-right: 3px solid #7de8dc;
+}
+
+.group-detail-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.group-platform-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.group-platform-label {
+  display: block;
+  font-size: 11px;
+  color: #8792be;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.group-detail-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.group-detail-right small {
+  color: #7de8dc;
+  font-size: 11px;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-detail-right .open-btn {
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: rgba(125, 232, 220, 0.12);
+  color: #7de8dc;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid rgba(125, 232, 220, 0.3);
+  transition: all 0.2s ease;
+}
+
+.group-detail-card:hover .open-btn {
+  background: #7de8dc;
+  color: #060b25;
 }
 
 </style>

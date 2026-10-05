@@ -257,26 +257,45 @@ const toggleRecurrence = async () => {
 
 /* Compact Mode */
 .recurrence-toggle-wrapper.compact-mode {
-  padding: 5px 10px;
-  border-radius: 8px;
+  padding: 3px 8px;
+  border-radius: 6px;
 }
 
 .recurrence-toggle-wrapper.compact-mode .toggle-label {
+  font-size: 10px;
+}
+
+.recurrence-toggle-wrapper.compact-mode .recurrence-icon {
   font-size: 11px;
 }
 
+.recurrence-toggle-wrapper.compact-mode .toggle-action-row {
+  gap: 6px;
+}
+
+.recurrence-toggle-wrapper.compact-mode .recurrence-status-pill {
+  padding: 1px 5px;
+  font-size: 9px;
+  border-radius: 4px;
+}
+
+.recurrence-toggle-wrapper.compact-mode .status-dot {
+  width: 5px;
+  height: 5px;
+}
+
 .recurrence-toggle-wrapper.compact-mode .switch-track {
-  width: 38px;
-  height: 20px;
+  width: 28px;
+  height: 15px;
 }
 
 .recurrence-toggle-wrapper.compact-mode .switch-thumb {
-  width: 15px;
-  height: 15px;
-  right: 2.5px;
+  width: 11px;
+  height: 11px;
+  right: 2px;
 }
 
 .recurrence-toggle-wrapper.compact-mode .switch-thumb.thumb-checked {
-  transform: translateX(-18px);
+  transform: translateX(-13px);
 }
 </style>

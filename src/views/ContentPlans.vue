@@ -152,8 +152,9 @@
           <div 
             v-for="plan in plans" 
             :key="plan.id" 
+            :id="'plan-card-' + plan.id"
             class="plan-card"
-            :class="['plan-card-' + plan.status, { 'is-delayed': isPlanDelayed(plan) }]"
+            :class="['plan-card-' + plan.status, { 'is-delayed': isPlanDelayed(plan), 'is-targeted': String(route.query.plan_id) === String(plan.id) }]"
           >
             <!-- شريط التوهج العلوي الديناميكي -->
             <div class="card-accent-bar" :class="'accent-' + plan.status"></div>
@@ -172,7 +173,7 @@
                   <div class="client-title-line">
                     <h3 class="client-heading" :title="plan.client?.name">{{ plan.client?.name || 'عميل محذوف' }}</h3>
                     <span class="plan-type-tag">{{ plan.plan_type }}</span>
-                    <span v-if="Number(plan.total_estimated_hours) > 0" class="plan-hours-badge" :title="'إجمالي ساعات العمل التقديرية: ' + formatHours(plan.total_estimated_hours) + ' ساعة'">
+                    <span v-if="isManager && Number(plan.total_estimated_hours) > 0" class="plan-hours-badge" :title="'إجمالي ساعات العمل التقديرية: ' + formatHours(plan.total_estimated_hours) + ' ساعة'">
                       ⏱️ {{ formatHours(plan.total_estimated_hours) }}س
                     </span>
                   </div>
@@ -202,11 +203,22 @@
                       aria-label="تنبيه واتساب"
                       @click="smartNotify(plan)"
                     >
-                      <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+                      <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
                     </button>
-                    <button class="quick-icon-btn duplicate" type="button" title="استنساخ كقالب" @click="openDuplicateModal(plan)">⎘</button>
-                    <button class="quick-icon-btn edit" type="button" title="تعديل الخطة" @click="openManagerModal(plan)">✎</button>
-                    <button class="quick-icon-btn delete" type="button" title="حذف الخطة" @click="deletePlan(plan.id)">🗑️</button>
+                    <button 
+                      class="quick-icon-btn duplicate" 
+                      type="button" 
+                      title="استنساخ كقالب" 
+                      aria-label="استنساخ كقالب"
+                      @click="openDuplicateModal(plan)"
+                    >
+                      <svg viewBox="0 0 24 24" width="14.5" height="14.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                      </svg>
+                    </button>
+                    <button class="quick-icon-btn edit" type="button" title="تعديل الخطة" aria-label="تعديل الخطة" @click="openManagerModal(plan)">✎</button>
+                    <button class="quick-icon-btn delete" type="button" title="حذف الخطة" aria-label="حذف الخطة" @click="deletePlan(plan.id)">🗑️</button>
                   </div>
                 </div>
               </div>
@@ -218,7 +230,7 @@
                 v-for="item in plan.items" 
                 :key="item.id || item.item_name" 
                 class="card-scope-pill"
-                :title="item.quantity + ' ' + item.item_name + (item.total_hours ? ' (' + item.total_hours + 'س)' : '')"
+                :title="item.quantity + ' ' + item.item_name + (isManager && item.total_hours ? ' (' + item.total_hours + 'س)' : '')"
               >
                 <strong class="pill-qty">{{ item.quantity }}</strong>
                 <span class="pill-name">{{ item.item_name }}</span>
@@ -335,7 +347,7 @@
                             <span>📁</span> مجلد الرفع
                           </a>
                           <a 
-                            v-if="hasPlanLink(plan)" 
+                            v-if="hasPlanLink(plan) && plan.status !== 'completed'" 
                             class="drawer-link-pill plan-link" 
                             :href="getPlanFileLink(plan).startsWith('http') ? getPlanFileLink(plan) : 'https://' + getPlanFileLink(plan)" 
                             target="_blank" 
@@ -344,6 +356,14 @@
                           >
                             <span>🔗</span> رابط البلان
                           </a>
+                          <span 
+                            v-else-if="hasPlanLink(plan)" 
+                            class="drawer-link-pill plan-link is-disabled" 
+                            title="تم إيقاف هذا الرابط لاكتمال التسليم النهائي للخطة"
+                            aria-disabled="true"
+                          >
+                            <span>🔗</span> رابط البلان
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -495,6 +515,21 @@
                       </div>
 
                       <div class="drawer-actions-row">
+                        <!-- زر اعتماد العميل -->
+                        <button 
+                          class="drawer-action-btn client-approval-btn"
+                          :class="{ 'is-approved': isPlanClientApproved(plan) }"
+                          type="button" 
+                          :disabled="actionLoading === `client-approval-${plan.id}` || (!isPlanClientApproved(plan) && !canApproveClient(plan))"
+                          :title="isPlanClientApproved(plan) ? (plan.status === 'completed' ? 'الخطة معتمدة ومكتملة' : 'الخطة معتمدة من العميل (اضغط لإلغاء الاعتماد)') : (!canApproveClient(plan) ? 'غير متاح قبل استكمال المراجعة الداخلية' : 'اعتماد العميل لفتح مرحلة التسليم النهائي')"
+                          @click="handleClientApproval(plan)"
+                        >
+                          <span v-if="actionLoading === `client-approval-${plan.id}`">⏳</span>
+                          <span v-else-if="isPlanClientApproved(plan)">✅</span>
+                          <span v-else>⭐</span>
+                          <span>{{ isPlanClientApproved(plan) ? 'تم اعتماد العميل ✅' : 'اعتماد العميل' }}</span>
+                        </button>
+
                         <button 
                           v-if="canNotifyClient(plan)"
                           class="drawer-action-btn notify-client-btn" 
@@ -513,13 +548,36 @@
                         >
                           <span>💬</span> إدارة متابعات وملاحظات العميل ({{ getFollowUps(plan).length }})
                         </button>
+
+                        <!-- روابط جروبات العميل (واتساب، تليجرام، إلخ) -->
+                        <a
+                          v-for="(grp, gIdx) in (plan.client?.group_links || [])"
+                          :key="'cg' + gIdx"
+                          :href="grp.url"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="drawer-action-btn client-group-pill"
+                          :title="grp.title ? `فتح ${grp.title}` : 'فتح جروب العميل'"
+                        >
+                          <span>{{ (grp.platform || '').toLowerCase().includes('telegram') ? '✈️' : '💬' }}</span>
+                          <span>{{ grp.title || (grp.platform === 'telegram' ? 'جروب تليجرام' : 'جروب واتساب') }} ↗</span>
+                        </a>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 <!-- ================= المرحلة 4: التسليم النهائي ================= -->
-                <div class="accordion-stage-card" :class="[getStageState(plan, 4).class, { 'is-expanded': isStageOpen(plan, 4) }]">
+                <div 
+                  class="accordion-stage-card" 
+                  :class="[
+                    getStageState(plan, 4).class, 
+                    { 
+                      'is-expanded': isStageOpen(plan, 4),
+                      'is-stage-disabled': !isPlanClientApproved(plan) && plan.status !== 'completed'
+                    }
+                  ]"
+                >
                   <div class="stage-accordion-header" @click="toggleStage(plan, 4)">
                     <div class="header-main-info">
                       <span class="stage-node-badge">{{ getStageState(plan, 4).icon }}</span>
@@ -541,6 +599,15 @@
                   <!-- المحتوى المنسدل للمرحلة 4 -->
                   <div class="stage-accordion-drawer" v-show="isStageOpen(plan, 4)">
                     <div class="drawer-inner-content">
+                      <!-- تنبيه المرحلة غير المفعلة عند عدم اعتماد العميل -->
+                      <div v-if="!isPlanClientApproved(plan) && plan.status !== 'completed'" class="stage-locked-notice">
+                        <span class="locked-icon">🔒</span>
+                        <div class="locked-info">
+                          <strong class="locked-title">المرحلة الرابعة غير مفعلة حالياً</strong>
+                          <p class="locked-desc">يلزم تسجيل اعتماد العميل في (المرحلة 3: متابعة مع العميل) أولاً ليتم فتح هذه المرحلة وتأكيد التسليم النهائي.</p>
+                        </div>
+                      </div>
+
                       <div class="drawer-info-grid">
                         <div class="drawer-meta-item">
                           <span class="meta-label">موعد التسليم النهائي:</span>
@@ -574,16 +641,21 @@
                           <span>🎉 تم التسليم النهائي للعميل بنجاح</span>
                         </div>
 
-                        <!-- زر تأكيد التسليم النهائي -->
+                        <!-- إشعار بعدم التفعيل قبل اعتماد العميل -->
+                        <div v-else-if="!isPlanClientApproved(plan)" class="drawer-status-pill locked-pill">
+                          <span>🔒 غير مفعلة بانتظار اعتماد العميل</span>
+                        </div>
+
+                        <!-- زر تأكيد التسليم النهائي (متاح فقط بعد اعتماد العميل) -->
                         <div v-else-if="isUserResponsible(plan) && (plan.status === 'reviewed' || (!plan.requires_review && (plan.status === 'pending' || plan.status === 'rejected')))" class="main-action-wrap">
                           <button 
                             class="drawer-primary-btn final-btn" 
                             type="button" 
                             :disabled="actionLoading === `delivery-${plan.id}`" 
                             @click="submitFinalDelivery(plan)"
-                            title="تأكيد التسليم النهائي للعميل"
+                            title="تأكيد التسليم النهائي"
                           >
-                            {{ actionLoading === `delivery-${plan.id}` ? 'جارٍ...' : 'تأكيد التسليم النهائي للعميل ✅' }}
+                            {{ actionLoading === `delivery-${plan.id}` ? 'جارٍ...' : 'تأكيد التسليم النهائي ✅' }}
                           </button>
                         </div>
 
@@ -606,8 +678,9 @@
                           >
                             <span>📂</span> مجلد التسليم النهائي
                           </a>
+                          <!-- رابط البلان النهائي: مفعل فقط بعد إتمام التسليم النهائي -->
                           <a 
-                            v-if="hasPlanLink(plan)" 
+                            v-if="hasPlanLink(plan) && plan.status === 'completed'" 
                             class="drawer-link-pill plan-link" 
                             :href="getPlanFileLink(plan).startsWith('http') ? getPlanFileLink(plan) : 'https://' + getPlanFileLink(plan)" 
                             target="_blank" 
@@ -616,6 +689,14 @@
                           >
                             <span>🔗</span> رابط البلان النهائي
                           </a>
+                          <span 
+                            v-else-if="hasPlanLink(plan)" 
+                            class="drawer-link-pill plan-link is-disabled" 
+                            title="رابط البلان النهائي غير متاح إلا بعد إتمام التسليم النهائي أولاً"
+                            aria-disabled="true"
+                          >
+                            <span>🔗</span> رابط البلان النهائي
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -650,15 +731,6 @@
                   </button>
 
                   <button 
-                    v-if="canNotifyClient(plan)"
-                    class="cluster-btn notify-client" 
-                    type="button" 
-                    @click="openClientNotificationModal(plan)"
-                    title="إرسال رسالة واتساب لممثلي العميل لإعلامهم بانتهاء المراجعة الداخلية"
-                  >
-                    <span>💬</span> إخطار العميل
-                  </button>
-                  <button 
                     class="cluster-btn details" 
                     type="button" 
                     @click="openDetailsModal(plan)"
@@ -668,22 +740,22 @@
                   </button>
                 </div>
 
-                <AutoRecurrenceToggle
-                  v-if="user?.role === 'manager'"
-                  :plan-id="plan.id"
-                  :model-value="Boolean(plan.is_recurring)"
-                  @update:model-value="plan.is_recurring = $event"
-                  compact
-                  class="compact-recurrence-toggle"
-                />
-                <EmployeeClientNotifyToggle
-                  v-if="user?.role === 'manager'"
-                  :plan-id="plan.id"
-                  :model-value="Boolean(plan.allow_client_notify_by_employee)"
-                  @update:model-value="plan.allow_client_notify_by_employee = $event"
-                  compact
-                  class="compact-notify-toggle"
-                />
+                <div class="card-toggles-stack" v-if="user?.role === 'manager'">
+                  <AutoRecurrenceToggle
+                    :plan-id="plan.id"
+                    :model-value="Boolean(plan.is_recurring)"
+                    @update:model-value="plan.is_recurring = $event"
+                    compact
+                    class="compact-recurrence-toggle"
+                  />
+                  <EmployeeClientNotifyToggle
+                    :plan-id="plan.id"
+                    :model-value="Boolean(plan.allow_client_notify_by_employee)"
+                    @update:model-value="plan.allow_client_notify_by_employee = $event"
+                    compact
+                    class="compact-notify-toggle"
+                  />
+                </div>
               </div>
 
               <router-link 
@@ -712,7 +784,12 @@
       <div v-if="showDuplicateModal" class="modal-overlay" role="presentation" @click.self="closeDuplicateModal">
       <div class="modal-content" role="dialog" style="width: min(500px, 100%) !important;">
         <button class="modal-close" type="button" @click="closeDuplicateModal">×</button>
-        <div class="modal-icon" style="background: linear-gradient(145deg, #78e4d8, #65b5ff); color: #12183f;">⎘</div>
+        <div class="modal-icon" style="background: linear-gradient(145deg, #78e4d8, #65b5ff); color: #12183f; display: flex; align-items: center; justify-content: center;">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+        </div>
         <span class="eyebrow" style="color: #65b5ff;">استنساخ سريع</span>
         <h3>تحديد تواريخ الشهر الجديد</h3>
         <p>سيتم نسخ العميل، نوع الخطة، الروابط، وفريق العمل كما هم من الخطة الأصلية.</p>
@@ -830,7 +907,40 @@
 
     
     <Teleport to="body">
-      <div v-if="showCreationSuccessModal" class="modal-overlay" role="presentation" @click.self="closeCreationModal"><div class="modal-content delivery-modal" role="dialog" style="width: min(500px, 100%) !important; text-align: center;"><button class="modal-close" type="button" @click="closeCreationModal">×</button><div class="modal-icon" style="background: linear-gradient(145deg, #7de8dc, #b28aff); color: #12183f; margin: 0 auto 15px;">🚀</div><h3 style="color:#78e4d8;">تم إنشاء الخطة بنجاح!</h3><p style="margin-bottom: 20px;">الآن يمكنك إبلاغ المسؤولين ببدء العمل على هذه الخطة.</p><div class="wa-actions-container" v-if="createdPlan"><div v-if="getResponsibles(createdPlan).length > 0" class="executors-list"><h4 style="font-size:11px; color:#aeb6d7; text-align:right; margin-bottom:10px;">إبلاغ المسؤولين للإنجاز:</h4><div style="display:flex; flex-direction:column; gap:8px;"><a v-for="resp in getResponsibles(createdPlan)" :key="resp.id" :href="generateWaLink('plan_assigned', createdPlan, resp)" target="_blank" class="wa-btn-large" style="text-decoration:none; display:flex; align-items:center; justify-content:center;"><span>إرسال تنبيه للمسؤول: {{ resp.name }}</span> <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="margin-right: 8px;"><path d="M17.472...Z"/></svg></a></div></div><div v-else class="muted mt-3" style="font-size:10px;">لا يوجد مسؤولين مسجلين في هذه الخطة.</div></div><div class="modal-actions" style="justify-content:center; margin-top:25px;"><button type="button" class="secondary-btn" @click="closeCreationModal">تخطي</button></div></div></div>
+      <div v-if="showCreationSuccessModal" class="modal-overlay" role="presentation" @click.self="closeCreationModal">
+        <div class="modal-content delivery-modal" role="dialog" style="width: min(500px, 100%) !important; text-align: center;">
+          <button class="modal-close" type="button" @click="closeCreationModal">×</button>
+          <div class="modal-icon" style="background: linear-gradient(145deg, #7de8dc, #b28aff); color: #12183f; margin: 0 auto 15px;">
+            {{ isDuplicateSuccessModal ? '✨' : '🚀' }}
+          </div>
+          <h3 style="color:#78e4d8;">{{ isDuplicateSuccessModal ? 'تم استنساخ الخطة بنجاح!' : 'تم إنشاء الخطة بنجاح!' }}</h3>
+          <p style="margin-bottom: 20px;">الآن يمكنك إبلاغ المسؤولين ببدء العمل على هذه الخطة.</p>
+          <div class="wa-actions-container" v-if="createdPlan">
+            <div v-if="getResponsibles(createdPlan).length > 0" class="executors-list">
+              <h4 style="font-size:11px; color:#aeb6d7; text-align:right; margin-bottom:10px;">إبلاغ المسؤولين للإنجاز:</h4>
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                <a 
+                  v-for="resp in getResponsibles(createdPlan)" 
+                  :key="resp.id" 
+                  :href="generateWaLink('plan_assigned', createdPlan, resp)" 
+                  target="_blank" 
+                  class="wa-btn-large" 
+                  style="text-decoration:none; display:flex; align-items:center; justify-content:center;"
+                >
+                  <span>إرسال تنبيه للمسؤول: {{ resp.name }}</span> 
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="margin-right: 8px;">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/>
+                  </svg>
+                </a>
+              </div>
+            </div>
+            <div v-else class="muted mt-3" style="font-size:10px;">لا يوجد مسؤولين مسجلين في هذه الخطة.</div>
+          </div>
+          <div class="modal-actions" style="justify-content:center; margin-top:25px;">
+            <button type="button" class="secondary-btn" @click="closeCreationModal">تخطي</button>
+          </div>
+        </div>
+      </div>
     </Teleport>
 
     
@@ -1329,9 +1439,9 @@
             <div v-if="currentDetailsPlan.items && currentDetailsPlan.items.length > 0" class="details-scope-block">
               <div class="details-scope-header">
                 <div class="details-scope-title">
-                  <span>📦</span> عناصر ومخرجات الخطة وساعات العمل ({{ currentDetailsPlan.items.length }})
+                  <span>📦</span> عناصر ومخرجات الخطة<span v-if="isManager"> وساعات العمل</span> ({{ currentDetailsPlan.items.length }})
                 </div>
-                <div class="details-scope-badge">
+                <div class="details-scope-badge" v-if="isManager">
                   ⏱️ <strong>{{ formatHours(currentDetailsPlan.total_estimated_hours || calculateItemsHours(currentDetailsPlan.items)) }}</strong> ساعة عمل
                 </div>
               </div>
@@ -1343,8 +1453,8 @@
                   </div>
                   <div class="scope-card-metrics">
                     <span class="scope-metric-badge qty-badge">العدد: <strong>{{ item.quantity }}</strong></span>
-                    <span class="scope-metric-badge hours-badge">{{ item.hours_per_unit }} س/وحدة</span>
-                    <span class="scope-metric-badge total-badge">الإجمالي: <strong>{{ formatHours(item.total_hours) }} س</strong></span>
+                    <span v-if="isManager" class="scope-metric-badge hours-badge">{{ item.hours_per_unit }} س/وحدة</span>
+                    <span v-if="isManager" class="scope-metric-badge total-badge">الإجمالي: <strong>{{ formatHours(item.total_hours) }} س</strong></span>
                   </div>
                 </div>
               </div>
@@ -1458,7 +1568,7 @@
           </span>
           
           <h3 :style="{ color: submissionType === 'review' ? '#93c5fd' : '#6ee7b7' }">
-            {{ submissionType === 'review' ? 'تسليم الخطة للمراجعة' : 'تأكيد التسليم النهائي للعميل' }}
+            {{ submissionType === 'review' ? 'تسليم الخطة للمراجعة' : 'تأكيد التسليم النهائي' }}
           </h3>
           
           <p style="color: #94a3b8; font-size: 13px; margin-top: 4px; line-height: 1.5;">
@@ -1823,6 +1933,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import api from '../axios';
 import alertService from '../services/alertService';
 import AutoRecurrenceToggle from '../components/AutoRecurrenceToggle.vue';
@@ -1855,6 +1966,8 @@ const currentUserId = ref(currentUser.id || parseInt(localStorage.getItem('user_
 const userRole = ref(localStorage.getItem('role') || 'employee'); 
 const isManager = computed(() => userRole.value === 'manager' || user.value?.role === 'manager');
 const user = ref(currentUser);
+const route = useRoute();
+const router = useRouter();
 
 const isUserResponsible = (plan) => { 
   if (isManager.value || user.value?.role === 'manager' || user.value?.job_title === 'Account Manager') return true; 
@@ -1956,6 +2069,22 @@ const hasPlanLink = (plan) => {
   return !link || !String(link).trim() ? false : validateDriveLink(link).valid;
 };
 
+// دوال التحقق من اعتماد العميل وفتح المرحلة الرابعة
+const isPlanClientApproved = (plan) => {
+  if (!plan) return false;
+  if (plan.status === 'completed') return true;
+  return Boolean(plan.client_approved_at || plan.is_client_approved);
+};
+
+const canApproveClient = (plan) => {
+  if (!plan) return false;
+  if (plan.status === 'completed') return true;
+  if (plan.requires_review) {
+    return ['reviewed', 'completed'].includes(plan.status) || Boolean(plan.actual_review_date);
+  }
+  return Boolean(plan.actual_initial_delivery_date || plan.status !== 'pending');
+};
+
 // حساب حالة كل مرحلة من المراحل الأربعة في الشريط الزمني للخطة مع تخزين مؤقت للنتيجة O(1)
 const getStageState = (plan, stageNumber) => {
   if (!plan) return { status: 'waiting', label: 'بالانتظار', icon: '⏳', class: 'state-waiting' };
@@ -1984,8 +2113,11 @@ const getStageState = (plan, stageNumber) => {
       result = { status: 'waiting', label: 'بالانتظار', icon: '2', class: 'state-waiting' };
     }
   } else if (stageNumber === 3) { // 3. متابعة مع العميل
+    const isApproved = isPlanClientApproved(plan);
     if (plan.status === 'completed') {
       result = { status: 'completed', label: 'مكتملة', icon: '✓', class: 'state-completed' };
+    } else if (isApproved) {
+      result = { status: 'completed', label: 'معتمدة من العميل', icon: '✓', class: 'state-completed' };
     } else {
       const isStageActive = plan.status === 'reviewed' || (!plan.requires_review && (plan.actual_initial_delivery_date || plan.status !== 'pending')) || getFollowUps(plan).length > 0;
       if (isStageActive) {
@@ -1998,11 +2130,17 @@ const getStageState = (plan, stageNumber) => {
     if (plan.status === 'completed' || plan.actual_delivery_date) {
       result = { status: 'completed', label: 'تم التسليم', icon: '✓', class: 'state-completed' };
     } else {
-      const canBeDelivered = plan.status === 'reviewed' || (!plan.requires_review && (plan.status === 'pending' || plan.status === 'rejected'));
-      if (canBeDelivered) {
-        result = { status: 'active', label: 'جاهز للتسليم', icon: '4', class: 'state-active' };
+      const isApproved = isPlanClientApproved(plan);
+      if (!isApproved) {
+        // إذا لم يعتمد العميل الخطة بعد، تصبح المرحلة الرابعة غير مفعلة وبانتظار الاعتماد
+        result = { status: 'waiting', label: 'بانتظار اعتماد العميل', icon: '🔒', class: 'state-locked' };
       } else {
-        result = { status: 'waiting', label: 'بالانتظار', icon: '4', class: 'state-waiting' };
+        const canBeDelivered = plan.status === 'reviewed' || (!plan.requires_review && (plan.status === 'pending' || plan.status === 'rejected'));
+        if (canBeDelivered) {
+          result = { status: 'active', label: 'جاهز للتسليم', icon: '4', class: 'state-active' };
+        } else {
+          result = { status: 'waiting', label: 'بالانتظار', icon: '4', class: 'state-waiting' };
+        }
       }
     }
   } else {
@@ -2021,7 +2159,12 @@ const getActiveStageNumber = (plan) => {
   if (plan.status === 'completed') return 4;
   if (plan.status === 'under_review') return 2;
   if (plan.status === 'rejected') return 1;
-  if (plan.status === 'reviewed') return 3;
+  if (plan.status === 'reviewed') {
+    return isPlanClientApproved(plan) ? 4 : 3;
+  }
+  if (!plan.requires_review && (plan.actual_initial_delivery_date || plan.status !== 'pending')) {
+    return isPlanClientApproved(plan) ? 4 : 3;
+  }
   return 1;
 };
 
@@ -2077,7 +2220,8 @@ const isPlanDelayed = (plan) => {
 const filters = reactive({
   search: '', client_id: '', plan_type: '', status: '', employee_id: '',
   start_date: '', end_date: '', delivery_from: '', delivery_to: '',
-  review_from: '', review_to: '', is_overdue: false, requires_review: false
+  review_from: '', review_to: '', is_overdue: false, requires_review: false,
+  plan_id: route.query.plan_id ? String(route.query.plan_id) : ''
 });
 
 const pagination = reactive({ current_page: 1, last_page: 1, total: 0, per_page: 10 });
@@ -2088,6 +2232,9 @@ const hasActiveFilters = computed(() => {
 
 const resetFilters = () => {
   Object.keys(filters).forEach(key => filters[key] = (typeof filters[key] === 'boolean' ? false : ''));
+  if (route.query.plan_id) {
+    router.replace({ query: {} });
+  }
   pagination.current_page = 1;
   fetchPlans();
 };
@@ -2394,6 +2541,7 @@ const getFollowUpImageUrl = (followUp) => {
 
 const deliveredPlan = ref(null);
 const createdPlan = ref(null); 
+const isDuplicateSuccessModal = ref(false);
 const selectedReferencesPlan = ref(null); 
 
 const showWaPromptModal = ref(false);
@@ -2514,10 +2662,17 @@ const submitDuplicate = async () => {
       planned_initial_delivery_date: duplicateForm.planned_initial_delivery_date || null,
       planned_review_date: duplicateForm.planned_review_date || null,
     };
-    await api.post(`/content-plans/${planToDuplicate.value.id}/duplicate`, payload);
+    const response = await api.post(`/content-plans/${planToDuplicate.value.id}/duplicate`, payload);
     closeDuplicateModal();
     showToast('تم استنساخ الخطة بنجاح 🚀');
     await fetchPlans();
+    const newPlanId = response.data?.data?.id;
+    if (newPlanId) {
+      const found = plans.value.find(p => p.id === newPlanId);
+      createdPlan.value = found ? enrichPlan(found) : (response.data?.data ? enrichPlan(response.data.data) : null);
+      isDuplicateSuccessModal.value = true;
+      showCreationSuccessModal.value = true;
+    }
   } catch (error) {
     console.error('فشل الاستنساخ:', error);
     showToast(error.response?.data?.message || 'حدث خطأ أثناء محاولة الاستنساخ');
@@ -2669,12 +2824,48 @@ const fetchPlans = async () => {
       pagination.last_page = 1;
       pagination.total = plans.value.length;
     }
+    checkAndFocusTargetPlan();
   } catch (error) { 
     showToast('تعذر تحميل الخطط'); 
   } finally { 
     loading.value = false; 
   } 
 };
+
+const checkAndFocusTargetPlan = () => {
+  if (route.query.plan_id && plans.value.length > 0) {
+    const targetId = Number(route.query.plan_id);
+    const targetPlan = plans.value.find(p => p.id === targetId);
+    if (targetPlan) {
+      let stageToOpen = 1;
+      if (['under_review', 'rejected'].includes(targetPlan.status)) {
+        stageToOpen = 2;
+      } else if (targetPlan.status === 'reviewed') {
+        stageToOpen = 3;
+      } else if (targetPlan.status === 'completed') {
+        stageToOpen = 4;
+      }
+      openPlanStages.value = { ...openPlanStages.value, [targetPlan.id]: stageToOpen };
+      nextTick(() => {
+        const el = document.getElementById(`plan-card-${targetPlan.id}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      });
+    }
+  }
+};
+
+watch(
+  () => route.query.plan_id,
+  (newId) => {
+    if (newId) {
+      filters.plan_id = String(newId);
+      pagination.current_page = 1;
+      fetchPlans();
+    }
+  }
+);
 
 // ذاكرة تخزين مؤقت على مستوى الموديول لتفادي استهلاك الشبكة عند التنقل بين الصفحات
 let cachedUsers = null;
@@ -3014,7 +3205,67 @@ const submitRejectPlan = async () => {
   } catch (error) {} finally { actionLoading.value = ''; }
 };
 
+const handleClientApproval = async (plan) => {
+  if (!plan) return;
+  
+  if (!isManager.value && !isUserResponsible(plan)) {
+    showToast('عذراً، لا تمتلك الصلاحية لتسجيل اعتماد العميل على هذه الخطة');
+    return;
+  }
+
+  if (plan.status === 'completed') {
+    showToast('الخطة مكتملة ومسلمة نهائياً بالفعل');
+    return;
+  }
+
+  const isCurrentlyApproved = isPlanClientApproved(plan);
+  
+  if (isCurrentlyApproved) {
+    const confirmed = await alertService.confirm({
+      title: 'إلغاء اعتماد العميل',
+      message: 'هل أنت متأكد من رغبتك في إلغاء اعتماد العميل لهذه الخطة؟ سيؤدي ذلك لإعادة قفل المرحلة الرابعة (التسليم النهائي).',
+      confirmText: 'نعم، إلغاء الاعتماد',
+      cancelText: 'تراجع',
+      type: 'warning'
+    });
+    if (!confirmed) return;
+  }
+
+  actionLoading.value = `client-approval-${plan.id}`;
+  try {
+    const response = await api.post(`/content-plans/${plan.id}/client-approval`);
+    const isApprovedNow = !isCurrentlyApproved;
+    
+    plan.client_approved_at = isApprovedNow ? new Date().toISOString() : null;
+    plan.is_client_approved = isApprovedNow;
+    
+    // إبطال كاش الحالات لإعادة حساب حالة المراحل فوراً
+    if (plan._stageStates) {
+      delete plan._stageStates[3];
+      delete plan._stageStates[4];
+    }
+
+    showToast(response.data?.message || (isApprovedNow ? 'تم تسجيل اعتماد العميل بنجاح وتم فتح مرحلة التسليم النهائي ✅' : 'تم إلغاء اعتماد العميل'));
+    
+    // عند تفعيل الاعتماد نفتح المرحلة الرابعة تلقائياً لتسهيل التسليم النهائي
+    if (isApprovedNow) {
+      openPlanStages.value = { ...openPlanStages.value, [plan.id]: 4 };
+    }
+    
+    await fetchPlans();
+  } catch (error) {
+    console.error('فشل تحديث اعتماد العميل:', error);
+    showToast(error.response?.data?.message || 'حدث خطأ أثناء محاولة تحديث اعتماد العميل');
+  } finally {
+    actionLoading.value = '';
+  }
+};
+
 const submitFinalDelivery = (plan) => {
+  if (!isPlanClientApproved(plan)) {
+    showToast('عذراً، المرحلة الرابعة غير مفعلة، يلزم اعتماد الخطة من العميل في المرحلة الثالثة أولاً');
+    return;
+  }
   openPlanSubmissionModal(plan, 'final');
 };
 
@@ -3055,6 +3306,11 @@ const confirmSubmitDelivery = async () => {
       actionLoading.value = '';
     }
   } else if (submissionType.value === 'final') {
+    if (!isPlanClientApproved(plan)) {
+      showToast('عذراً، يلزم اعتماد العميل أولاً لإتمام التسليم النهائي');
+      return;
+    }
+
     let link = (deliveryForm.final_plan_link || '').trim();
     if (link && !/^https?:\/\//i.test(link)) {
       link = 'https://' + link;
@@ -3156,7 +3412,11 @@ const closeManagerModal = () => {
   managerModalErrors.value = [];
   Object.keys(managerFieldErrors).forEach(key => delete managerFieldErrors[key]);
 };
-const closeCreationModal = () => { showCreationSuccessModal.value = false; createdPlan.value = null; };
+const closeCreationModal = () => { 
+  showCreationSuccessModal.value = false; 
+  createdPlan.value = null; 
+  isDuplicateSuccessModal.value = false;
+};
 
 const saveManagerPlan = async () => { 
   if (user.value?.role !== 'manager' && user.value?.job_title !== 'Account Manager') {
@@ -3217,7 +3477,9 @@ const saveManagerPlan = async () => {
       await fetchPlans(); 
       const newPlanId = response.data?.data?.id;
       if(newPlanId) {
-        createdPlan.value = plans.value.find(p => p.id === newPlanId);
+        const found = plans.value.find(p => p.id === newPlanId);
+        createdPlan.value = found ? enrichPlan(found) : (response.data?.data ? enrichPlan(response.data.data) : null);
+        isDuplicateSuccessModal.value = false;
         showCreationSuccessModal.value = true;
       }
     }
@@ -3843,6 +4105,23 @@ onBeforeUnmount(() => {
   box-shadow: 0 16px 40px rgba(4, 7, 27, 0.5), 0 0 20px rgba(125, 232, 220, 0.08);
 }
 
+.plan-card.is-targeted {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 25px rgba(99, 102, 241, 0.45) !important;
+  animation: pulseTarget 1.5s ease-in-out 3;
+}
+
+@keyframes pulseTarget {
+  0%, 100% {
+    border-color: #6366f1;
+    box-shadow: 0 0 25px rgba(99, 102, 241, 0.45);
+  }
+  50% {
+    border-color: #a855f7;
+    box-shadow: 0 0 35px rgba(168, 85, 247, 0.65);
+  }
+}
+
 /* شريط الإضاءة العلوي */
 .card-accent-bar {
   position: absolute;
@@ -3983,22 +4262,23 @@ onBeforeUnmount(() => {
 .admin-quick-actions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
 }
 
 .quick-icon-btn {
-  width: 27px;
-  height: 27px;
+  width: 30px;
+  height: 30px;
   border-radius: 7px;
-  border: 1px solid rgba(137, 153, 226, 0.15);
-  background: rgba(10, 16, 47, 0.5);
-  color: #929ec7;
+  border: 1px solid rgba(137, 153, 226, 0.18);
+  background: rgba(10, 16, 47, 0.55);
+  color: #9aa8d6;
   display: grid;
   place-items: center;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 13.5px;
   text-decoration: none;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 0;
 }
 
 .quick-icon-btn:hover {
@@ -4046,10 +4326,25 @@ onBeforeUnmount(() => {
   border-color: #25d366;
 }
 
+.quick-icon-btn.duplicate:hover {
+  color: #c4b5fd;
+  border-color: rgba(167, 139, 250, 0.6);
+  background: rgba(139, 92, 246, 0.18);
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.25);
+}
+
+.quick-icon-btn.edit:hover {
+  color: #93c5fd;
+  border-color: rgba(96, 165, 250, 0.6);
+  background: rgba(59, 130, 246, 0.18);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
+}
+
 .quick-icon-btn.delete:hover {
   color: #ff8e9e;
   border-color: #ff4757;
   background: rgba(255, 71, 87, 0.15);
+  box-shadow: 0 2px 8px rgba(255, 71, 87, 0.25);
 }
 
 /* صف الأدوار وفريق العمل */
@@ -4377,33 +4672,34 @@ onBeforeUnmount(() => {
 .card-footer-controls {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  border-top: 1px dashed rgba(137, 153, 226, 0.14);
-  padding-top: 12px;
-  margin-top: 2px;
+  gap: 5px;
+  border-top: 1px dashed rgba(137, 153, 226, 0.12);
+  padding-top: 6px;
+  margin-top: 0;
 }
 
 .card-links-cluster {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex-wrap: wrap;
 }
 
 .cluster-btn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 9px;
-  border-radius: 7px;
+  gap: 3px;
+  padding: 2.5px 7px;
+  border-radius: 6px;
   background: rgba(137, 153, 226, 0.08);
   border: 1px solid rgba(137, 153, 226, 0.16);
   color: #aeb9e3;
   font-family: inherit;
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s;
+  line-height: 1.3;
 }
 
 .cluster-btn:hover:not(:disabled) {
@@ -4422,15 +4718,16 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 14px;
+  padding: 5px 11px;
   background: linear-gradient(110deg, rgba(125, 232, 220, 0.12), rgba(178, 138, 255, 0.12));
   border: 1px solid rgba(125, 232, 220, 0.28);
-  border-radius: 9px;
+  border-radius: 7px;
   color: #7de8dc;
   text-decoration: none;
-  font-size: 11px;
-  font-weight: 800;
+  font-size: 10px;
+  font-weight: 700;
   transition: all 0.2s ease;
+  line-height: 1.3;
 }
 
 .spreadsheet-link-banner:hover {
@@ -5781,6 +6078,17 @@ button:disabled, .primary-btn:disabled, .confirm-btn:disabled {
   opacity: 0.88;
 }
 
+.accordion-stage-card.state-locked {
+  border-right: 3px solid #f59e0b;
+  opacity: 0.88;
+}
+
+.accordion-stage-card.is-stage-disabled {
+  opacity: 0.72;
+  border-color: rgba(100, 116, 139, 0.2);
+  background: rgba(12, 17, 43, 0.45);
+}
+
 /* شريط رأس المرحلة (قابل للضغط للسدل والطي) */
 .stage-accordion-header {
   display: flex;
@@ -5847,6 +6155,12 @@ button:disabled, .primary-btn:disabled, .confirm-btn:disabled {
   border: 1px solid rgba(71, 85, 105, 0.35);
 }
 
+.state-locked .stage-node-badge {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
 .stage-header-title {
   font-size: 11.5px;
   font-weight: 800;
@@ -5903,6 +6217,12 @@ button:disabled, .primary-btn:disabled, .confirm-btn:disabled {
   background: rgba(51, 65, 85, 0.25);
   color: #64748b;
   border: 1px solid rgba(71, 85, 105, 0.25);
+}
+
+.stage-status-chip.state-locked {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
 }
 
 .chevron-arrow {
@@ -6155,6 +6475,101 @@ button:disabled, .primary-btn:disabled, .confirm-btn:disabled {
   transform: translateY(-1px);
 }
 
+/* زر اعتماد العميل */
+.drawer-action-btn.client-approval-btn {
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.drawer-action-btn.client-approval-btn:hover:not(:disabled) {
+  background: rgba(16, 185, 129, 0.24);
+  color: #ffffff;
+  border-color: #10b981;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  transform: translateY(-1px);
+}
+
+.drawer-action-btn.client-approval-btn.is-approved {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.3));
+  color: #6ee7b7;
+  border: 1px solid rgba(52, 211, 153, 0.5);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.15);
+}
+
+.drawer-action-btn.client-approval-btn.is-approved:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.drawer-action-btn.client-group-pill {
+  background: rgba(37, 211, 102, 0.1);
+  border: 1px solid rgba(37, 211, 102, 0.3);
+  color: #25d366;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 700;
+}
+
+.drawer-action-btn.client-group-pill:hover {
+  background: rgba(37, 211, 102, 0.22);
+  color: #ffffff;
+  border-color: #25d366;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.25);
+}
+
+/* إشعار المرحلة المقفلة */
+.stage-locked-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px dashed rgba(245, 158, 11, 0.3);
+  border-radius: 8px;
+  padding: 8px 11px;
+  font-size: 10px;
+  line-height: 1.45;
+  color: #fcd34d;
+}
+
+.stage-locked-notice .locked-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.stage-locked-notice .locked-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stage-locked-notice .locked-title {
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #fbbf24;
+}
+
+.stage-locked-notice .locked-desc {
+  margin: 0;
+  color: #f1f5f9;
+  opacity: 0.9;
+}
+
+.drawer-status-pill.locked-pill {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #fcd34d;
+}
+
 .drawer-status-pill {
   display: inline-flex;
   align-items: center;
@@ -6239,23 +6654,51 @@ button:disabled, .primary-btn:disabled, .confirm-btn:disabled {
   color: #ffffff;
 }
 
+.drawer-link-pill.plan-link.is-disabled {
+  background: rgba(148, 163, 184, 0.08) !important;
+  border: 1px dashed rgba(148, 163, 184, 0.28) !important;
+  color: #64748b !important;
+  cursor: not-allowed !important;
+  opacity: 0.52 !important;
+  pointer-events: auto !important;
+  user-select: none !important;
+  filter: grayscale(0.7) !important;
+}
+
+.drawer-link-pill.plan-link.is-disabled:hover {
+  background: rgba(148, 163, 184, 0.08) !important;
+  color: #64748b !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
 /* فوتر الكارت المنظم */
 .card-utilities-bar {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
 }
 
 .secondary-actions-group {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex-wrap: wrap;
 }
 
-.compact-recurrence-toggle {
+.card-toggles-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+}
+
+.compact-recurrence-toggle,
+.compact-notify-toggle {
+  width: 100% !important;
+  box-sizing: border-box !important;
   margin-bottom: 0 !important;
 }
 

@@ -63,7 +63,7 @@
               </span>
               <span 
                 class="plan-hours-pill" 
-                v-if="Number(plan.total_estimated_hours) > 0"
+                v-if="isManager && Number(plan.total_estimated_hours) > 0"
                 :title="'إجمالي ساعات العمل: ' + plan.total_estimated_hours + ' ساعة'"
               >
                 ⏱️ {{ plan.total_estimated_hours }}س
@@ -98,7 +98,7 @@
             <div class="plan-items-scope-box" v-if="plan.items && plan.items.length > 0">
               <div class="scope-items-title">
                 <span>📦 مخرجات الخطة:</span>
-                <span v-if="Number(plan.total_estimated_hours) > 0" class="scope-total-hours" :title="'إجمالي ساعات العمل التقديرية'">
+                <span v-if="isManager && Number(plan.total_estimated_hours) > 0" class="scope-total-hours" :title="'إجمالي ساعات العمل التقديرية'">
                   ⏱️ {{ plan.total_estimated_hours }}س
                 </span>
               </div>
@@ -107,7 +107,7 @@
                   v-for="item in plan.items" 
                   :key="item.id" 
                   class="scope-item-pill"
-                  :title="item.quantity + ' ' + item.item_name + (item.total_hours ? ' (' + item.total_hours + ' ساعة)' : '')"
+                  :title="item.quantity + ' ' + item.item_name + (isManager && item.total_hours ? ' (' + item.total_hours + ' ساعة)' : '')"
                 >
                   <strong class="pill-qty">{{ item.quantity }}</strong>
                   <span class="pill-name">{{ item.item_name }}</span>
@@ -174,7 +174,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../axios';
 import alertService from '../services/alertService';
@@ -190,10 +190,10 @@ const getUserData = () => {
   }
 };
 const currentUser = ref(getUserData());
+const isManager = computed(() => currentUser.value?.role === 'manager' || localStorage.getItem('role') === 'manager');
 
 const canOpenBoard = (plan) => {
-  const isManager = currentUser.value?.role === 'manager';
-  if (isManager) return true;
+  if (isManager.value) return true;
   if (!plan) return false;
   if (!plan.requires_review) return true;
   return ['reviewed', 'completed'].includes(plan.status);

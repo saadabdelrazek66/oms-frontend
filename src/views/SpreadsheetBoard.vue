@@ -88,13 +88,6 @@
           </a>
         </div>
 
-        <!-- تفعيل التكرار التلقائي للمدير فقط -->
-        <AutoRecurrenceToggle
-          v-if="currentUser?.role === 'manager' && currentPlan"
-          :plan-id="currentPlan.id"
-          :model-value="Boolean(currentPlan.is_recurring)"
-          @update:model-value="currentPlan.is_recurring = $event"
-        />
         <span v-if="saving" class="saving-indicator">
           <i class="spinner"></i> جارٍ الحفظ...
         </span>
@@ -519,8 +512,8 @@
               <div class="textarea-link-wrapper lock-wrapper">
                 <textarea v-model="post.reference_link" @blur="autoSave(post, 'reference_link')" rows="2" placeholder="Link..." dir="ltr" :disabled="!canEditFields(post) || isFieldDisabled(post, 'reference_link')"></textarea>
                 <span v-if="hasLockIcon(post, 'reference_link')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'reference_link')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
-                <div class="extracted-links" v-if="extractUrls(post.reference_link).length">
-                  <a v-for="(url, i) in extractUrls(post.reference_link)" :key="i" :href="url" target="_blank" class="extracted-link-btn" :title="url">
+                <div class="extracted-links" v-if="getExtractedRefUrls(post).length">
+                  <a v-for="(url, i) in getExtractedRefUrls(post)" :key="i" :href="url" target="_blank" class="extracted-link-btn" :title="url">
                     {{ getUrlLabel(url, i) }}
                   </a>
                 </div>
@@ -542,8 +535,8 @@
                   :disabled="!canEditDelivery(post) || isFieldDisabled(post, 'delivery_links')"
                 ></textarea>
                 <span v-if="hasLockIcon(post, 'delivery_links')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'delivery_links')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
-                <div class="extracted-links" v-if="extractUrls(post.delivery_links).length">
-                  <a v-for="(url, i) in extractUrls(post.delivery_links)" :key="i" :href="url" target="_blank" class="extracted-link-btn" :title="url">
+                <div class="extracted-links" v-if="getExtractedDelUrls(post).length">
+                  <a v-for="(url, i) in getExtractedDelUrls(post)" :key="i" :href="url" target="_blank" class="extracted-link-btn" :title="url">
                     {{ getUrlLabel(url, i) }}
                   </a>
                 </div>
@@ -1014,31 +1007,30 @@ import '@vuepic/vue-datepicker/dist/main.css';
 import CustomMultiSelect from '../components/CustomMultiSelect.vue';
 import SmartDeadlinePicker from '../components/SmartDeadlinePicker.vue';
 import alertService from '../services/alertService';
-import AutoRecurrenceToggle from '../components/AutoRecurrenceToggle.vue';
 
 // استيراد المحرك الذكي
 import { getDeadlineStatus } from '../utils/timeHelper';
 // استيراد دالة التحقق من روابط درايف للبوست
 import { validatePostDriveLink } from '../utils/driveValidation';
 
-// دوال التحقق من صحة رابط تسليم البوست (Google Drive / Docs)
-const isDeliveryInvalid = (post) => {
-  if (!post) return false;
-  // إذا كان الحقل يحتوي على قيمة نصية، نتحقق مباشرة
-  if (post.delivery_links && String(post.delivery_links).trim() !== '') {
-    return !validatePostDriveLink(post.delivery_links).valid;
-  }
-  // إذا كان الحقل فارغاً، نعتبره غير صالح فقط إذا تم التعديل عليه (touched)
-  return Boolean(post._deliveryTouched);
-};
-
+// دوال التحقق من صحة رابط تسليم البوست (Google Drive / Docs) مع التخزين المؤقت O(1)
 const isPostDeliveryValid = (post) => {
   if (!post || !post.delivery_links || !String(post.delivery_links).trim()) return false;
+  if (post._isDeliveryValid !== undefined) return post._isDeliveryValid;
   return validatePostDriveLink(post.delivery_links).valid;
+};
+
+const isDeliveryInvalid = (post) => {
+  if (!post) return false;
+  if (post.delivery_links && String(post.delivery_links).trim() !== '') {
+    return !isPostDeliveryValid(post);
+  }
+  return Boolean(post._deliveryTouched);
 };
 
 const getDeliveryError = (post) => {
   if (!post) return '';
+  if (post._deliveryError !== undefined) return post._deliveryError || '';
   const res = validatePostDriveLink(post.delivery_links);
   return res.valid ? '' : res.message;
 };
@@ -1046,8 +1038,24 @@ const getDeliveryError = (post) => {
 const handleDeliveryInput = (post) => {
   if (!post) return;
   post._deliveryTouched = true;
+  post._extractedDelUrls = undefined;
   const res = validatePostDriveLink(post.delivery_links);
+  post._isDeliveryValid = res.valid;
   post._deliveryError = res.valid ? null : res.message;
+};
+
+const getExtractedRefUrls = (post) => {
+  if (!post) return [];
+  if (post._extractedRefUrls !== undefined) return post._extractedRefUrls;
+  post._extractedRefUrls = extractUrls(post.reference_link);
+  return post._extractedRefUrls;
+};
+
+const getExtractedDelUrls = (post) => {
+  if (!post) return [];
+  if (post._extractedDelUrls !== undefined) return post._extractedDelUrls;
+  post._extractedDelUrls = extractUrls(post.delivery_links);
+  return post._extractedDelUrls;
 };
 
 const route = useRoute();
@@ -1567,7 +1575,8 @@ const canDeletePosts = computed(() => {
   return isManager.value || isPlanResponsible.value || checkIfResponsibleFromPlan(currentPlan.value);
 });
 
-const canEditFields = (post) => {
+// دوال احتساب الصلاحيات بدقة مع التخزين المؤقت في O(1) لتسريع ريندر الجدول
+const computeCanEditFields = (post) => {
   if (!currentUser.value) return false;
   if (isManager.value) return true;
   
@@ -1584,25 +1593,22 @@ const canEditFields = (post) => {
   return false;
 };
 
-const canEditPublishAndNotes = (post) => {
+const computeCanEditPublishAndNotes = (post) => {
   if (!currentUser.value) return false;
   if (isManager.value) return true;
   if (isPlanResponsible.value) return true;
   
-  return canEditFields(post);
+  return computeCanEditFields(post);
 };
 
-const canEditNotes = (post) => {
+const computeCanEditNotes = (post) => {
   if (!currentUser.value) return false;
   if (isManager.value) return true;
   if (isPlanResponsible.value) return true;
 
   const currentUserId = String(currentUser.value.id);
-
-  // 1. إذا كان الموظف هو المنفذ المسند إليه المنشور
   const isExecutor = post.designer_id != null && String(post.designer_id) === currentUserId;
 
-  // 2. إذا كان الموظف أحد المراجعين المسند إليهم المنشور
   let isReviewer = false;
   if (post.reviewer_ids) {
     if (Array.isArray(post.reviewer_ids)) {
@@ -1615,7 +1621,7 @@ const canEditNotes = (post) => {
   return isExecutor || isReviewer;
 };
 
-const canEditDelivery = (post) => {
+const computeCanEditDelivery = (post) => {
   if (!currentUser.value) return false;
   if (isManager.value) return true;
   
@@ -1630,6 +1636,49 @@ const canEditDelivery = (post) => {
   }
   
   return false;
+};
+
+const canEditFields = (post) => {
+  if (!post) return false;
+  if (post._canEdit !== undefined) return post._canEdit;
+  return computeCanEditFields(post);
+};
+
+const canEditPublishAndNotes = (post) => {
+  if (!post) return false;
+  if (post._canEditPublishAndNotes !== undefined) return post._canEditPublishAndNotes;
+  return computeCanEditPublishAndNotes(post);
+};
+
+const canEditNotes = (post) => {
+  if (!post) return false;
+  if (post._canEditNotes !== undefined) return post._canEditNotes;
+  return computeCanEditNotes(post);
+};
+
+const canEditDelivery = (post) => {
+  if (!post) return false;
+  if (post._canEditDelivery !== undefined) return post._canEditDelivery;
+  return computeCanEditDelivery(post);
+};
+
+// دالة المعالجة المسبقة للمنشورات لتفادي آلاف العمليات الحسابية المتكررة في كل فريم
+const enrichPost = (post) => {
+  if (!post) return post;
+  post._lockedFieldsSet = new Set(Array.isArray(post.locked_fields) ? post.locked_fields : []);
+  post._isDeliveryValid = (post.delivery_links && String(post.delivery_links).trim()) ? validatePostDriveLink(post.delivery_links).valid : false;
+  post._canEdit = computeCanEditFields(post);
+  post._canEditPublishAndNotes = computeCanEditPublishAndNotes(post);
+  post._canEditNotes = computeCanEditNotes(post);
+  post._canEditDelivery = computeCanEditDelivery(post);
+  return post;
+};
+
+const enrichPosts = (postsList) => {
+  if (!Array.isArray(postsList)) return;
+  for (let i = 0; i < postsList.length; i++) {
+    enrichPost(postsList[i]);
+  }
 };
 
 const startExecution = async (post) => {
@@ -1743,11 +1792,13 @@ const resubmitPost = async (post) => {
 
 const isFieldDisabled = (post, fieldName) => {
   if (isManager.value) return false;
-  return post.locked_fields && Array.isArray(post.locked_fields) && post.locked_fields.includes(fieldName);
+  if (post?._lockedFieldsSet) return post._lockedFieldsSet.has(fieldName);
+  return post?.locked_fields && Array.isArray(post.locked_fields) && post.locked_fields.includes(fieldName);
 };
 
 const hasLockIcon = (post, fieldName) => {
-  return post.locked_fields && Array.isArray(post.locked_fields) && post.locked_fields.includes(fieldName);
+  if (post?._lockedFieldsSet) return post._lockedFieldsSet.has(fieldName);
+  return post?.locked_fields && Array.isArray(post.locked_fields) && post.locked_fields.includes(fieldName);
 };
 
 const unlockField = async (post, fieldName) => {
@@ -1756,6 +1807,7 @@ const unlockField = async (post, fieldName) => {
   try {
     const response = await api.post(`/plan-posts/${post.id}/unlock-field`, { field_name: fieldName });
     post.locked_fields = response.data.locked_fields || response.data.data?.locked_fields || [];
+    enrichPost(post);
     
     if (typeof showToast === 'function') {
       showToast('تم فك القفل بنجاح 🔓');
@@ -1842,10 +1894,19 @@ const fetchCurrentUser = async () => {
   }
 };
 
+// ذاكرة تخزين مؤقت على مستوى الموديول لتفادي استهلاك الشبكة
+let cachedUsers = null;
+
 const fetchUsers = async () => {
+  if (cachedUsers && allUsers.value.length === 0) {
+    allUsers.value = cachedUsers;
+    return;
+  }
   try {
     const res = await api.get('/users?per_page=100');
-    allUsers.value = res.data.data || [];
+    const data = res.data.data || [];
+    allUsers.value = data;
+    cachedUsers = data;
   } catch (error) {}
 };
 
@@ -1896,21 +1957,8 @@ const fetchCurrentPlan = async () => {
 
     if (checkIfResponsibleFromPlan(currentPlan.value)) {
       isPlanResponsible.value = true;
-    }
-    // في حال لم ترجع دالة العرض المنفردة كائن الـ folders، نتحقق من قائمة الخطط
-    if (!currentPlan.value?.folders && !currentPlan.value?.client?.drive_links) {
-      try {
-        const fallbackRes = await api.get('/content-plans');
-        const allPlans = fallbackRes.data.data || fallbackRes.data || [];
-        const planFromIndex = allPlans.find(p => String(p.id) === String(planId));
-        if (planFromIndex) {
-          if (planFromIndex.folders) currentPlan.value.folders = planFromIndex.folders;
-          if (planFromIndex.client) {
-            currentPlan.value.client = { ...(planFromIndex.client || {}), ...(currentPlan.value.client || {}) };
-          }
-        }
-      } catch (e) {
-        // silent fallback
+      if (posts.value && posts.value.length) {
+        enrichPosts(posts.value);
       }
     }
   } catch (error) {
@@ -1919,21 +1967,7 @@ const fetchCurrentPlan = async () => {
       accessDeniedMessage.value = error.response.data?.message || 'عذراً، لا يمكن للموظفين فتح لوحة المحتوى قبل اعتماد الخطة داخلياً من قِبل الإدارة.';
       return;
     }
-    try {
-      const fallbackRes = await api.get('/content-plans');
-      const allPlans = fallbackRes.data.data || fallbackRes.data || [];
-      currentPlan.value = allPlans.find(p => p.id == planId) || null;
-      if (!isManager.value && currentPlan.value?.requires_review && !['reviewed', 'completed'].includes(currentPlan.value?.status)) {
-        accessDenied.value = true;
-        accessDeniedMessage.value = 'عذراً، لا يمكن للموظفين فتح لوحة المحتوى قبل اعتماد الخطة داخلياً من قِبل الإدارة.';
-        return;
-      }
-      if (checkIfResponsibleFromPlan(currentPlan.value)) {
-        isPlanResponsible.value = true;
-      }
-    } catch(e) {
-      console.error('Error fetching plan details:', e);
-    }
+    console.error('Error fetching plan details:', error);
   }
 };
 
@@ -1941,7 +1975,8 @@ const fetchPosts = async () => {
   loading.value = true;
   try {
     const res = await api.get(`/content-plans/${planId}/posts`);
-    posts.value = res.data.data.map(p => {
+    const rawPosts = res.data.data || [];
+    posts.value = rawPosts.map(p => {
       let objArr = p.objective ? p.objective.split(', ') : [];
       let custom = objArr.filter(o => !predefinedObjectives.includes(o));
       let predefined = objArr.filter(o => predefinedObjectives.includes(o));
@@ -1949,7 +1984,7 @@ const fetchPosts = async () => {
       let finalObjArr = [...predefined];
       if (custom.length > 0) finalObjArr.push('آخر');
 
-      return {
+      return enrichPost({
         ...p,
         objective_array: finalObjArr,
         custom_objective: custom.join(', '),
@@ -1957,10 +1992,13 @@ const fetchPosts = async () => {
         reviewer_ids: Array.isArray(p.reviewer_ids) ? p.reviewer_ids : (p.reviewer_ids ? JSON.parse(p.reviewer_ids) : []),
         published_links: typeof p.published_links === 'string' ? JSON.parse(p.published_links || '{}') : (p.published_links || {}),
         deadline: normalizeDeadline(p.deadline)
-      };
+      });
     });
     
     isPlanResponsible.value = res.data.is_responsible || checkIfResponsibleFromPlan(currentPlan.value) || isPlanResponsible.value || false;
+    if (isPlanResponsible.value) {
+      enrichPosts(posts.value);
+    }
     
   } catch (error) {
     if (error.response?.status === 403) {
@@ -2037,16 +2075,23 @@ const autoSave = async (post, field) => {
     if (!valResult.valid) {
       post._deliveryTouched = true;
       post._deliveryError = valResult.message;
+      post._isDeliveryValid = false;
       showToast('رابط البوست غير صالح ولن يتم حفظه');
       return; // منع إرسال طلب الـ API
     }
     post._deliveryError = null;
+    post._isDeliveryValid = true;
   }
 
   saving.value = true;
   try {
     const res = await api.put(`/plan-posts/${post.id}`, { [field]: post[field] });
     if (res.data?.whatsapp_payload) openWaModal(res.data.whatsapp_payload);
+    if (field === 'delivery_links' || field === 'reference_link') {
+      post._extractedRefUrls = undefined;
+      post._extractedDelUrls = undefined;
+    }
+    enrichPost(post);
   } catch (error) {
     showToast('حدث خطأ أثناء الحفظ التلقائي!');
   } finally {
@@ -2217,11 +2262,13 @@ const addNewRow = async () => {
   }
 };
 
-onMounted(() => {
+onMounted(async () => {
   fetchCurrentUser(); 
   fetchUsers();
-  fetchCurrentPlan();
-  fetchPosts();
+  await Promise.allSettled([
+    fetchCurrentPlan(),
+    fetchPosts()
+  ]);
 });
 </script>
 

@@ -193,7 +193,7 @@
 
                 <!-- أدوات الإدارة السريعة -->
                 <div class="card-quick-actions-bar">
-                  <div class="admin-quick-actions" v-if="user && (user.role === 'manager' || user.job_title === 'Account Manager')">
+                  <div class="admin-quick-actions" v-if="isManager">
                     <button 
                       v-if="plan.status !== 'completed'"
                       class="quick-icon-btn wa-btn" 
@@ -308,16 +308,12 @@
                       <div class="drawer-actions-row">
                         <!-- زر تسليم للمراجعة للمسؤول أو المنفذ -->
                         <div v-if="canSubmitForReview(plan) && (plan.status === 'pending' || plan.status === 'rejected')" class="main-action-wrap">
-                          <div v-if="!hasPlanLink(plan)" class="plan-link-warning-pill" @click="submitForReview(plan)" title="اضغط لإضافة رابط البلان والتسليم للمراجعة">
-                            <span>⚠️ يجب إضافة رابط البلان أولاً</span>
-                          </div>
                           <button 
                             class="drawer-primary-btn" 
-                            :class="{ 'btn-missing-link': !hasPlanLink(plan) }" 
                             type="button" 
                             :disabled="actionLoading === `submit-review-${plan.id}`" 
                             @click="submitForReview(plan)"
-                            :title="!hasPlanLink(plan) ? 'اضغط لإضافة رابط البلان والتسليم للمراجعة' : 'تسليم الخطة للمراجعة'"
+                            title="تسليم الخطة للمراجعة"
                           >
                             {{ actionLoading === `submit-review-${plan.id}` ? 'جارٍ...' : 'تسليم للمراجعة 📤' }}
                           </button>
@@ -433,9 +429,20 @@
                         <span v-else-if="plan.requires_review && plan.status === 'pending'" class="drawer-muted-hint">
                           بانتظار التسليم الابتدائي للمراجعة
                         </span>
-                        <span v-else-if="plan.requires_review && ['reviewed', 'completed'].includes(plan.status)" class="drawer-status-pill success-pill">
-                          ✓ تم إنهاء المراجعة والاعتماد بنجاح
-                        </span>
+                        <div v-else-if="plan.requires_review && ['reviewed', 'completed'].includes(plan.status)" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                          <span class="drawer-status-pill success-pill">
+                            ✓ تم إنهاء المراجعة والاعتماد بنجاح
+                          </span>
+                          <button 
+                            v-if="canNotifyClient(plan)"
+                            class="drawer-action-btn notify-client-pill-btn" 
+                            type="button" 
+                            @click="openClientNotificationModal(plan)"
+                            title="إرسال رسالة واتساب لممثلي العميل لإعلامهم بانتهاء المراجعة"
+                          >
+                            <span>💬</span> إخطار العميل
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -488,6 +495,15 @@
                       </div>
 
                       <div class="drawer-actions-row">
+                        <button 
+                          v-if="canNotifyClient(plan)"
+                          class="drawer-action-btn notify-client-btn" 
+                          type="button" 
+                          @click="openClientNotificationModal(plan)"
+                          title="إرسال رسالة واتساب لممثلي العميل لإعلامهم بانتهاء المراجعة الداخلية وبانتظار مراجعتهم"
+                        >
+                          <span>💬</span> إخطار العميل بانتهاء المراجعة (واتساب)
+                        </button>
                         <button 
                           class="drawer-action-btn followup-btn" 
                           type="button" 
@@ -560,16 +576,12 @@
 
                         <!-- زر تأكيد التسليم النهائي -->
                         <div v-else-if="isUserResponsible(plan) && (plan.status === 'reviewed' || (!plan.requires_review && (plan.status === 'pending' || plan.status === 'rejected')))" class="main-action-wrap">
-                          <div v-if="!hasPlanLink(plan)" class="plan-link-warning-pill" @click="submitFinalDelivery(plan)" title="اضغط لإضافة رابط البلان والتسليم النهائي">
-                            <span>⚠️ يجب إضافة رابط البلان أولاً</span>
-                          </div>
                           <button 
                             class="drawer-primary-btn final-btn" 
-                            :class="{ 'btn-missing-link': !hasPlanLink(plan) }"
                             type="button" 
                             :disabled="actionLoading === `delivery-${plan.id}`" 
                             @click="submitFinalDelivery(plan)"
-                            :title="!hasPlanLink(plan) ? 'اضغط لإضافة رابط البلان والتسليم النهائي للعميل' : 'تأكيد التسليم النهائي للعميل'"
+                            title="تأكيد التسليم النهائي للعميل"
                           >
                             {{ actionLoading === `delivery-${plan.id}` ? 'جارٍ...' : 'تأكيد التسليم النهائي للعميل ✅' }}
                           </button>
@@ -582,9 +594,10 @@
                           بانتظار إنهاء الدورة
                         </span>
 
-                        <!-- رابط مجلد التسليم النهائي في درايف -->
-                        <div class="drawer-links-group" v-if="getPlanFolders(plan).final_delivery_link">
+                        <!-- رابط مجلد التسليم النهائي ورابط البلان -->
+                        <div class="drawer-links-group" v-if="getPlanFolders(plan).final_delivery_link || hasPlanLink(plan)">
                           <a 
+                            v-if="getPlanFolders(plan).final_delivery_link"
                             class="drawer-link-pill folder-final" 
                             :href="formatExternalUrl(getPlanFolders(plan).final_delivery_link)" 
                             target="_blank" 
@@ -592,6 +605,16 @@
                             title="مجلد التسليم النهائي 📂 (Google Drive)"
                           >
                             <span>📂</span> مجلد التسليم النهائي
+                          </a>
+                          <a 
+                            v-if="hasPlanLink(plan)" 
+                            class="drawer-link-pill plan-link" 
+                            :href="getPlanFileLink(plan).startsWith('http') ? getPlanFileLink(plan) : 'https://' + getPlanFileLink(plan)" 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            title="فتح رابط البلان النهائي"
+                          >
+                            <span>🔗</span> رابط البلان النهائي
                           </a>
                         </div>
                       </div>
@@ -627,6 +650,15 @@
                   </button>
 
                   <button 
+                    v-if="canNotifyClient(plan)"
+                    class="cluster-btn notify-client" 
+                    type="button" 
+                    @click="openClientNotificationModal(plan)"
+                    title="إرسال رسالة واتساب لممثلي العميل لإعلامهم بانتهاء المراجعة الداخلية"
+                  >
+                    <span>💬</span> إخطار العميل
+                  </button>
+                  <button 
                     class="cluster-btn details" 
                     type="button" 
                     @click="openDetailsModal(plan)"
@@ -643,6 +675,14 @@
                   @update:model-value="plan.is_recurring = $event"
                   compact
                   class="compact-recurrence-toggle"
+                />
+                <EmployeeClientNotifyToggle
+                  v-if="user?.role === 'manager'"
+                  :plan-id="plan.id"
+                  :model-value="Boolean(plan.allow_client_notify_by_employee)"
+                  @update:model-value="plan.allow_client_notify_by_employee = $event"
+                  compact
+                  class="compact-notify-toggle"
                 />
               </div>
 
@@ -1233,14 +1273,7 @@
                 <span class="summary-client-title">{{ currentDetailsPlan.client?.name || 'عميل محذوف' }}</span>
                 <span class="summary-plan-tag">{{ currentDetailsPlan.plan_type }}</span>
               </div>
-              <div v-if="user?.role === 'manager'" style="margin-top: 8px;">
-                <AutoRecurrenceToggle
-                  :plan-id="currentDetailsPlan.id"
-                  :model-value="Boolean(currentDetailsPlan.is_recurring)"
-                  @update:model-value="currentDetailsPlan.is_recurring = $event; const p = plans.find(x => x.id === currentDetailsPlan.id); if (p) p.is_recurring = $event;"
-                  compact
-                />
-              </div>
+
               <div :class="['status-badge', getPlanStatusInfo(currentDetailsPlan.status).class]">
                 <i></i>{{ getPlanStatusInfo(currentDetailsPlan.status).text }}
               </div>
@@ -1354,6 +1387,14 @@
               </div>
             </div>
             <!-- روابط مجلدات جوجل درايف للعميل داخل تفاصيل الخطة -->
+            <!-- عرض ملاحظات الخطة إن وجدت -->
+            <div v-if="currentDetailsPlan && currentDetailsPlan.notes" class="details-notes-box" style="margin-top: 14px; padding: 12px 14px; background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 8px;">
+              <div style="font-size: 13px; font-weight: 600; color: #94a3b8; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                <span>📝</span> ملاحظات الخطة:
+              </div>
+              <div style="color: #e2e8f0; font-size: 13px; white-space: pre-wrap; line-height: 1.6;">{{ currentDetailsPlan.notes }}</div>
+            </div>
+
             <div v-if="currentDetailsPlan && (getPlanFolders(currentDetailsPlan).review_link || getPlanFolders(currentDetailsPlan).final_delivery_link)" class="client-folders-modal-box">
               <span class="cf-box-title">📁 مجلدات العميل على Google Drive (لوصول سريع):</span>
               <div class="cf-box-links">
@@ -1377,79 +1418,24 @@
                 >
                   <span>📂</span> مجلد التسليم النهائي ↗
                 </a>
+                <a 
+                  v-if="hasPlanLink(currentDetailsPlan)" 
+                  :href="getPlanFileLink(currentDetailsPlan).startsWith('http') ? getPlanFileLink(currentDetailsPlan) : 'https://' + getPlanFileLink(currentDetailsPlan)" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  class="cf-link-badge plan"
+                  title="فتح رابط البلان"
+                  style="border-color: rgba(96, 165, 250, 0.4); color: #93c5fd; background: rgba(59, 130, 246, 0.1);"
+                >
+                  <span>🔗</span> رابط البلان ↗
+                </a>
               </div>
             </div>
           </div>
 
-          <form class="plan-form mt-3" @submit.prevent="saveDetails">
-            <div class="form-group">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                <label style="margin-bottom:0;">
-                  لينك البلان النهائي
-                  <span style="color: #f87171; font-weight: bold; margin-right: 4px;">*</span>
-                  <span style="color: #fbbf24; font-size: 11px; font-weight: normal; margin-right: 6px;">(مطلوب للتسليم ⚠️)</span>
-                </label>
-                <a 
-                  v-if="detailsForm.final_link && detailsForm.final_link.trim() && detailsLinkValidation.valid" 
-                  :href="detailsForm.final_link.startsWith('http') ? detailsForm.final_link : 'https://' + detailsForm.final_link" 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  style="font-size: 11px; color: #60a5fa; text-decoration: none; display: flex; align-items: center; gap: 4px;"
-                  title="اختبار وفتح الرابط"
-                >
-                  <span>تجربة الرابط</span> ↗
-                </a>
-              </div>
-              <input 
-                ref="planLinkInputRef"
-                v-model="detailsForm.final_link" 
-                type="text" 
-                dir="ltr"
-                placeholder="https://drive.google.com/file/d/... أو https://docs.google.com/..." 
-                :class="[
-                  detailsLinkValidation.touched && !detailsLinkValidation.valid 
-                    ? 'border-red-500 ring-1 ring-red-500 focus:border-red-500 focus:ring-red-500 input-invalid' 
-                    : (detailsLinkValidation.touched && detailsLinkValidation.valid 
-                        ? 'border-emerald-500 ring-1 ring-emerald-500 focus:border-emerald-500 focus:ring-emerald-500 input-valid' 
-                        : '')
-                ]"
-                @input="onDetailsLinkInput"
-                @blur="onFinalLinkBlur"
-              />
-              <span 
-                v-if="detailsLinkValidation.touched && !detailsLinkValidation.valid" 
-                class="text-sm text-red-500 mt-1 block font-medium"
-                style="color: #ef4444 !important;"
-              >
-                {{ detailsLinkValidation.message }}
-              </span>
-              <span 
-                v-else-if="detailsLinkValidation.touched && detailsLinkValidation.valid" 
-                class="text-xs text-emerald-400 mt-1 flex items-center gap-1 font-medium"
-                style="color: #34d399 !important;"
-              >
-                <span>✓</span> رابط الملف سليم
-              </span>
-              <small v-else style="display:block; font-size:11px; color:#94a3b8; margin-top:4px;">
-                مطلوب لتتمكن من تسليم الخطة للمراجعة أو التسليم النهائي للعميل. (يجب أن يكون رابط ملف صحيح وليس مجلداً).
-              </small>
-            </div>
-            <div class="form-group">
-              <label>ملاحظات عامة</label>
-              <textarea v-model="detailsForm.notes" rows="3"></textarea>
-            </div>
-            <div class="modal-actions">
-              <button type="button" class="secondary-btn" @click="closeDetailsModal">إلغاء</button>
-              <button 
-                type="submit" 
-                class="primary-btn" 
-                :disabled="saving || (detailsForm.final_link && !detailsLinkValidation.valid)"
-                :class="{ 'opacity-50 cursor-not-allowed': detailsForm.final_link && !detailsLinkValidation.valid }"
-              >
-                {{ saving ? 'جارٍ الحفظ...' : 'حفظ التفاصيل' }}
-              </button>
-            </div>
-          </form>
+          <div class="modal-actions" style="margin-top: 20px; display: flex; justify-content: flex-end;">
+            <button type="button" class="secondary-btn" @click="closeDetailsModal">إغلاق</button>
+          </div>
         </div>
       </div>
     </Teleport>
@@ -1589,6 +1575,20 @@
               </small>
             </div>
 
+            <!-- حقل الملاحظات المصاحبة للتسليم -->
+            <div class="form-group" style="margin-top: 14px;">
+              <label style="margin-bottom: 6px; font-weight: 600; color: #e2e8f0; display: block;">
+                ملاحظات التسليم (اختياري)
+              </label>
+              <textarea 
+                v-model="deliveryForm.notes" 
+                rows="3" 
+                placeholder="أدخل أي ملاحظات ترغب بإرفاقها مع الخطة والتسليم..."
+                class="w-full px-3 py-2 text-sm rounded-lg"
+                style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(148, 163, 184, 0.2); color: #f8fafc; resize: vertical;"
+              ></textarea>
+            </div>
+
             <div class="modal-actions" style="margin-top: 24px; display: flex; justify-content: flex-end; gap: 10px;">
               <button type="button" class="secondary-btn" @click="closePlanSubmissionModal">إلغاء</button>
               <button 
@@ -1611,6 +1611,133 @@
     </Teleport>
 
     
+    <!-- نافذة إخطار ممثلي العميل عبر واتساب بعد انتهاء المراجعة الداخلية -->
+    <Teleport to="body">
+      <div v-if="showClientNotificationModal" class="modal-overlay" role="presentation" @click.self="closeClientNotificationModal">
+        <div class="modal-content client-notify-modal" role="dialog" style="width: min(620px, 100%) !important;">
+          <button class="modal-close" type="button" @click="closeClientNotificationModal">×</button>
+          
+          <div class="modal-icon" style="background: linear-gradient(145deg, #10b981, #059669); color: #fff;">
+            💬
+          </div>
+          
+          <span class="eyebrow" style="color: #34d399;">المتابعة والتواصل مع العميل</span>
+          <h3 style="color: #6ee7b7;">إخطار العميل باكتمال المراجعة الداخلية</h3>
+          
+          <p style="color: #94a3b8; font-size: 13px; margin-top: 4px; line-height: 1.5;">
+            خطة العميل: <strong style="color: #f1f5f9;">{{ selectedNotifyPlan?.client?.name || 'غير محدد' }}</strong>
+            <span v-if="selectedNotifyPlan" style="margin-right: 6px; color: #cbd5e1;">({{ getPlanDisplayName(selectedNotifyPlan) }})</span>
+          </p>
+
+          <!-- معاينة الرسالة المجهزة -->
+          <div class="wa-msg-preview-card" style="margin-top: 16px; background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 10px; padding: 12px 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 12px; font-weight: 700; color: #34d399; display: flex; align-items: center; gap: 6px;">
+                <span>📋</span> نص الرسالة المجهزة للعميل:
+              </span>
+              <button 
+                type="button" 
+                @click="copyNotificationMessage(selectedNotifyPlan)"
+                style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: #34d399; border-radius: 6px; padding: 3px 9px; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 4px;"
+                title="نسخ نص الرسالة"
+              >
+                <span>{{ copiedMessageToast ? '✓ تم النسخ' : 'نسخ النص' }}</span>
+              </button>
+            </div>
+            <div style="font-size: 12px; color: #cbd5e1; white-space: pre-wrap; line-height: 1.6; max-height: 120px; overflow-y: auto; padding-right: 4px;" dir="rtl">
+              {{ getClientReviewMessage(selectedNotifyPlan) }}
+            </div>
+          </div>
+
+          <!-- قائمة جهات الاتصال وممثلي العميل -->
+          <div class="client-contacts-section" style="margin-top: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              <h4 style="font-size: 13px; font-weight: 700; color: #e2e8f0; margin: 0; display: flex; align-items: center; gap: 6px;">
+                <span>👥</span> أرقام وممثلو العميل المتاحون للتواصل
+                <span style="font-size: 11px; background: rgba(59, 130, 246, 0.15); color: #60a5fa; padding: 2px 7px; border-radius: 9999px;">
+                  {{ getClientContactList(selectedNotifyPlan).length }}
+                </span>
+              </h4>
+            </div>
+
+            <!-- قائمة جهات الاتصال -->
+            <div v-if="getClientContactList(selectedNotifyPlan).length > 0" class="contacts-grid" style="display: flex; flex-direction: column; gap: 10px; max-height: 250px; overflow-y: auto;">
+              <div 
+                v-for="contact in getClientContactList(selectedNotifyPlan)" 
+                :key="contact.id"
+                class="contact-card-row"
+                style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 10px; transition: all 0.2s ease;"
+              >
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #059669, #10b981); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 13px;">
+                    {{ getInitials(contact.name) }}
+                  </div>
+                  <div>
+                    <div style="font-size: 13px; font-weight: 600; color: #f8fafc; display: flex; align-items: center; gap: 6px;">
+                      {{ contact.name }}
+                      <span v-if="contact.is_primary" style="font-size: 10px; padding: 1px 6px; background: rgba(245, 158, 11, 0.2); color: #fbbf24; border-radius: 4px;">رئيسي</span>
+                    </div>
+                    <div style="font-size: 11px; color: #94a3b8; display: flex; align-items: center; gap: 6px; margin-top: 2px;">
+                      <span>{{ contact.method === 'whatsapp' ? 'واتساب' : (contact.method === 'phone' ? 'هاتف' : contact.method) }}</span>
+                      <span>•</span>
+                      <span dir="ltr">{{ contact.details }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <a 
+                  :href="getClientContactWaLink(selectedNotifyPlan, contact.details, contact.name)"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="direct-wa-btn"
+                  style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; background: linear-gradient(135deg, #10b981, #059669); color: #fff; border-radius: 8px; font-size: 12px; font-weight: 600; transition: all 0.2s ease; box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);"
+                >
+                  <span>مراسلة واتساب</span>
+                  <span>↗</span>
+                </a>
+              </div>
+            </div>
+
+            <!-- في حال عدم وجود جهات اتصال مسجلة للعميل -->
+            <div v-else style="padding: 16px; background: rgba(30, 41, 59, 0.4); border: 1px dashed rgba(148, 163, 184, 0.2); border-radius: 10px; text-align: center; color: #94a3b8; font-size: 12.5px;">
+              <span>⚠️ لا توجد جهات اتصال مسجلة لممثلي هذا العميل. يمكنك إضافة أرقام ممثلي العميل من صفحة العملاء، أو إدخال رقم هاتف أدناه للإرسال المباشر.</span>
+            </div>
+
+            <!-- إمكانية الإرسال المباشر لرقم مخصص -->
+            <div style="margin-top: 14px; padding: 10px 14px; background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(148, 163, 184, 0.12); border-radius: 8px;">
+              <span style="font-size: 11.5px; font-weight: 600; color: #94a3b8; display: block; margin-bottom: 6px;">
+                أو إرسال مباشر لرقم آخر عبر واتساب:
+              </span>
+              <div style="display: flex; gap: 8px;">
+                <input 
+                  v-model="customDirectPhone" 
+                  type="text" 
+                  placeholder="رقم الهاتف (مثال: 01012345678 أو 96650...)" 
+                  dir="ltr"
+                  style="flex: 1; padding: 6px 10px; font-size: 12px; background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 6px; color: #fff;"
+                />
+                <a 
+                  :href="customDirectPhone ? getClientContactWaLink(selectedNotifyPlan, customDirectPhone) : '#'"
+                  :target="customDirectPhone ? '_blank' : '_self'"
+                  rel="noopener noreferrer"
+                  :style="[
+                    'text-decoration: none; display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;',
+                    customDirectPhone ? 'background: #10b981; color: #fff; cursor: pointer;' : 'background: rgba(148, 163, 184, 0.2); color: #64748b; pointer-events: none;'
+                  ]"
+                >
+                  <span>إرسال</span> ↗
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-actions" style="margin-top: 22px; display: flex; justify-content: flex-end;">
+            <button type="button" class="secondary-btn" @click="closeClientNotificationModal">إغلاق</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <Teleport to="body">
       <div v-if="showRejectModal" class="modal-overlay" role="presentation" @click.self="closeRejectModal"><div class="modal-content reject-modal" role="dialog" style="width: min(500px, 100%) !important;"><button class="modal-close" type="button" @click="closeRejectModal">×</button><div class="modal-icon" style="background: linear-gradient(145deg, #ff8fa4, #ff678b);">❌</div><span class="eyebrow" style="color: #ff9bad;">إجراء مراجعة</span><h3 style="color: #ff9bad;">رفض الخطة وطلب تعديل</h3><form class="plan-form" @submit.prevent="submitRejectPlan"><div class="form-group"><label>ملاحظات الرفض (إجبارية)</label><textarea v-model="rejectNotes" rows="5" required></textarea></div><div class="modal-actions"><button type="button" class="secondary-btn" @click="closeRejectModal">إلغاء</button><button type="submit" class="primary-btn" style="background: linear-gradient(110deg, #ff8fa4, #ff678b);" :disabled="actionLoading.startsWith('reject-')">تأكيد الرفض</button></div></form></div></div>
     </Teleport>
@@ -1699,6 +1826,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } 
 import api from '../axios';
 import alertService from '../services/alertService';
 import AutoRecurrenceToggle from '../components/AutoRecurrenceToggle.vue';
+import EmployeeClientNotifyToggle from '../components/EmployeeClientNotifyToggle.vue';
 import ClientAvatar from '@/components/ClientAvatar.vue';
 
 // استيراد المحرك الذكي للتواريخ
@@ -1750,7 +1878,45 @@ const canSubmitForReview = (plan) => {
   return isUserResponsible(plan) || isUserExecutor(plan);
 };
 
-const getPlanFileLink = (plan) => plan?.final_link || plan?.final_plan_link || plan?.plan_link || '';
+// مساعدات التحسين والمعالجة المسبقة للبيانات لتسريع الأداء (O(1) Caching)
+const enrichPlan = (plan) => {
+  if (!plan) return plan;
+  plan._histories = plan.review_histories || plan.reviewHistories || [];
+  plan._followUps = plan.client_follow_ups || plan.clientFollowUps || [];
+  plan._executors = plan.users ? plan.users.filter(u => u.pivot?.task_role === 'executor') : [];
+  plan._responsibles = plan.users ? plan.users.filter(u => u.pivot?.task_role === 'responsible') : [];
+  plan._fileLink = plan.final_link || plan.final_plan_link || plan.plan_link || '';
+  plan._hasLink = plan._fileLink && String(plan._fileLink).trim() ? validateDriveLink(plan._fileLink).valid : false;
+  plan._planFolders = null;
+  plan._stageStates = null;
+  
+  if (plan.name && String(plan.name).trim()) plan._displayName = plan.name.trim();
+  else if (plan.title && String(plan.title).trim()) plan._displayName = plan.title.trim();
+  else if (plan.plan_name && String(plan.plan_name).trim()) plan._displayName = plan.plan_name.trim();
+  else if (plan.plan_type && plan.client?.name) plan._displayName = `${plan.plan_type} - ${plan.client.name}`;
+  else if (plan.plan_type) plan._displayName = `خطة ${plan.plan_type}`;
+  else plan._displayName = `خطة ${plan.client?.name || ('#' + plan.id)}`;
+
+  return plan;
+};
+
+const enrichPlans = (plansList) => {
+  if (!Array.isArray(plansList)) return;
+  for (let i = 0; i < plansList.length; i++) {
+    enrichPlan(plansList[i]);
+  }
+};
+
+const getReviewHistories = (plan) => { if (!plan) return []; return plan._histories || plan.review_histories || plan.reviewHistories || []; };
+const getFollowUps = (plan) => { if (!plan) return []; return plan._followUps || plan.client_follow_ups || plan.clientFollowUps || []; };
+const getExecutors = (plan) => { if (!plan || !plan.users) return []; return plan._executors || plan.users.filter(u => u.pivot?.task_role === 'executor'); };
+const getResponsibles = (plan) => { if (!plan || !plan.users) return []; return plan._responsibles || plan.users.filter(u => u.pivot?.task_role === 'responsible'); };
+
+const getPlanFileLink = (plan) => {
+  if (!plan) return '';
+  if (plan._fileLink !== undefined) return plan._fileLink;
+  return plan.final_link || plan.final_plan_link || plan.plan_link || '';
+};
 
 const formatExternalUrl = (url) => {
   if (!url) return '#';
@@ -1760,6 +1926,7 @@ const formatExternalUrl = (url) => {
 
 const getPlanFolders = (plan) => {
   if (!plan) return { review_link: null, final_delivery_link: null };
+  if (plan._planFolders) return plan._planFolders;
   
   let review_link = plan.folders?.review_link || null;
   let final_delivery_link = plan.folders?.final_delivery_link || null;
@@ -1777,68 +1944,73 @@ const getPlanFolders = (plan) => {
     }
   }
 
-  return { review_link, final_delivery_link };
+  const res = { review_link, final_delivery_link };
+  plan._planFolders = res;
+  return res;
 };
 
 const hasPlanLink = (plan) => {
+  if (!plan) return false;
+  if (plan._hasLink !== undefined) return plan._hasLink;
   const link = getPlanFileLink(plan);
-  if (!link || !String(link).trim()) return false;
-  return validateDriveLink(link).valid;
+  return !link || !String(link).trim() ? false : validateDriveLink(link).valid;
 };
 
-// حساب حالة كل مرحلة من المراحل الأربعة في الشريط الزمني للخطة
+// حساب حالة كل مرحلة من المراحل الأربعة في الشريط الزمني للخطة مع تخزين مؤقت للنتيجة O(1)
 const getStageState = (plan, stageNumber) => {
   if (!plan) return { status: 'waiting', label: 'بالانتظار', icon: '⏳', class: 'state-waiting' };
+  if (!plan._stageStates) plan._stageStates = {};
+  if (plan._stageStates[stageNumber]) return plan._stageStates[stageNumber];
 
+  let result;
   if (stageNumber === 1) { // 1. تسليم ابتدائي
     if (plan.status === 'completed' || plan.actual_initial_delivery_date || ['under_review', 'reviewed'].includes(plan.status)) {
-      return { status: 'completed', label: 'مكتمل', icon: '✓', class: 'state-completed' };
+      result = { status: 'completed', label: 'مكتمل', icon: '✓', class: 'state-completed' };
+    } else if (plan.status === 'rejected') {
+      result = { status: 'rejected', label: 'تعديل مطلوب', icon: '⚠️', class: 'state-rejected' };
+    } else {
+      result = { status: 'active', label: 'قيد التنفيذ', icon: '1', class: 'state-active' };
     }
-    if (plan.status === 'rejected') {
-      return { status: 'rejected', label: 'تعديل مطلوب', icon: '⚠️', class: 'state-rejected' };
-    }
-    return { status: 'active', label: 'قيد التنفيذ', icon: '1', class: 'state-active' };
-  }
-
-  if (stageNumber === 2) { // 2. مراجعة داخلية
+  } else if (stageNumber === 2) { // 2. مراجعة داخلية
     if (!plan.requires_review) {
-      return { status: 'skipped', label: 'غير مطلوبة', icon: '⊘', class: 'state-skipped' };
+      result = { status: 'skipped', label: 'غير مطلوبة', icon: '⊘', class: 'state-skipped' };
+    } else if (plan.status === 'completed' || plan.status === 'reviewed' || plan.actual_review_date) {
+      result = { status: 'completed', label: 'معتمدة', icon: '✓', class: 'state-completed' };
+    } else if (plan.status === 'rejected') {
+      result = { status: 'rejected', label: 'مرفوضة', icon: '❌', class: 'state-rejected' };
+    } else if (plan.status === 'under_review') {
+      result = { status: 'active', label: 'قيد المراجعة', icon: '2', class: 'state-active' };
+    } else {
+      result = { status: 'waiting', label: 'بالانتظار', icon: '2', class: 'state-waiting' };
     }
-    if (plan.status === 'completed' || plan.status === 'reviewed' || plan.actual_review_date) {
-      return { status: 'completed', label: 'معتمدة', icon: '✓', class: 'state-completed' };
-    }
-    if (plan.status === 'rejected') {
-      return { status: 'rejected', label: 'مرفوضة', icon: '❌', class: 'state-rejected' };
-    }
-    if (plan.status === 'under_review') {
-      return { status: 'active', label: 'قيد المراجعة', icon: '2', class: 'state-active' };
-    }
-    return { status: 'waiting', label: 'بالانتظار', icon: '2', class: 'state-waiting' };
-  }
-
-  if (stageNumber === 3) { // 3. متابعة مع العميل
+  } else if (stageNumber === 3) { // 3. متابعة مع العميل
     if (plan.status === 'completed') {
-      return { status: 'completed', label: 'مكتملة', icon: '✓', class: 'state-completed' };
+      result = { status: 'completed', label: 'مكتملة', icon: '✓', class: 'state-completed' };
+    } else {
+      const isStageActive = plan.status === 'reviewed' || (!plan.requires_review && (plan.actual_initial_delivery_date || plan.status !== 'pending')) || getFollowUps(plan).length > 0;
+      if (isStageActive) {
+        result = { status: 'active', label: 'متابعة نشطة', icon: '3', class: 'state-active' };
+      } else {
+        result = { status: 'waiting', label: 'بالانتظار', icon: '3', class: 'state-waiting' };
+      }
     }
-    const isStageActive = plan.status === 'reviewed' || (!plan.requires_review && (plan.actual_initial_delivery_date || plan.status !== 'pending')) || getFollowUps(plan).length > 0;
-    if (isStageActive) {
-      return { status: 'active', label: 'متابعة نشطة', icon: '3', class: 'state-active' };
-    }
-    return { status: 'waiting', label: 'بالانتظار', icon: '3', class: 'state-waiting' };
-  }
-
-  if (stageNumber === 4) { // 4. التسليم النهائي
+  } else if (stageNumber === 4) { // 4. التسليم النهائي
     if (plan.status === 'completed' || plan.actual_delivery_date) {
-      return { status: 'completed', label: 'تم التسليم', icon: '✓', class: 'state-completed' };
+      result = { status: 'completed', label: 'تم التسليم', icon: '✓', class: 'state-completed' };
+    } else {
+      const canBeDelivered = plan.status === 'reviewed' || (!plan.requires_review && (plan.status === 'pending' || plan.status === 'rejected'));
+      if (canBeDelivered) {
+        result = { status: 'active', label: 'جاهز للتسليم', icon: '4', class: 'state-active' };
+      } else {
+        result = { status: 'waiting', label: 'بالانتظار', icon: '4', class: 'state-waiting' };
+      }
     }
-    const canBeDelivered = plan.status === 'reviewed' || (!plan.requires_review && (plan.status === 'pending' || plan.status === 'rejected'));
-    if (canBeDelivered) {
-      return { status: 'active', label: 'جاهز للتسليم', icon: '4', class: 'state-active' };
-    }
-    return { status: 'waiting', label: 'بالانتظار', icon: '4', class: 'state-waiting' };
+  } else {
+    result = { status: 'waiting', label: 'بالانتظار', icon: '⏳', class: 'state-waiting' };
   }
 
-  return { status: 'waiting', label: 'بالانتظار', icon: '⏳', class: 'state-waiting' };
+  plan._stageStates[stageNumber] = result;
+  return result;
 };
 
 // إدارة المرحلة المفتوحة لكل خطة في الأكورديون الزمني (سدل وطي المراحل)
@@ -1878,29 +2050,8 @@ const toggleStage = (plan, stageNum) => {
   }
 };
 
-const planLinkInputRef = ref(null);
 
-const onDetailsLinkInput = () => {
-  detailsLinkValidation.touched = true;
-  const res = validateDriveLink(detailsForm.final_link);
-  detailsLinkValidation.valid = res.valid;
-  detailsLinkValidation.message = res.message;
-};
-
-const onFinalLinkBlur = () => {
-  if (detailsForm.final_link && detailsForm.final_link.trim()) {
-    let val = detailsForm.final_link.trim();
-    if (!/^https?:\/\//i.test(val)) {
-      detailsForm.final_link = 'https://' + val;
-    }
-  }
-  detailsLinkValidation.touched = true;
-  const res = validateDriveLink(detailsForm.final_link);
-  detailsLinkValidation.valid = res.valid;
-  detailsLinkValidation.message = res.message;
-};
-const getExecutors = (plan) => { if (!plan || !plan.users) return []; return plan.users.filter(u => u.pivot?.task_role === 'executor'); };
-const getResponsibles = (plan) => { if (!plan || !plan.users) return []; return plan.users.filter(u => u.pivot?.task_role === 'responsible'); }; 
+// getExecutors & getResponsibles are defined above with caching 
 
 
 const showAdvancedFilters = ref(false);
@@ -2194,7 +2345,8 @@ const submissionType = ref('review'); // 'review' | 'final'
 const submissionPlan = ref(null);
 const deliveryForm = reactive({
   plan_link: '',
-  final_plan_link: ''
+  final_plan_link: '',
+  notes: ''
 });
 const deliveryValidation = reactive({
   valid: false,
@@ -2202,12 +2354,6 @@ const deliveryValidation = reactive({
   touched: false
 });
 const submissionLinkInputRef = ref(null);
-
-const detailsLinkValidation = reactive({
-  valid: false,
-  message: '',
-  touched: false
-}); 
 
 const baseUrl = api.defaults.baseURL ? api.defaults.baseURL.replace(/\/api\/?$/, '') : '';
 
@@ -2256,7 +2402,6 @@ const waPromptDesc = ref('');
 const waPromptLink = ref('');
 const waPromptRecipients = ref([]);
 const currentDetailsPlan = ref(null);
-const originalDetails = reactive({ final_link: '', notes: '' });
 
 const isEditing = ref(false); 
 const rejectNotes = ref('');
@@ -2269,8 +2414,8 @@ const planToDuplicate = ref(null);
 const duplicateForm = reactive({ start_date: '', end_date: '', planned_delivery_date: '', planned_review_date: '', planned_initial_delivery_date: '' });
 
 const openDuplicateModal = (plan) => {
-  if (user.value?.role !== 'manager' && user.value?.job_title !== 'Account Manager') {
-    showToast('عذراً، لا تمتلك الصلاحية لاستنساخ الخطط');
+  if (!isManager.value) {
+    showToast('عذراً، صلاحية استنساخ الخطط مخصصة للمدير فقط');
     return;
   }
   planToDuplicate.value = plan;
@@ -2458,10 +2603,8 @@ const form = reactive({
   required_brief_fields: Object.keys(availableBriefFields),
   items: []
 });
-const detailsForm = reactive({ final_link: '', notes: '' });
 
-const getReviewHistories = (plan) => { if (!plan) return []; return plan.review_histories || plan.reviewHistories || []; };
-const getFollowUps = (plan) => { if (!plan) return []; return plan.client_follow_ups || plan.clientFollowUps || []; };
+// getReviewHistories & getFollowUps are defined above with caching
 
 const getInitials = (name = '') => name.trim().split(' ').slice(0, 2).map(word => word[0]).join('').toUpperCase();
 const getRoleNames = (users = [], role) => { const matches = users.filter(user => user.pivot?.task_role === role); return matches.length ? matches.map(user => user.name).join('، ') : '—'; };
@@ -2512,13 +2655,17 @@ const fetchPlans = async () => {
     const response = await api.get(`/content-plans?${params.toString()}`); 
     
     if (response.data && response.data.data !== undefined && response.data.current_page) {
-      plans.value = response.data.data;
+      const list = response.data.data;
+      enrichPlans(list);
+      plans.value = list;
       pagination.current_page = response.data.current_page;
       pagination.last_page = response.data.last_page;
       pagination.total = response.data.total;
       pagination.per_page = response.data.per_page || 10;
     } else {
-      plans.value = response.data.data || response.data || [];
+      const list = response.data.data || response.data || [];
+      enrichPlans(list);
+      plans.value = list;
       pagination.last_page = 1;
       pagination.total = plans.value.length;
     }
@@ -2528,29 +2675,59 @@ const fetchPlans = async () => {
     loading.value = false; 
   } 
 };
+
+// ذاكرة تخزين مؤقت على مستوى الموديول لتفادي استهلاك الشبكة عند التنقل بين الصفحات
+let cachedUsers = null;
+let cachedPlanCategories = null;
+let cachedClients = null;
+
 const fetchResources = async () => { 
-  try {
-    const resUsers = await api.get('/users?per_page=100');
-    allUsers.value = resUsers.data.data || resUsers.data || [];
-  } catch (error) {
-    console.error('Error fetching users:', error);
+  if (cachedUsers && allUsers.value.length === 0) allUsers.value = cachedUsers;
+  if (cachedPlanCategories && planCategories.value.length === 0) planCategories.value = cachedPlanCategories;
+  if (cachedClients && allClients.value.length === 0) allClients.value = cachedClients;
+
+  const promises = [];
+  const needsClients = isManager.value || user.value?.job_title === 'Account Manager';
+
+  if (!cachedUsers) {
+    promises.push(
+      api.get('/users?per_page=100').then(res => {
+        const data = res.data.data || res.data || [];
+        allUsers.value = data;
+        cachedUsers = data;
+      }).catch(error => {
+        console.error('Error fetching users:', error);
+      })
+    );
   }
 
-  try {
-    const resCats = await api.get('/plan-categories/options');
-    planCategories.value = resCats.data?.data || resCats.data || [];
-  } catch (error) {
-    console.error('Error fetching plan categories:', error);
+  if (!cachedPlanCategories) {
+    promises.push(
+      api.get('/plan-categories/options').then(res => {
+        const data = res.data?.data || res.data || [];
+        planCategories.value = data;
+        cachedPlanCategories = data;
+      }).catch(error => {
+        console.error('Error fetching plan categories:', error);
+      })
+    );
   }
 
-  if (isManager.value || user.value?.job_title === 'Account Manager') { 
-    try { 
-      const resClients = await api.get('/clients?per_page=100'); 
-      allClients.value = resClients.data.data || resClients.data || []; 
-    } catch (error) {
-      console.error('Error fetching clients:', error);
-    } 
-  } 
+  if (needsClients && !cachedClients) {
+    promises.push(
+      api.get('/clients?per_page=100').then(res => {
+        const data = res.data.data || res.data || [];
+        allClients.value = data;
+        cachedClients = data;
+      }).catch(error => {
+        console.error('Error fetching clients:', error);
+      })
+    );
+  }
+
+  if (promises.length > 0) {
+    await Promise.allSettled(promises);
+  }
 };
 
 const getPlanDisplayName = (plan) => {
@@ -2694,9 +2871,6 @@ const handleBackendError = (error, defaultMsg = 'حدث خطأ أثناء الع
       deliveryValidation.valid = false;
       deliveryValidation.message = msg;
       deliveryValidation.touched = true;
-      detailsLinkValidation.valid = false;
-      detailsLinkValidation.message = msg;
-      detailsLinkValidation.touched = true;
       alertService.error(msg);
       return;
     }
@@ -2772,6 +2946,7 @@ const onDeliveryLinkBlur = () => {
 const openPlanSubmissionModal = (plan, type = 'review') => {
   submissionPlan.value = plan;
   submissionType.value = type;
+  deliveryForm.notes = plan.notes || '';
   
   if (type === 'review') {
     deliveryForm.plan_link = plan.plan_link || plan.final_link || '';
@@ -2798,6 +2973,7 @@ const openPlanSubmissionModal = (plan, type = 'review') => {
 const closePlanSubmissionModal = () => {
   showPlanSubmissionModal.value = false;
   submissionPlan.value = null;
+  deliveryForm.notes = '';
   deliveryValidation.touched = false;
   deliveryValidation.message = '';
 };
@@ -2862,10 +3038,12 @@ const confirmSubmitDelivery = async () => {
     actionLoading.value = `submit-review-${plan.id}`;
     try {
       await api.post(`/content-plans/${plan.id}/submit-review`, {
-        link: link
+        link: link,
+        notes: deliveryForm.notes
       });
       plan.plan_link = link;
       plan.final_link = link;
+      plan.notes = deliveryForm.notes;
       plan.status = 'under_review';
       closePlanSubmissionModal();
       showToast('تم التسليم للمراجعة بنجاح ✅');
@@ -2886,10 +3064,12 @@ const confirmSubmitDelivery = async () => {
     actionLoading.value = `delivery-${plan.id}`;
     try {
       await api.post(`/content-plans/${plan.id}/final-delivery`, {
-        link: link
+        link: link,
+        notes: deliveryForm.notes
       });
       plan.final_plan_link = link;
       plan.final_link = link;
+      plan.notes = deliveryForm.notes;
       plan.status = 'completed';
       closePlanSubmissionModal();
       showToast('تم التسليم للعميل بنجاح ✅');
@@ -3080,8 +3260,8 @@ const saveManagerPlan = async () => {
 };
 
 const deletePlan = async (id) => {
-  if (user.value?.role !== 'manager' && user.value?.job_title !== 'Account Manager') {
-    showToast('عذراً، لا تمتلك الصلاحية لحذف الخطط');
+  if (!isManager.value) {
+    showToast('عذراً، صلاحية حذف الخطط مخصصة للمدير فقط');
     return;
   }
   const planToDelete = plans.value.find(p => p.id === id);
@@ -3103,114 +3283,111 @@ const deletePlan = async (id) => {
   }
 };
 
-const openDetailsModal = (plan, focusLink = false) => { 
+const openDetailsModal = (plan) => { 
   editId.value = plan.id; 
   currentDetailsPlan.value = plan;
-  detailsForm.final_link = plan.final_link || plan.plan_link || plan.final_plan_link || ''; 
-  detailsForm.notes = plan.notes || ''; 
-  originalDetails.final_link = (detailsForm.final_link || '').trim();
-  originalDetails.notes = (plan.notes || '').trim();
-
-  // فحص صحة الرابط الحالي
-  if (detailsForm.final_link && detailsForm.final_link.trim()) {
-    const res = validateDriveLink(detailsForm.final_link);
-    detailsLinkValidation.valid = res.valid;
-    detailsLinkValidation.message = res.message;
-    detailsLinkValidation.touched = true;
-  } else {
-    detailsLinkValidation.valid = false;
-    detailsLinkValidation.message = 'هذا الحقل مطلوب لإتمام التسليم.';
-    detailsLinkValidation.touched = false;
-  }
-
   showDetailsModal.value = true; 
-  if (focusLink || !detailsForm.final_link) {
-    nextTick(() => {
-      planLinkInputRef.value?.focus();
-    });
-  }
 };
 const closeDetailsModal = () => { 
   showDetailsModal.value = false; 
   currentDetailsPlan.value = null;
 };
-const saveDetails = async () => { 
-  let newLink = (detailsForm.final_link || '').trim();
-  if (newLink && !/^https?:\/\//i.test(newLink)) {
-    newLink = 'https://' + newLink;
-    detailsForm.final_link = newLink;
+
+
+const showClientNotificationModal = ref(false);
+const selectedNotifyPlan = ref(null);
+const copiedMessageToast = ref(false);
+const customDirectPhone = ref('');
+
+const canNotifyClient = (plan) => {
+  if (!plan) return false;
+  const isReviewDone = ['reviewed', 'completed'].includes(plan.status);
+  if (!isReviewDone) return false;
+
+  if (isManager.value) return true;
+
+  return isUserResponsible(plan) && Boolean(plan.allow_client_notify_by_employee);
+};
+
+const openClientNotificationModal = (plan) => {
+  selectedNotifyPlan.value = plan;
+  customDirectPhone.value = '';
+  showClientNotificationModal.value = true;
+};
+
+const closeClientNotificationModal = () => {
+  showClientNotificationModal.value = false;
+  selectedNotifyPlan.value = null;
+};
+
+const getClientReviewMessage = (plan, contactName = '') => {
+  if (!plan) return '';
+  const clientName = plan.client?.name || '';
+  const planName = getPlanDisplayName(plan);
+  const fileLink = getPlanFileLink(plan);
+  const namePart = contactName ? `أستاذ/ة ${contactName}` : (clientName ? `فريق عمل ${clientName}` : 'عميلنا العزيز');
+
+  let msg = `-- *تنبيه من فريق العمل - نظام Octo Space*\n\n`;
+  msg += `مرحباً ${namePart}،\n`;
+  msg += `يسعدنا إبلاغكم بأنه قد تمت المراجعة الداخلية لخطة العمل (*${planName}*) بنجاح ✅.\n\n`;
+  msg += `الخطة الآن جاهزة وبانتظار مراجعتكم الكريمة وملاحظاتكم للبدء في النشر أو التعديل حسب توجيهاتكم.\n`;
+  if (fileLink) {
+    msg += `\n🔗 *رابط الاطلاع على الخطة:* ${fileLink}\n`;
   }
+  if (plan.notes) {
+    msg += `📝 *ملاحظات مرفقة:* ${plan.notes}\n`;
+  }
+  msg += `\nنسعد بملاحظاتكم وتواصلكم دائماً. 🙏`;
+  return msg;
+};
 
-  if (newLink) {
-    const valRes = validateDriveLink(newLink);
-    detailsLinkValidation.touched = true;
-    detailsLinkValidation.valid = valRes.valid;
-    detailsLinkValidation.message = valRes.message;
-    if (!valRes.valid) {
-      alertService.error(valRes.message);
-      return;
+const getClientContactWaLink = (plan, phone, contactName = '') => {
+  if (!plan || !phone) return '#';
+  const digits = String(phone).replace(/[^0-9+]/g, '').replace(/^00/, '+');
+  const normalized = digits.startsWith('+') ? digits.slice(1) : (digits.startsWith('0') ? `20${digits.slice(1)}` : digits);
+  const message = getClientReviewMessage(plan, contactName);
+  return `https://wa.me/${normalized}?text=${encodeURIComponent(message)}`;
+};
+
+const copyNotificationMessage = async (plan) => {
+  const text = getClientReviewMessage(plan);
+  try {
+    await navigator.clipboard.writeText(text);
+    copiedMessageToast.value = true;
+    showToast('تم نسخ نص الرسالة بنجاح 📋');
+    setTimeout(() => { copiedMessageToast.value = false; }, 2500);
+  } catch (e) {
+    showToast('تعذر النسخ تلقائياً');
+  }
+};
+
+const getClientContactList = (plan) => {
+  if (!plan || !plan.client) return [];
+  const list = [];
+  if (plan.client.contacts && Array.isArray(plan.client.contacts)) {
+    plan.client.contacts.forEach(c => {
+      list.push({
+        id: c.id,
+        name: c.contact_name || 'جهة اتصال',
+        method: c.contact_method || 'whatsapp',
+        details: c.contact_details || '',
+        is_primary: false
+      });
+    });
+  }
+  if (plan.client.phone) {
+    const exists = list.some(item => String(item.details).replace(/\D/g, '') === String(plan.client.phone).replace(/\D/g, ''));
+    if (!exists) {
+      list.unshift({
+        id: 'client_phone',
+        name: plan.client.name + ' (الرقم الرئيسي)',
+        method: 'whatsapp',
+        details: plan.client.phone,
+        is_primary: true
+      });
     }
   }
-
-  const newNotes = (detailsForm.notes || '').trim();
-  const isLinkChanged = newLink !== originalDetails.final_link;
-  const isNotesChanged = newNotes !== originalDetails.notes;
-  const hasRealChanges = isLinkChanged || isNotesChanged;
-
-  saving.value = true; 
-  try { 
-    await api.put(`/content-plans/${editId.value}/details`, {
-      final_link: detailsForm.final_link,
-      plan_link: detailsForm.final_link,
-      final_plan_link: detailsForm.final_link,
-      notes: detailsForm.notes
-    }); 
-    const targetPlan = currentDetailsPlan.value;
-    if (targetPlan) {
-      targetPlan.final_link = detailsForm.final_link;
-      targetPlan.notes = detailsForm.notes;
-    }
-    const foundPlan = plans.value.find(p => p.id === editId.value);
-    if (foundPlan) {
-      foundPlan.final_link = detailsForm.final_link;
-      foundPlan.notes = detailsForm.notes;
-    }
-    closeDetailsModal(); 
-    showToast('تم حفظ التفاصيل بنجاح ✅'); 
-    await fetchPlans(); 
-
-    // إذا كانت هناك بيانات محدثة بالفعل، نجهز رسالة ونبلغ المدير
-    if (hasRealChanges && targetPlan) {
-      const managers = getManagers();
-      if (managers.length === 1) {
-        triggerWaPrompt(
-          'تحديث تفاصيل الخطة',
-          `تم حفظ التحديثات بنجاح. يمكنك إبلاغ المدير (${managers[0].name}) بالتفاصيل المحدثة عبر واتساب:`,
-          'manager_details_updated',
-          targetPlan,
-          managers[0]
-        );
-      } else if (managers.length > 1) {
-        const recipients = managers.map(mgr => ({
-          name: mgr.name,
-          role: 'مدير',
-          link: generateWaLink('manager_details_updated', targetPlan, mgr)
-        })).filter(r => !!r.link);
-
-        if (recipients.length > 0) {
-          waPromptTitle.value = 'تحديث تفاصيل الخطة';
-          waPromptDesc.value = 'تم حفظ التحديثات بنجاح. يمكنك إبلاغ المدير بالتفاصيل المحدثة عبر واتساب:';
-          waPromptRecipients.value = recipients;
-          waPromptLink.value = recipients[0].link;
-          showWaPromptModal.value = true;
-        }
-      }
-    }
-  } catch (error) {
-    handleBackendError(error, 'حدث خطأ أثناء حفظ التفاصيل');
-  } finally { 
-    saving.value = false; 
-  } 
+  return list;
 };
 
 const openRejectModal = (plan) => { editId.value = plan.id; rejectNotes.value = ''; showRejectModal.value = true; };
@@ -4510,6 +4687,46 @@ onBeforeUnmount(() => {
 @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 .pagination-controls { display: flex; align-items: center; justify-content: center; gap: 15px; margin-top: 25px; padding: 15px; }
 .page-info { color: #818cb9; font-size: 12px; font-weight: bold; }
+
+
+.cluster-btn.notify-client {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #34d399;
+}
+.cluster-btn.notify-client:hover {
+  background: rgba(16, 185, 129, 0.25);
+  border-color: #10b981;
+  color: #ffffff;
+}
+
+.drawer-action-btn.notify-client-btn {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.3));
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #6ee7b7;
+}
+.drawer-action-btn.notify-client-btn:hover {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  border-color: #10b981;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+}
+
+.drawer-action-btn.notify-client-pill-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #34d399;
+}
+.drawer-action-btn.notify-client-pill-btn:hover {
+  background: #10b981;
+  color: #ffffff;
+}
+
+.compact-notify-toggle {
+  margin-top: 6px;
+}
 
 </style>
 

@@ -117,6 +117,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
 import { getWhatsAppPayload, formatWhatsAppPhone } from '../utils/quickTaskWhatsApp';
+import alertService from '../services/alertService';
 
 const props = defineProps({
   isOpen: {
@@ -207,7 +208,7 @@ const sendWhatsAppMessage = () => {
 
   const formattedPhone = formatWhatsAppPhone(editablePhone.value);
   if (!formattedPhone) {
-    alert('رقم الهاتف غير صالح، يرجى كتابة رقم صحيح يتضمن كود الدولة.');
+    alertService.warning('رقم الهاتف غير صالح، يرجى كتابة رقم صحيح يتضمن كود الدولة.');
     return;
   }
 

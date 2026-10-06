@@ -215,6 +215,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import api from '../axios';
+import alertService from '../services/alertService';
 
 // 🔴 تجهيز التواريخ الافتراضية (اليوم و 30 يوم لورا) 🔴
 const getTodayDate = () => new Date().toISOString().split('T')[0];
@@ -275,6 +276,17 @@ const openManageLogsModal = () => {
 const closeManageModal = () => { isManageModalOpen.value = false; };
 
 const executeDelete = async () => {
+  const confirmed = await alertService.confirm({
+    title: 'تأكيد حذف السجلات',
+    message: deleteMode.value === 'all' 
+      ? 'هل أنت متأكد تماماً من رغبتك في حذف جميع سجلات النظام؟ هذا الإجراء نهائي ولا يمكن التراجع عنه.'
+      : 'هل أنت متأكد من حذف سجلات النظام للفترة المحددة؟',
+    type: 'danger',
+    confirmText: 'نعم، احذف السجلات',
+    cancelText: 'إلغاء'
+  });
+  if (!confirmed) return;
+
   isDeleting.value = true;
   try {
     const payload = {
@@ -285,10 +297,10 @@ const executeDelete = async () => {
     
     const response = await api.delete('/system-logs', { data: payload });
     isManageModalOpen.value = false;
-    alert(response.data.message);
+    alertService.success(response.data.message || 'تم حذف السجلات بنجاح');
     fetchLogs(1); 
   } catch (error) {
-    alert(error.response?.data?.message || 'حدث خطأ أثناء الحذف.');
+    alertService.error(error.response?.data?.message || 'حدث خطأ أثناء الحذف.');
   } finally {
     isDeleting.value = false;
   }

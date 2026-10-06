@@ -913,6 +913,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } 
 import api from '../axios'
 import { canManageAccounts } from '@/utils/permissions'
 import ClientAvatar from '@/components/ClientAvatar.vue'
+import alertService from '@/services/alertService'
 
 // كائن المستخدم الحالي لتطبيق صلاحيات إدارة العملاء
 const currentUser = ref(null)
@@ -1041,6 +1042,14 @@ const whatsappUrl = (phone) => {
 }
 
 const showToast = (message) => {
+  if (!message) return
+  if (message.includes('خطأ') || message.includes('تعذر') || message.includes('فشل') || message.includes('⚠️')) {
+    alertService.error(message)
+  } else if (message.includes('تم') || message.includes('بنجاح')) {
+    alertService.success(message)
+  } else {
+    alertService.toast(message)
+  }
   toastMessage.value = message
   window.clearTimeout(toastTimer)
   toastTimer = window.setTimeout(() => {
@@ -1062,15 +1071,29 @@ const fetchClients = async () => {
 
 // دوال التحكم في المصفوفات (Dynamic Inputs)
 const addPhone = () => form.phones.push({ number: '', has_whatsapp: false })
-const removePhone = (index) => {
-  if (window.confirm('هل أنت متأكد من حذف رقم الهاتف هذا؟')) {
+const removePhone = async (index) => {
+  const confirmed = await alertService.confirm({
+    title: 'حذف رقم الهاتف',
+    message: 'هل أنت متأكد من حذف رقم الهاتف هذا؟',
+    type: 'danger',
+    confirmText: 'نعم، احذف',
+    cancelText: 'إلغاء'
+  })
+  if (confirmed) {
     form.phones.splice(index, 1)
   }
 }
 
 const addEmail = () => form.emails.push('')
-const removeEmail = (index) => {
-  if (window.confirm('هل أنت متأكد من حذف البريد الإلكتروني هذا؟')) {
+const removeEmail = async (index) => {
+  const confirmed = await alertService.confirm({
+    title: 'حذف البريد الإلكتروني',
+    message: 'هل أنت متأكد من حذف هذا البريد الإلكتروني؟',
+    type: 'danger',
+    confirmText: 'نعم، احذف',
+    cancelText: 'إلغاء'
+  })
+  if (confirmed) {
     form.emails.splice(index, 1)
   }
 }
@@ -1205,9 +1228,25 @@ const handleSocialUrlBlur = (link) => {
 
 const addSocialLink = () => form.social_links.push({ platform: '', url: '' })
 const addDriveLink = () => form.drive_links.push({ title: '', url: '' })
-const removeDriveLink = (index) => { if(window.confirm('تأكيد الحذف؟')) form.drive_links.splice(index, 1) }
-const removeSocialLink = (index) => {
-  if (window.confirm('هل أنت متأكد من حذف هذا الرابط (المنصة)؟')) {
+const removeDriveLink = async (index) => { 
+  const confirmed = await alertService.confirm({
+    title: 'حذف رابط الدرايف',
+    message: 'هل أنت متأكد من حذف هذا الرابط؟',
+    type: 'danger',
+    confirmText: 'نعم، احذف',
+    cancelText: 'إلغاء'
+  })
+  if (confirmed) form.drive_links.splice(index, 1) 
+}
+const removeSocialLink = async (index) => {
+  const confirmed = await alertService.confirm({
+    title: 'حذف رابط المنصة',
+    message: 'هل أنت متأكد من حذف هذا الرابط؟',
+    type: 'danger',
+    confirmText: 'نعم، احذف',
+    cancelText: 'إلغاء'
+  })
+  if (confirmed) {
     form.social_links.splice(index, 1)
   }
 }
@@ -1247,16 +1286,30 @@ const handleGroupUrlBlur = (grp) => {
 }
 
 const addGroupLink = () => form.group_links.push({ platform: 'whatsapp', title: '', url: '' })
-const removeGroupLink = (index) => {
-  if (window.confirm('هل أنت متأكد من حذف رابط هذا الجروب؟')) {
+const removeGroupLink = async (index) => {
+  const confirmed = await alertService.confirm({
+    title: 'حذف رابط الجروب',
+    message: 'هل أنت متأكد من حذف رابط هذا الجروب؟',
+    type: 'danger',
+    confirmText: 'نعم، احذف',
+    cancelText: 'إلغاء'
+  })
+  if (confirmed) {
     form.group_links.splice(index, 1)
   }
 }
 
 const addContact = () =>
   form.contacts.push({ contact_name: '', contact_method: '', contact_details: '' })
-const removeContact = (index) => {
-  if (window.confirm('هل أنت متأكد من حذف جهة الاتصال هذه؟')) {
+const removeContact = async (index) => {
+  const confirmed = await alertService.confirm({
+    title: 'حذف جهة الاتصال',
+    message: 'هل أنت متأكد من حذف جهة الاتصال هذه؟',
+    type: 'danger',
+    confirmText: 'نعم، احذف',
+    cancelText: 'إلغاء'
+  })
+  if (confirmed) {
     form.contacts.splice(index, 1)
   }
 }
@@ -1434,9 +1487,14 @@ const deleteClient = async (id) => {
     showToast('عذراً، لا تمتلك الصلاحية لحذف العميل')
     return
   }
-  const confirmMessage =
-    '⚠️ تنبيه هام وحرج!\n\nهل أنت متأكد تماماً من رغبتك في حذف هذا العميل؟\n\n- سيتم حذف الشركة بالكامل.\n- سيتم حذف جميع وسائل التواصل والأشخاص المرتبطين.\n- لا يمكن التراجع عن هذه الخطوة أبداً!'
-  if (!window.confirm(confirmMessage)) return
+  const confirmed = await alertService.confirm({
+    title: '⚠️ تنبيه حرج: حذف العميل بالكامل',
+    message: 'هل أنت متأكد تماماً من رغبتك في حذف هذا العميل؟\n\n- سيتم حذف ملف الشركة بالكامل.\n- سيتم حذف جميع وسائل التواصل والأشخاص المرتبطين بها.\n- لا يمكن التراجع عن هذه العملية نهائياً!',
+    type: 'danger',
+    confirmText: 'نعم، احذف العميل نهائياً',
+    cancelText: 'تراجع'
+  })
+  if (!confirmed) return
 
   try {
     await api.delete(`/clients/${id}`)

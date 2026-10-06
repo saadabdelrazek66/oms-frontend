@@ -123,6 +123,16 @@ const router = createRouter({
           },
         },
         {
+          path: '/trash',
+          name: 'TrashBin',
+          component: () => import('@/views/TrashBin.vue'),
+          meta: {
+            requiresAuth: true,
+            role: 'manager',
+            title: 'سلة المهملات',
+          },
+        },
+        {
           path: '/content-plans/:id',
           name: 'ContentPlanRedirect',
           redirect: (to) => {

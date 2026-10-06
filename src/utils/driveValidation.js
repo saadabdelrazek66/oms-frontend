@@ -72,3 +72,26 @@ export const validatePostDriveLink = (url) => {
 
   return { valid: true, message: '' };
 };
+
+/**
+ * التحقق من صحة رابط مجلد الأرشفة والتسليم النهائي للبوست (يجب أن يكون رابط مجلد على جوجل درايف)
+ * @param {string} url 
+ * @returns {{ valid: boolean, message: string }}
+ */
+export const validateDriveFolderLink = (url) => {
+  if (!url || !String(url).trim()) {
+    return { valid: false, message: 'رابط مجلد الأرشفة مطلوب.' };
+  }
+  
+  const lowerUrl = String(url).trim().toLowerCase();
+  
+  // يجب أن يكون رابط مجلد على جوجل درايف
+  const isDriveFolder = (lowerUrl.includes('drive.google.com') && lowerUrl.includes('/folders/'))
+                     || (lowerUrl.includes('drive.google.com/open?id=') && !lowerUrl.includes('/file/d/'));
+  
+  if (!isDriveFolder) {
+    return { valid: false, message: 'يجب أن يكون الرابط عبارة عن رابط "مجلد" (Folder) صحيح على Google Drive لأرشفة المنشور.' };
+  }
+  
+  return { valid: true, message: '' };
+};

@@ -367,6 +367,7 @@
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../axios';
+import alertService from '../services/alertService';
 
 const router = useRouter();
 
@@ -457,10 +458,18 @@ const filteredProjects = computed(() => {
   });
 });
 
-const showToast = (msg) => {
+const showToast = (msg, type = 'info') => {
+  if (!msg) return;
+  if (msg.includes('خطأ') || msg.includes('فشل') || msg.includes('تعذر')) {
+    alertService.error(msg);
+  } else if (msg.includes('تم') || msg.includes('نجاح')) {
+    alertService.success(msg);
+  } else {
+    alertService.toast(msg, type);
+  }
   toastMessage.value = msg;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toastMessage.value = '', 3000);
+  toastTimer = setTimeout(() => toastMessage.value = '', 3500);
 };
 
 const getInitials = (name = '') => name.trim().split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
@@ -590,14 +599,23 @@ const saveProject = async () => {
   }
 };
 
+
+
 const deleteProject = async (id) => {
-  if (!confirm('هل أنت متأكد من حذف هذا المشروع نهائياً؟')) return;
+  const confirmed = await alertService.confirm({
+    title: 'تأكيد حذف المشروع',
+    message: 'هل أنت متأكد من رغبتك في حذف هذا المشروع نهائياً؟ سيتم حذف جميع المهام والبيانات المرتبطة به.',
+    type: 'danger',
+    confirmText: 'نعم، احذف المشروع',
+    cancelText: 'إلغاء'
+  });
+  if (!confirmed) return;
   try {
     await api.delete(`/projects/${id}`);
-    showToast('تم حذف المشروع');
+    showToast('تم حذف المشروع بنجاح');
     await fetchProjects();
   } catch (error) {
-    showToast('حدث خطأ أثناء الحذف');
+    showToast(error.response?.data?.message || 'حدث خطأ أثناء الحذف');
   }
 };
 

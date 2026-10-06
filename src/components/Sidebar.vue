@@ -1,270 +1,300 @@
 <template>
   <aside class="sidebar" dir="rtl" aria-label="القائمة الجانبية">
-    <!-- خلفية التأثيرات الضوئية المعزولة عن التمرير لمنع تمدد المساحة الفارغة -->
+    <!-- خلفية التأثيرات الضوئية المعزولة عن التمرير -->
     <div class="sidebar-glow-bg" aria-hidden="true">
       <div class="glow-orb glow-top"></div>
       <div class="glow-orb glow-bottom"></div>
     </div>
 
-    <!-- الحاوية الداخلية المرنة لحل مشكلة الفراغ السفلي -->
+    <!-- الحاوية الداخلية المرنة لحل مشكلة الفراغ والتمرير -->
     <div class="sidebar-inner">
+      <!-- الشعار وهوية النظام -->
       <div class="brand">
-      <router-link to="/" class="brand-link" title="Octo Media">
-        <div class="brand-icon" aria-hidden="true">
-          <img src="/logo.png" alt="Octo Media" class="brand-logo-img" />
-        </div>
-        <div class="brand-copy">
-          <strong>OCTO<span>SPACE</span></strong>
-          <small>مساحة فريقك الذكية</small>
-        </div>
-      </router-link>
-      <button class="close-btn" type="button" aria-label="إغلاق القائمة" @click="$emit('close')">
-        <span aria-hidden="true">×</span>
-      </button>
-    </div>
-
-    <!-- بطاقة المستخدم المحدثة -->
-    <div class="profile-card">
-      <div class="avatar" aria-hidden="true">{{ userInitial }}</div>
-      <div class="profile-copy">
-        <strong>{{ userName }}</strong>
-        <span><i aria-hidden="true"></i> متصل الآن</span>
+        <router-link to="/" class="brand-link" title="Octo Media">
+          <div class="brand-icon" aria-hidden="true">
+            <img src="/logo.png" alt="Octo Media" class="brand-logo-img" />
+          </div>
+          <div class="brand-copy">
+            <strong>OCTO<span>SPACE</span></strong>
+            <small>مساحة فريقك الذكية</small>
+          </div>
+        </router-link>
+        <button class="close-btn" type="button" aria-label="إغلاق القائمة" @click="$emit('close')">
+          <span aria-hidden="true">×</span>
+        </button>
       </div>
-      <span class="role-badge">{{ role === 'manager' ? 'مدير' : 'موظف' }}</span>
-    </div>
 
-    <p class="section-label">القائمة الرئيسية</p>
-    <nav class="nav-list" aria-label="التنقل الرئيسي">
-      <router-link v-if="role === 'manager'" class="nav-item" to="/manager/dashboard">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <rect x="4" y="4" width="6" height="6" rx="1" />
-          <rect x="14" y="4" width="6" height="6" rx="1" />
-          <rect x="4" y="14" width="6" height="6" rx="1" />
-          <rect x="14" y="14" width="6" height="6" rx="1" />
-        </svg>
-        <span>الرئيسية</span><em>⌘</em>
-      </router-link>
-
-      <router-link v-if="role === 'employee'" class="nav-item" to="/employee/dashboard">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M4 13a8 8 0 1 1 16 0v5H4z" />
-          <path d="M4 13h3m10 0h3M12 5v3" />
-        </svg>
-        <span>الرئيسية</span><em>⌘</em>
-      </router-link>
-
-      <!-- رابط مساحة العمل ومهامي -->
-      <router-link to="/my-tasks" class="nav-item">
-        <span class="icon">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-            <polyline points="14 2 14 8 20 8"></polyline>
-            <line x1="16" y1="13" x2="8" y2="13"></line>
-            <line x1="16" y1="17" x2="8" y2="17"></line>
-            <polyline points="10 9 9 9 8 9"></polyline>
-          </svg>
+      <!-- بطاقة المستخدم وحالته المحدثة -->
+      <div class="profile-card">
+        <div class="avatar" aria-hidden="true">{{ userInitial }}</div>
+        <div class="profile-copy">
+          <strong>{{ userName }}</strong>
+          <span><i aria-hidden="true"></i> متصل الآن</span>
+        </div>
+        <span class="role-badge" :class="role === 'manager' ? 'badge-manager' : 'badge-employee'">
+          {{ role === 'manager' ? 'مدير' : 'موظف' }}
         </span>
-        <span class="text">مساحة العمل</span>
-      </router-link>
+      </div>
 
-      <!-- رابط المهام السريعة -->
-      <router-link to="/quick-tasks" class="nav-item">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-        </svg>
-        <span>المهام السريعة</span><em>Q</em>
-      </router-link>
+      <!-- التنقل المقسم لمجموعات وظيفية ذكية واحترافية -->
+      <nav class="sidebar-nav-groups" aria-label="التنقل الرئيسي">
 
-      <router-link v-if="role === 'manager'" class="nav-item" to="/manager/departments">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <rect x="16" y="3" width="6" height="6" rx="1"></rect>
-          <rect x="2" y="15" width="6" height="6" rx="1"></rect>
-          <rect x="16" y="15" width="6" height="6" rx="1"></rect>
-          <polyline points="5 15 5 6 16 6"></polyline>
-          <line x1="5" y1="9" x2="16" y2="9"></line>
-        </svg>
-        <span>إدارة الأقسام</span><em>D</em>
-      </router-link>
+        <!-- ================= 1. مجموعة العمل اليومي ================= -->
+        <div class="nav-group">
+          <div class="nav-group-header">
+            <span class="group-dot dot-cyan"></span>
+            <span class="group-title">العمل اليومي</span>
+          </div>
 
-      <router-link v-if="role === 'manager'" class="nav-item" to="/manager/users">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-          <circle cx="9" cy="7" r="4"></circle>
-          <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-        </svg>
-        <span>إدارة المستخدمين</span><em>U</em>
-      </router-link>
+          <div class="nav-group-items">
+            <!-- الرئيسية (مدير) -->
+            <router-link v-if="role === 'manager'" class="nav-item" to="/manager/dashboard">
+              <span class="nav-icon-box">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                  <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                  <rect x="14" y="14" width="7" height="7" rx="1.5" />
+                  <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                </svg>
+              </span>
+              <span class="nav-label">الرئيسية</span>
+              <em class="nav-shortcut">⌘</em>
+            </router-link>
 
-      <router-link v-if="role === 'manager' || role === 'employee'" class="nav-item" to="/projects">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M3 7h5l2 2h11v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-          <path d="M3 7V5a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v2"></path>
-        </svg>
-        <span>المشاريع</span><em>P</em>
-      </router-link>
+            <!-- الرئيسية (موظف) -->
+            <router-link v-if="role === 'employee'" class="nav-item" to="/employee/dashboard">
+              <span class="nav-icon-box">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                  <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                  <rect x="14" y="14" width="7" height="7" rx="1.5" />
+                  <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                </svg>
+              </span>
+              <span class="nav-label">الرئيسية</span>
+              <em class="nav-shortcut">⌘</em>
+            </router-link>
 
-      <router-link v-if="canManageAccounts(currentUser)" class="nav-item" to="/manager/clients">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-        </svg>
-        <span>العملاء والشركات</span><em>C</em>
-      </router-link>
+            <!-- مساحة العمل / مهامي -->
+            <router-link to="/my-tasks" class="nav-item">
+              <span class="nav-icon-box">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M9 11l3 3L22 4"></path>
+                  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                </svg>
+              </span>
+              <span class="nav-label">مساحة العمل (مهامي)</span>
+            </router-link>
 
-      <router-link
-        v-if="user && (user.role === 'manager' || user.job_title === 'Account Manager')"
-        class="nav-item"
-        to="/content-plans"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-          <polyline points="14 2 14 8 20 8"></polyline>
-          <line x1="16" y1="13" x2="8" y2="13"></line>
-          <line x1="16" y1="17" x2="8" y2="17"></line>
-          <polyline points="10 9 9 9 8 9"></polyline>
-        </svg>
-        <span>الخطط</span><em>P</em>
-      </router-link>
+            <!-- المهام السريعة -->
+            <router-link to="/quick-tasks" class="nav-item">
+              <span class="nav-icon-box">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                </svg>
+              </span>
+              <span class="nav-label">المهام السريعة</span>
+              <em class="nav-shortcut">Q</em>
+            </router-link>
+          </div>
+        </div>
 
-      <router-link
-        v-if="role === 'manager' || role === 'employee'"
-        class="nav-item"
-        to="/plan-contents"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-          <polyline points="14 2 14 8 20 8"></polyline>
-          <line x1="16" y1="13" x2="8" y2="13"></line>
-          <line x1="16" y1="17" x2="8" y2="17"></line>
-          <polyline points="10 9 9 9 8 9"></polyline>
-        </svg>
-        <span>قائمة خطط المحتوى</span><em>L</em>
-      </router-link>
+        <div class="nav-divider"></div>
 
-      <router-link v-if="role === 'manager'" class="nav-item" to="/system-logs">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M4 4h16v16H4z"></path>
-          <path d="M8 8h8"></path>
-          <path d="M8 12h8"></path>
-          <path d="M8 16h5"></path>
-        </svg>
-        <span>سجل النظام</span><em>L</em>
-      </router-link>
+        <!-- ================= 2. مجموعة المشاريع وخطط المحتوى ================= -->
+        <div class="nav-group">
+          <div class="nav-group-header">
+            <span class="group-dot dot-purple"></span>
+            <span class="group-title">المشاريع والمحتوى</span>
+          </div>
 
-      <router-link v-if="role === 'manager'" class="nav-item" to="/settings">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <circle cx="12" cy="12" r="3"></circle>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-        </svg>
-        <span>إعدادات النظام</span><em>S</em>
-      </router-link>
+          <div class="nav-group-items">
+            <!-- المشاريع -->
+            <router-link class="nav-item" to="/projects">
+              <span class="nav-icon-box">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                </svg>
+              </span>
+              <span class="nav-label">المشاريع</span>
+              <em class="nav-shortcut">P</em>
+            </router-link>
 
-      <router-link v-if="role === 'manager'" class="nav-item" to="/app/client-vault">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-        </svg>
-        <span>خزنة العملاء</span><em>C</em>
-      </router-link>
-    </nav>
+            <!-- خطط المحتوى (للمدير و Account Manager) -->
+            <router-link
+              v-if="user && (user.role === 'manager' || user.job_title === 'Account Manager')"
+              class="nav-item"
+              to="/content-plans"
+            >
+              <span class="nav-icon-box">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                  <path d="M8 14h.01"></path>
+                  <path d="M12 14h.01"></path>
+                  <path d="M16 14h.01"></path>
+                  <path d="M8 18h.01"></path>
+                  <path d="M12 18h.01"></path>
+                </svg>
+              </span>
+              <span class="nav-label">خطط المحتوى</span>
+              <span class="nav-badge-pill">إدارة</span>
+            </router-link>
 
+            <!-- جداول خطط المحتوى (شيت المنشورات) -->
+            <router-link class="nav-item" to="/plan-contents">
+              <span class="nav-icon-box">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                  <path d="M3 9h18"></path>
+                  <path d="M3 15h18"></path>
+                  <path d="M9 3v18"></path>
+                  <path d="M15 3v18"></path>
+                </svg>
+              </span>
+              <span class="nav-label">جداول المنشورات</span>
+              <em class="nav-shortcut">L</em>
+            </router-link>
+          </div>
+        </div>
+
+        <!-- ================= 3. مجموعة العملاء والأصول ================= -->
+        <template v-if="canManageAccounts(currentUser) || role === 'manager'">
+          <div class="nav-divider"></div>
+          <div class="nav-group">
+            <div class="nav-group-header">
+              <span class="group-dot dot-blue"></span>
+              <span class="group-title">العملاء والأصول</span>
+            </div>
+
+            <div class="nav-group-items">
+              <!-- العملاء والشركات -->
+              <router-link v-if="canManageAccounts(currentUser)" class="nav-item" to="/manager/clients">
+                <span class="nav-icon-box">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                </span>
+                <span class="nav-label">العملاء والشركات</span>
+                <em class="nav-shortcut">C</em>
+              </router-link>
+
+              <!-- خزنة العملاء -->
+              <router-link v-if="role === 'manager'" class="nav-item" to="/app/client-vault">
+                <span class="nav-icon-box">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    <circle cx="12" cy="11" r="2"></circle>
+                    <line x1="12" y1="13" x2="12" y2="16"></line>
+                  </svg>
+                </span>
+                <span class="nav-label">خزنة العملاء</span>
+                <span class="nav-badge-pill vault-pill">آمن</span>
+              </router-link>
+            </div>
+          </div>
+        </template>
+
+        <!-- ================= 4. مجموعة الفريق والمنظومة (للمدير فقط) ================= -->
+        <template v-if="role === 'manager'">
+          <div class="nav-divider"></div>
+          <div class="nav-group">
+            <div class="nav-group-header">
+              <span class="group-dot dot-indigo"></span>
+              <span class="group-title">الفريق والمنظومة</span>
+            </div>
+
+            <div class="nav-group-items">
+              <!-- إدارة الأقسام -->
+              <router-link class="nav-item" to="/manager/departments">
+                <span class="nav-icon-box">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                    <polyline points="2 17 12 22 22 17"></polyline>
+                    <polyline points="2 12 12 17 22 12"></polyline>
+                  </svg>
+                </span>
+                <span class="nav-label">إدارة الأقسام</span>
+                <em class="nav-shortcut">D</em>
+              </router-link>
+
+              <!-- إدارة المستخدمين -->
+              <router-link class="nav-item" to="/manager/users">
+                <span class="nav-icon-box">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                  </svg>
+                </span>
+                <span class="nav-label">إدارة المستخدمين</span>
+                <em class="nav-shortcut">U</em>
+              </router-link>
+            </div>
+          </div>
+        </template>
+
+        <!-- ================= 5. مجموعة النظام والمحفوظات (للمدير فقط) ================= -->
+        <template v-if="role === 'manager'">
+          <div class="nav-divider"></div>
+          <div class="nav-group">
+            <div class="nav-group-header">
+              <span class="group-dot dot-amber"></span>
+              <span class="group-title">النظام والمحفوظات</span>
+            </div>
+
+            <div class="nav-group-items">
+              <!-- سجل النظام -->
+              <router-link class="nav-item" to="/system-logs">
+                <span class="nav-icon-box">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                  </svg>
+                </span>
+                <span class="nav-label">سجل النظام والنشاطات</span>
+              </router-link>
+
+              <!-- سلة المهملات -->
+              <router-link class="nav-item trash-item" to="/trash">
+                <span class="nav-icon-box">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    <line x1="10" y1="11" x2="10" y2="17"></line>
+                    <line x1="14" y1="11" x2="14" y2="17"></line>
+                  </svg>
+                </span>
+                <span class="nav-label">سلة المهملات</span>
+                <em class="nav-shortcut">T</em>
+              </router-link>
+
+              <!-- إعدادات النظام -->
+              <router-link class="nav-item" to="/settings">
+                <span class="nav-icon-box">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                  </svg>
+                </span>
+                <span class="nav-label">إعدادات النظام</span>
+                <em class="nav-shortcut">S</em>
+              </router-link>
+            </div>
+          </div>
+        </template>
+      </nav>
+
+      <!-- نصيحة اليوم وبطاقة الإلهام في الأسفل -->
       <div class="sidebar-bottom">
         <div class="ocean-tip">
-          <span aria-hidden="true">✧</span>
-          <div>
+          <span aria-hidden="true" class="tip-star">✧</span>
+          <div class="tip-body">
             <strong>نصيحة اليوم</strong>
-            <p>أنجز مهامك بتركيز، خطوة واحدة في كل مرة.</p>
+            <p>أنجز مهامك بتركيز، خطوة واحدة في كل مرة تصنع فارقاً كبيراً.</p>
           </div>
         </div>
       </div>
@@ -413,28 +443,27 @@ const logout = () => {
   min-height: 100%;
   display: flex;
   flex-direction: column;
-  padding: max(22px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom));
+  padding: max(20px, env(safe-area-inset-top)) 14px max(20px, env(safe-area-inset-bottom));
   position: relative;
   z-index: 1;
 }
 
 .brand,
 .profile-card,
-.nav-list,
-.quick-links,
-.sidebar-bottom,
-.section-label {
+.sidebar-nav-groups,
+.sidebar-bottom {
   position: relative;
   z-index: 1;
 }
 
+/* ================= رأس السايدبار والشعار ================= */
 .brand {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 11px;
   min-width: 0;
-  padding: 0 8px;
+  padding: 0 6px;
 }
 
 .brand-link {
@@ -448,12 +477,12 @@ const logout = () => {
 }
 
 .brand-icon {
-  width: 46px;
-  height: 46px;
-  flex: 0 0 46px;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
   display: grid;
   place-items: center;
-  border-radius: 14px;
+  border-radius: 13px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(145, 160, 231, 0.18);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.1);
@@ -465,8 +494,8 @@ const logout = () => {
 .brand-link:hover .brand-icon {
   transform: scale(1.05);
   background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(123, 231, 221, 0.4);
-  box-shadow: 0 8px 24px rgba(123, 231, 221, 0.25);
+  border-color: rgba(125, 232, 220, 0.4);
+  box-shadow: 0 8px 24px rgba(125, 232, 220, 0.25);
 }
 
 .brand-logo-img {
@@ -474,7 +503,7 @@ const logout = () => {
   height: 100%;
   object-fit: contain;
   display: block;
-  filter: drop-shadow(0 2px 8px rgba(123, 231, 221, 0.25));
+  filter: drop-shadow(0 2px 8px rgba(125, 232, 220, 0.25));
 }
 
 .brand-copy {
@@ -487,29 +516,29 @@ const logout = () => {
   white-space: nowrap;
   text-overflow: ellipsis;
   letter-spacing: 1.1px;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 800;
   color: #ffffff;
 }
 
 .brand strong span {
-  color: #7de8de;
+  color: #7de8dc;
 }
 
 .brand small {
   display: block;
   overflow: hidden;
   color: #8f9ac9;
-  font-size: 10px;
-  margin-top: 2px;
+  font-size: 9.5px;
+  margin-top: 1px;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
 .close-btn {
-  width: 44px;
-  height: 44px;
-  flex: 0 0 44px;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
   display: none;
   place-items: center;
   margin-right: auto;
@@ -518,21 +547,23 @@ const logout = () => {
   border: 0;
   border-radius: 10px;
   background: transparent;
-  font-size: 27px;
+  font-size: 26px;
   line-height: 1;
   cursor: pointer;
 }
 
+/* ================= بطاقة المستخدم ================= */
 .profile-card {
   display: flex;
   align-items: center;
   gap: 10px;
   min-width: 0;
-  margin: 22px 0 20px;
-  padding: 11px;
+  margin: 18px 0 16px;
+  padding: 10px 12px;
   border: 1px solid rgba(143, 157, 226, 0.14);
-  border-radius: 15px;
-  background: rgba(34, 41, 92, 0.52);
+  border-radius: 14px;
+  background: rgba(34, 41, 92, 0.48);
+  backdrop-filter: blur(8px);
 }
 
 .avatar {
@@ -542,10 +573,11 @@ const logout = () => {
   display: grid;
   place-items: center;
   border-radius: 11px;
-  color: #241a56;
-  background: linear-gradient(145deg, #88ece1, #a884ff);
+  color: #12183f;
+  background: linear-gradient(135deg, #7de8dc, #b28aff);
   font-weight: 800;
-  font-size: 15px; /* تم التعديل ليتناسب مع الحرف */
+  font-size: 14px;
+  box-shadow: 0 4px 12px rgba(125, 232, 220, 0.22);
 }
 
 .profile-copy {
@@ -557,7 +589,9 @@ const logout = () => {
 .profile-copy strong {
   display: block;
   overflow: hidden;
-  font-size: 13px; /* تم تكبير الخط قليلاً لإبراز الاسم */
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #f1f4ff;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -566,9 +600,9 @@ const logout = () => {
   display: flex;
   align-items: center;
   gap: 5px;
-  color: #7580ae;
+  color: #7b88bc;
   font-size: 9px;
-  margin-top: 3px;
+  margin-top: 2px;
 }
 
 .profile-copy i {
@@ -576,234 +610,282 @@ const logout = () => {
   height: 6px;
   flex: 0 0 6px;
   border-radius: 50%;
-  background: #6ce6d9;
-  box-shadow: 0 0 7px #6ce6d9;
+  background: #10b981;
+  box-shadow: 0 0 6px #10b981;
 }
 
 .role-badge {
   flex: 0 0 auto;
-  padding: 3px 7px;
+  padding: 2px 7px;
   border-radius: 6px;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.role-badge.badge-manager {
+  color: #7de8dc;
+  background: rgba(125, 232, 220, 0.12);
+  border: 1px solid rgba(125, 232, 220, 0.25);
+}
+
+.role-badge.badge-employee {
   color: #bc92ff;
   background: rgba(174, 116, 255, 0.12);
-  font-size: 9px;
+  border: 1px solid rgba(174, 116, 255, 0.25);
 }
 
-.section-label {
-  color: #6874a9;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.7px;
-  margin: 0 12px 10px;
+/* ================= المجموعات الوظيفية للتنقل ================= */
+.sidebar-nav-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
 
-.workspace-label {
-  margin-top: 22px;
+.nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
 
-.nav-list,
-.quick-links {
-  display: grid;
-  gap: 6px;
-}
-
-.nav-item,
-.quick-links a {
-  min-width: 0;
+.nav-group-header {
   display: flex;
   align-items: center;
-  text-decoration: none;
+  gap: 7px;
+  padding: 8px 10px 4px;
 }
 
+.group-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dot-cyan {
+  background: #7de8dc;
+  box-shadow: 0 0 7px rgba(125, 232, 220, 0.7);
+}
+
+.dot-purple {
+  background: #b28aff;
+  box-shadow: 0 0 7px rgba(178, 138, 255, 0.7);
+}
+
+.dot-blue {
+  background: #60a5fa;
+  box-shadow: 0 0 7px rgba(96, 165, 250, 0.7);
+}
+
+.dot-indigo {
+  background: #818cf8;
+  box-shadow: 0 0 7px rgba(129, 140, 248, 0.7);
+}
+
+.dot-amber {
+  background: #fbbf24;
+  box-shadow: 0 0 7px rgba(251, 191, 36, 0.7);
+}
+
+.group-title {
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #7c8bbd;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.nav-divider {
+  height: 1px;
+  margin: 8px 6px;
+  background: linear-gradient(90deg, transparent, rgba(145, 160, 231, 0.16) 20%, rgba(125, 232, 220, 0.16) 80%, transparent);
+}
+
+.nav-group-items {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* ================= عنصر التنقل (Nav Item) ================= */
 .nav-item {
-  gap: 12px;
-  min-height: 46px;
-  padding: 0 13px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 42px;
+  padding: 0 10px;
+  border-radius: 11px;
   border: 1px solid transparent;
-  border-radius: 12px;
-  color: #9da6cd;
+  color: #9aa8d6;
   font-size: 12px;
-  transition:
-    color 0.2s ease,
-    background-color 0.2s ease,
-    border-color 0.2s ease;
-}
-
-.nav-item svg {
-  width: 18px;
-  height: 18px;
-  flex: 0 0 18px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.7;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.nav-item span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.nav-item em {
-  flex: 0 0 auto;
-  margin-right: auto;
-  color: #6773a7;
-  font-style: normal;
-  font-size: 10px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
 }
 
 .nav-item:hover {
-  color: #e9ebff;
-  background: rgba(122, 140, 224, 0.1);
+  color: #ffffff;
+  background: rgba(125, 232, 220, 0.08);
+  border-color: rgba(125, 232, 220, 0.18);
+  transform: translateX(-3px);
 }
 
+.nav-item.router-link-active,
 .nav-item.router-link-exact-active {
-  color: #89ede2;
-  border-color: rgba(121, 232, 222, 0.16);
-  background: linear-gradient(90deg, rgba(85, 216, 205, 0.15), rgba(133, 111, 241, 0.1));
-  box-shadow: inset -3px 0 #72e6db;
+  color: #7de8dc;
+  font-weight: 700;
+  background: linear-gradient(90deg, rgba(125, 232, 220, 0.14) 0%, rgba(99, 102, 241, 0.1) 100%);
+  border-color: rgba(125, 232, 220, 0.28);
+  box-shadow: inset -3px 0 0 #7de8dc, 0 4px 14px rgba(125, 232, 220, 0.06);
 }
 
-.nav-item.router-link-exact-active svg {
-  filter: drop-shadow(0 0 5px rgba(114, 230, 219, 0.55));
-}
-
-.quick-links {
-  gap: 5px;
-}
-
-.quick-links a {
-  gap: 11px;
-  min-height: 44px;
-  padding: 0 13px;
-  color: #939dc4;
-  font-size: 11px;
-  border-radius: 10px;
-  transition:
-    color 0.2s ease,
-    background-color 0.2s ease;
-}
-
-.quick-links a:hover {
-  color: #fff;
-  background: rgba(122, 140, 224, 0.08);
-}
-
-.quick-icon {
-  width: 22px;
-  height: 22px;
-  flex: 0 0 22px;
+/* صندوق الأيقونة الموحد والأنيق */
+.nav-icon-box {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
   display: grid;
   place-items: center;
-  border-radius: 7px;
-  font-size: 13px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(137, 153, 226, 0.12);
+  color: inherit;
+  transition: all 0.22s ease;
 }
 
-.purple {
-  color: #ce9aff;
-  background: rgba(178, 112, 255, 0.13);
-}
-.teal {
-  color: #78e7df;
-  background: rgba(79, 222, 209, 0.13);
-}
-.orange {
-  color: #ffc783;
-  background: rgba(255, 185, 89, 0.13);
+.nav-icon-box svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 0.2s ease, filter 0.2s ease;
 }
 
-.quick-links b {
-  min-width: 17px;
+.nav-item:hover .nav-icon-box {
+  background: rgba(125, 232, 220, 0.14);
+  border-color: rgba(125, 232, 220, 0.35);
+  color: #7de8dc;
+}
+
+.nav-item:hover .nav-icon-box svg {
+  transform: scale(1.08);
+}
+
+.nav-item.router-link-active .nav-icon-box,
+.nav-item.router-link-exact-active .nav-icon-box {
+  background: rgba(125, 232, 220, 0.2);
+  border-color: #7de8dc;
+  color: #7de8dc;
+  box-shadow: 0 0 10px rgba(125, 232, 220, 0.25);
+}
+
+.nav-item.router-link-active .nav-icon-box svg,
+.nav-item.router-link-exact-active .nav-icon-box svg {
+  filter: drop-shadow(0 0 5px rgba(125, 232, 220, 0.6));
+}
+
+.nav-label {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav-shortcut {
   flex: 0 0 auto;
   margin-right: auto;
-  padding: 1px 3px;
-  text-align: center;
-  color: #1b2252;
-  background: #79e6db;
-  border-radius: 9px;
-  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: rgba(137, 153, 226, 0.1);
+  border: 1px solid rgba(137, 153, 226, 0.15);
+  color: #7b8ab8;
+  font-style: normal;
+  font-size: 9.5px;
+  font-weight: 700;
+  font-family: inherit;
+  line-height: 1.3;
 }
 
+.nav-badge-pill {
+  flex: 0 0 auto;
+  margin-right: auto;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: rgba(125, 232, 220, 0.12);
+  color: #7de8dc;
+  border: 1px solid rgba(125, 232, 220, 0.25);
+}
+
+.nav-badge-pill.vault-pill {
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+/* تأثير خاص لسلة المهملات */
+.trash-item:hover {
+  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.08);
+  color: #fca5a5;
+}
+
+.trash-item:hover .nav-icon-box {
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+}
+
+/* ================= أسفل السايدبار ================= */
 .sidebar-bottom {
   margin-top: auto;
-  padding-top: 24px;
+  padding-top: 20px;
 }
 
 .ocean-tip {
   display: flex;
-  gap: 9px;
-  padding: 12px 11px;
-  border: 1px solid rgba(130, 145, 220, 0.12);
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid rgba(130, 145, 220, 0.14);
   border-radius: 13px;
-  background: rgba(25, 32, 78, 0.62);
+  background: rgba(25, 32, 78, 0.55);
+  backdrop-filter: blur(8px);
 }
 
-.ocean-tip > span {
+.tip-star {
   flex: 0 0 auto;
-  color: #c38aff;
-  font-size: 17px;
+  color: #b28aff;
+  font-size: 16px;
+  line-height: 1.2;
 }
 
-.ocean-tip > div {
+.tip-body {
   min-width: 0;
 }
 
-.ocean-tip strong {
+.tip-body strong {
   display: block;
-  color: #c5cbea;
+  color: #cdd6f8;
   font-size: 10px;
+  font-weight: 700;
 }
 
-.ocean-tip p {
+.tip-body p {
   margin: 3px 0 0;
-  color: #7883b0;
+  color: #7b88bc;
   font-size: 9px;
-  line-height: 1.6;
-}
-
-.logout-btn {
-  width: 100%;
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  margin-top: 16px;
-  padding: 10px 12px;
-  border: 0;
-  border-top: 1px solid rgba(144, 157, 220, 0.12);
-  color: #8893bd;
-  background: transparent;
-  font: inherit;
-  font-size: 11px;
-  cursor: pointer;
-  transition:
-    color 0.2s ease,
-    background-color 0.2s ease;
-}
-
-.logout-btn:hover {
-  color: #ff9daf;
-}
-
-.logout-btn svg {
-  width: 17px;
-  height: 17px;
-  flex: 0 0 17px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.7;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  line-height: 1.5;
 }
 
 .close-btn:focus-visible,
-.nav-item:focus-visible,
-.quick-links a:focus-visible,
-.logout-btn:focus-visible {
-  outline: 2px solid #79e6db;
+.nav-item:focus-visible {
+  outline: 2px solid #7de8dc;
   outline-offset: 2px;
 }
 
@@ -815,23 +897,17 @@ const logout = () => {
 
 @media (max-height: 680px) and (max-width: 1024px) {
   .sidebar-inner {
-    padding-top: max(16px, env(safe-area-inset-top));
+    padding-top: max(14px, env(safe-area-inset-top));
   }
 
   .profile-card {
-    margin-top: 14px;
-    margin-bottom: 14px;
-  }
-
-  .workspace-label {
-    margin-top: 14px;
+    margin-top: 12px;
+    margin-bottom: 12px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .nav-item,
-  .quick-links a,
-  .logout-btn {
+  .nav-item {
     transition: none;
   }
 }

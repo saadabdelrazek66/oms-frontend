@@ -161,6 +161,7 @@ import { nextTick, onMounted, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import api from '../axios';
 import CryptoJS from 'crypto-js';
 import ClientAvatar from '@/components/ClientAvatar.vue';
+import alertService from '@/services/alertService';
 
 // إعداد مفتاح التشفير (يجب أن يطابق الباك إند تماماً)
 const SECRET_KEY = CryptoJS.enc.Utf8.parse('OctoSpaceSecureVaultKey2026!@#$*');
@@ -234,7 +235,19 @@ const decryptPayload = (encryptedBase64, ivBase64) => {
   }
 };
 
-const showToast = (message) => { toastMessage.value = message; window.clearTimeout(toastTimer); toastTimer = window.setTimeout(() => { toastMessage.value = ''; }, 3200); };
+const showToast = (message) => { 
+  if (!message) return;
+  if (message.includes('خطأ') || message.includes('فشل') || message.includes('تعذر')) {
+    alertService.error(message);
+  } else if (message.includes('تم') || message.includes('بنجاح')) {
+    alertService.success(message);
+  } else {
+    alertService.toast(message);
+  }
+  toastMessage.value = message; 
+  window.clearTimeout(toastTimer); 
+  toastTimer = window.setTimeout(() => { toastMessage.value = ''; }, 3200); 
+};
 const getInitials = (name = '') => name.trim().split(' ').slice(0, 2).map(word => word[0]).join('').toUpperCase();
 
 const checkVaultStatus = async () => {
@@ -348,10 +361,18 @@ const saveCredential = async () => {
 };
 
 const deleteCred = async (id) => {
-  if (!window.confirm('متأكد من حذف هذا الحساب نهائياً؟')) return;
+  const confirmed = await alertService.confirm({
+    title: 'تأكيد حذف الحساب',
+    message: 'هل أنت متأكد من رغبتك في حذف بيانات هذا الحساب نهائياً من خزنة العملاء؟',
+    type: 'danger',
+    confirmText: 'نعم، احذف',
+    cancelText: 'إلغاء'
+  });
+  if (!confirmed) return;
+
   try {
     await api.delete(`/vault/credentials/${id}`, getVaultConfig());
-    showToast('تم حذف الحساب.');
+    showToast('تم حذف الحساب بنجاح.');
     fetchVaultClients();
   } catch (error) {
     showToast('حدث خطأ أثناء الحذف.');

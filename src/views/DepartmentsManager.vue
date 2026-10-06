@@ -181,6 +181,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import api from '../axios'
+import alertService from '../services/alertService'
 
 const departments = ref([])
 const loading = ref(true)
@@ -270,14 +271,21 @@ const saveDepartment = async () => {
 }
 
 const deleteDepartment = async (id) => {
-  if (!window.confirm('هل أنت متأكد من حذف هذا القسم؟ سيتم إزالته من ملفات الموظفين المرتبطين به.')) return
+  const confirmed = await alertService.confirm({
+    title: 'تأكيد حذف القسم',
+    message: 'هل أنت متأكد من حذف هذا القسم؟ سيتم إزالته من ملفات الموظفين المرتبطين به.',
+    type: 'danger',
+    confirmText: 'نعم، احذف القسم',
+    cancelText: 'إلغاء'
+  })
+  if (!confirmed) return
 
   try {
     await api.delete(`/departments/${id}`)
-    showToast('تم حذف القسم بنجاح')
+    alertService.success('تم حذف القسم بنجاح')
     await fetchDepartments()
   } catch (error) {
-    showToast(error.response?.data?.message || 'حدث خطأ أثناء الحذف')
+    alertService.error(error.response?.data?.message || 'حدث خطأ أثناء الحذف')
   }
 }
 

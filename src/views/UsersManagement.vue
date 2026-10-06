@@ -237,6 +237,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import api from '../axios'
+import alertService from '../services/alertService'
 
 const users = ref([])
 const departmentsList = ref([])
@@ -290,6 +291,14 @@ const employeeCount = computed(() => users.value.filter(user => user.role === 'e
 const getInitials = (name = '') => name.trim().split(' ').slice(0, 2).map(word => word[0]).join('').toUpperCase()
 
 const showToast = (message) => {
+  if (!message) return
+  if (message.includes('خطأ') || message.includes('تعذر') || message.includes('فشل')) {
+    alertService.error(message)
+  } else if (message.includes('تم') || message.includes('بنجاح')) {
+    alertService.success(message)
+  } else {
+    alertService.toast(message)
+  }
   toastMessage.value = message
   window.clearTimeout(toastTimer)
   toastTimer = window.setTimeout(() => { toastMessage.value = '' }, 3000)
@@ -428,7 +437,15 @@ const saveUser = async () => {
 }
 
 const deleteUser = async (id) => {
-  if (!window.confirm('هل أنت متأكد من حذف هذا المستخدم نهائيًا؟')) return
+  const confirmed = await alertService.confirm({
+    title: 'تأكيد حذف المستخدم',
+    message: 'هل أنت متأكد من رغبتك في حذف هذا المستخدم نهائيًا؟ لن يتمكن من تسجيل الدخول إلى النظام بعد الآن.',
+    type: 'danger',
+    confirmText: 'نعم، احذف المستخدم',
+    cancelText: 'إلغاء'
+  })
+  if (!confirmed) return
+
   try {
     await api.delete(`/users/${id}`)
     showToast('تم حذف المستخدم بنجاح')

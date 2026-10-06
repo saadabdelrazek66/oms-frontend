@@ -154,7 +154,15 @@
             :key="plan.id" 
             :id="'plan-card-' + plan.id"
             class="plan-card"
-            :class="['plan-card-' + plan.status, { 'is-delayed': isPlanDelayed(plan), 'is-targeted': String(route.query.plan_id) === String(plan.id) }]"
+            :class="[
+              'plan-card-' + plan.status,
+              { 
+                'is-delayed': isPlanDelayed(plan), 
+                'is-targeted': String(route.query.plan_id) === String(plan.id),
+                'is-card-expanded': expandedCardId === plan.id,
+                'is-card-collapsed': expandedCardId !== plan.id
+              }
+            ]"
           >
             <!-- شريط التوهج العلوي الديناميكي -->
             <div class="card-accent-bar" :class="'accent-' + plan.status"></div>
@@ -193,8 +201,8 @@
                 </div>
 
                 <!-- أدوات الإدارة السريعة -->
-                <div class="card-quick-actions-bar">
-                  <div class="admin-quick-actions" v-if="isManager">
+                <div class="card-quick-actions-bar" v-if="isManager">
+                  <div class="admin-quick-actions">
                     <button 
                       v-if="plan.status !== 'completed'"
                       class="quick-icon-btn wa-btn" 
@@ -262,28 +270,86 @@
               </span>
             </div>
 
-            <!-- الأكورديون الزمني الذكي والمراحل المنسدلة (Chic Smart Timeline Accordion) -->
-            <div class="card-timeline-accordion" dir="rtl">
+            <!-- ذيل الكارت في الوضع المصغر (الافتراضي) -->
+            <div v-if="expandedCardId !== plan.id" class="card-collapsed-footer">
+              <!-- سطر المرحلة الحالية السريع -->
+              <div 
+                class="card-mini-stage-strip" 
+                v-if="getActiveStageNumber(plan)"
+                @click="toggleCardAccordion(plan.id)"
+                title="المرحلة الحالية - انقر لتوسيع مراحل الخطة"
+              >
+                <div class="mini-stage-leading">
+                  <span class="mini-stage-dot" :class="getStageState(plan, getActiveStageNumber(plan)).class"></span>
+                  <span class="mini-stage-title">المرحلة {{ getActiveStageNumber(plan) }}: {{ getStageName(getActiveStageNumber(plan)) }}</span>
+                </div>
+                <span class="mini-stage-chip" :class="getStageState(plan, getActiveStageNumber(plan)).class">
+                  {{ getStageState(plan, getActiveStageNumber(plan)).label }}
+                </span>
+              </div>
+
+              <!-- أزرار الإجراء السفلية: فتح اللوحة + زر التوسيع الأساسي -->
+              <div class="card-bottom-actions-row">
+                <router-link 
+                  v-if="canOpenSpreadsheet(plan)"
+                  :to="`/plan-board/${plan.id}`" 
+                  class="card-quick-spreadsheet-btn"
+                  title="فتح لوحة المحتوى (Spreadsheet) مباشرة"
+                  @click.stop
+                >
+                  <span class="btn-rocket">🚀</span>
+                  <span>لوحة المحتوى</span>
+                </router-link>
+
+                <button 
+                  type="button"
+                  class="card-bottom-expand-btn"
+                  :class="{ 'full-width': !canOpenSpreadsheet(plan) }"
+                  @click.stop="toggleCardAccordion(plan.id)"
+                  title="توسيع الكارت وعرض كافة المراحل والتفاصيل"
+                >
+                  <span>عرض مراحل وتفاصيل الخطة</span>
+                  <span class="btn-arrow">▾</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- محتوى الكارت الكامل القابل للانسدال (يظهر فقط عند التوسيع) -->
+            <div v-if="expandedCardId === plan.id" class="card-expanded-body">
+              <!-- الأكورديون الزمني الذكي والمراحل المنسدلة (Chic Smart Timeline Accordion) -->
+              <div class="card-timeline-accordion" dir="rtl">
               <!-- المراحل الأربعة المنسدلة (4 Collapsible Accordion Stages) -->
               <div class="accordion-stages-list">
                 
                 <!-- ================= المرحلة 1: تسليم ابتدائي ================= -->
                 <div class="accordion-stage-card" :class="[getStageState(plan, 1).class, { 'is-expanded': isStageOpen(plan, 1) }]">
                   <div class="stage-accordion-header" @click="toggleStage(plan, 1)">
-                    <div class="header-main-info">
-                      <span class="stage-node-badge">{{ getStageState(plan, 1).icon }}</span>
-                      <span class="stage-header-title">1. تسليم ابتدائي</span>
-                      <span class="current-stage-tag" v-if="getActiveStageNumber(plan) === 1 && plan.status !== 'completed'">● النشطة</span>
-                      <span class="stage-header-date" v-if="plan.planned_initial_delivery_date">
-                        ({{ formatDate(plan.planned_initial_delivery_date) }})
-                      </span>
-                    </div>
+                    <div class="stage-header-content">
+                      <div class="stage-header-top-row">
+                        <div class="stage-title-group">
+                          <span class="stage-node-badge">{{ getStageState(plan, 1).icon }}</span>
+                          <span class="stage-header-title">1. تسليم ابتدائي</span>
+                          <span class="current-stage-tag" v-if="getActiveStageNumber(plan) === 1 && plan.status !== 'completed'">● النشطة</span>
+                        </div>
 
-                    <div class="header-status-side">
-                      <span class="stage-status-chip" :class="getStageState(plan, 1).class">
-                        {{ getStageState(plan, 1).label }}
-                      </span>
-                      <span class="chevron-arrow" :class="{ 'open': isStageOpen(plan, 1) }">▾</span>
+                        <div class="header-status-side">
+                          <span class="stage-status-chip" :class="getStageState(plan, 1).class">
+                            {{ getStageState(plan, 1).label }}
+                          </span>
+                          <span class="chevron-arrow" :class="{ 'open': isStageOpen(plan, 1) }">▾</span>
+                        </div>
+                      </div>
+
+                      <div class="stage-header-meta-row" v-if="plan.planned_initial_delivery_date || plan.actual_initial_delivery_date">
+                        <span class="meta-date-item" v-if="getStageState(plan, 1).isDone && plan.actual_initial_delivery_date">
+                          <span class="meta-icon success-icon">✓</span>
+                          <span class="meta-text">تم التسليم: {{ formatDate(plan.actual_initial_delivery_date) }}</span>
+                        </span>
+                        <span class="meta-date-item" v-else-if="plan.planned_initial_delivery_date">
+                          <span class="meta-icon">📅</span>
+                          <span class="meta-text">الموعد: {{ formatDate(plan.planned_initial_delivery_date) }}</span>
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -373,20 +439,32 @@
                 <!-- ================= المرحلة 2: مراجعة داخلية ================= -->
                 <div class="accordion-stage-card" :class="[getStageState(plan, 2).class, { 'is-expanded': isStageOpen(plan, 2) }]">
                   <div class="stage-accordion-header" @click="toggleStage(plan, 2)">
-                    <div class="header-main-info">
-                      <span class="stage-node-badge">{{ getStageState(plan, 2).icon }}</span>
-                      <span class="stage-header-title">2. مراجعة داخلية</span>
-                      <span class="current-stage-tag" v-if="getActiveStageNumber(plan) === 2 && plan.status !== 'completed'">● النشطة</span>
-                      <span class="stage-header-date" v-if="plan.requires_review && plan.planned_review_date">
-                        ({{ formatDate(plan.planned_review_date) }})
-                      </span>
-                    </div>
+                    <div class="stage-header-content">
+                      <div class="stage-header-top-row">
+                        <div class="stage-title-group">
+                          <span class="stage-node-badge">{{ getStageState(plan, 2).icon }}</span>
+                          <span class="stage-header-title">2. مراجعة داخلية</span>
+                          <span class="current-stage-tag" v-if="getActiveStageNumber(plan) === 2 && plan.status !== 'completed'">● النشطة</span>
+                        </div>
 
-                    <div class="header-status-side">
-                      <span class="stage-status-chip" :class="getStageState(plan, 2).class">
-                        {{ getStageState(plan, 2).label }}
-                      </span>
-                      <span class="chevron-arrow" :class="{ 'open': isStageOpen(plan, 2) }">▾</span>
+                        <div class="header-status-side">
+                          <span class="stage-status-chip" :class="getStageState(plan, 2).class">
+                            {{ getStageState(plan, 2).label }}
+                          </span>
+                          <span class="chevron-arrow" :class="{ 'open': isStageOpen(plan, 2) }">▾</span>
+                        </div>
+                      </div>
+
+                      <div class="stage-header-meta-row" v-if="plan.requires_review && (plan.planned_review_date || plan.actual_review_date)">
+                        <span class="meta-date-item" v-if="getStageState(plan, 2).isDone && plan.actual_review_date">
+                          <span class="meta-icon success-icon">✓</span>
+                          <span class="meta-text">تم الاعتماد: {{ formatDate(plan.actual_review_date) }}</span>
+                        </span>
+                        <span class="meta-date-item" v-else-if="plan.planned_review_date">
+                          <span class="meta-icon">📅</span>
+                          <span class="meta-text">الموعد: {{ formatDate(plan.planned_review_date) }}</span>
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -471,20 +549,32 @@
                 <!-- ================= المرحلة 3: متابعة مع العميل ================= -->
                 <div class="accordion-stage-card" :class="[getStageState(plan, 3).class, { 'is-expanded': isStageOpen(plan, 3) }]">
                   <div class="stage-accordion-header" @click="toggleStage(plan, 3)">
-                    <div class="header-main-info">
-                      <span class="stage-node-badge">{{ getStageState(plan, 3).icon }}</span>
-                      <span class="stage-header-title">3. متابعة مع العميل</span>
-                      <span class="current-stage-tag" v-if="getActiveStageNumber(plan) === 3 && plan.status !== 'completed'">● النشطة</span>
-                      <span class="stage-header-count" v-if="getFollowUps(plan).length > 0">
-                        ({{ getFollowUps(plan).length }} ملاحظة)
-                      </span>
-                    </div>
+                    <div class="stage-header-content">
+                      <div class="stage-header-top-row">
+                        <div class="stage-title-group">
+                          <span class="stage-node-badge">{{ getStageState(plan, 3).icon }}</span>
+                          <span class="stage-header-title">3. متابعة مع العميل</span>
+                          <span class="current-stage-tag" v-if="getActiveStageNumber(plan) === 3 && plan.status !== 'completed'">● النشطة</span>
+                        </div>
 
-                    <div class="header-status-side">
-                      <span class="stage-status-chip" :class="getStageState(plan, 3).class">
-                        {{ getStageState(plan, 3).label }}
-                      </span>
-                      <span class="chevron-arrow" :class="{ 'open': isStageOpen(plan, 3) }">▾</span>
+                        <div class="header-status-side">
+                          <span class="stage-status-chip" :class="getStageState(plan, 3).class">
+                            {{ getStageState(plan, 3).label }}
+                          </span>
+                          <span class="chevron-arrow" :class="{ 'open': isStageOpen(plan, 3) }">▾</span>
+                        </div>
+                      </div>
+
+                      <div class="stage-header-meta-row" v-if="isPlanClientApproved(plan) || getFollowUps(plan).length > 0">
+                        <span class="meta-date-item" v-if="isPlanClientApproved(plan)">
+                          <span class="meta-icon success-icon">✓</span>
+                          <span class="meta-text">معتمد من العميل</span>
+                        </span>
+                        <span class="meta-date-item" v-else-if="getFollowUps(plan).length > 0">
+                          <span class="meta-icon">💬</span>
+                          <span class="meta-text">{{ getFollowUps(plan).length }} ملاحظة مسجلة</span>
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -579,20 +669,32 @@
                   ]"
                 >
                   <div class="stage-accordion-header" @click="toggleStage(plan, 4)">
-                    <div class="header-main-info">
-                      <span class="stage-node-badge">{{ getStageState(plan, 4).icon }}</span>
-                      <span class="stage-header-title">4. التسليم النهائي</span>
-                      <span class="current-stage-tag" v-if="getActiveStageNumber(plan) === 4 && plan.status !== 'completed'">● النشطة</span>
-                      <span class="stage-header-date" v-if="plan.planned_delivery_date">
-                        ({{ formatDate(plan.planned_delivery_date) }})
-                      </span>
-                    </div>
+                    <div class="stage-header-content">
+                      <div class="stage-header-top-row">
+                        <div class="stage-title-group">
+                          <span class="stage-node-badge">{{ getStageState(plan, 4).icon }}</span>
+                          <span class="stage-header-title">4. التسليم النهائي</span>
+                          <span class="current-stage-tag" v-if="getActiveStageNumber(plan) === 4 && plan.status !== 'completed'">● النشطة</span>
+                        </div>
 
-                    <div class="header-status-side">
-                      <span class="stage-status-chip" :class="getStageState(plan, 4).class">
-                        {{ getStageState(plan, 4).label }}
-                      </span>
-                      <span class="chevron-arrow" :class="{ 'open': isStageOpen(plan, 4) }">▾</span>
+                        <div class="header-status-side">
+                          <span class="stage-status-chip" :class="getStageState(plan, 4).class">
+                            {{ getStageState(plan, 4).label }}
+                          </span>
+                          <span class="chevron-arrow" :class="{ 'open': isStageOpen(plan, 4) }">▾</span>
+                        </div>
+                      </div>
+
+                      <div class="stage-header-meta-row" v-if="plan.planned_delivery_date || plan.actual_delivery_date">
+                        <span class="meta-date-item" v-if="getStageState(plan, 4).isDone && plan.actual_delivery_date">
+                          <span class="meta-icon success-icon">✓</span>
+                          <span class="meta-text">تم التسليم: {{ formatDate(plan.actual_delivery_date) }}</span>
+                        </span>
+                        <span class="meta-date-item" v-else-if="plan.planned_delivery_date">
+                          <span class="meta-icon">📅</span>
+                          <span class="meta-text">الموعد: {{ formatDate(plan.planned_delivery_date) }}</span>
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -767,7 +869,19 @@
                 <span class="rocket-icon">🚀</span>
               </router-link>
             </div>
+
+            <!-- زر طي الكارت أسفل الفوتر -->
+            <button 
+              type="button"
+              class="card-expanded-bottom-close-btn" 
+              @click="toggleCardAccordion(plan.id)" 
+              title="طي مراحل وتفاصيل الخطة وتصغير الكارت"
+            >
+              <span>طي مراحل وتفاصيل الخطة</span>
+              <span class="close-icon">▲</span>
+            </button>
           </div>
+        </div>
         </div>
       </div>
 
@@ -2151,6 +2265,34 @@ const getStageState = (plan, stageNumber) => {
   return result;
 };
 
+// إدارة سدل وطي الكارت (وضع التركيز على كارت واحد فقط - Single Card Focus)
+const expandedCardId = ref(null);
+
+const toggleCardAccordion = (planId) => {
+  if (expandedCardId.value === planId) {
+    expandedCardId.value = null;
+  } else {
+    expandedCardId.value = planId;
+    // إذا لم تكن أي مرحلة مفتوحة في هذا الكارت، نفتح المرحلة النشطة له تلقائياً
+    if (!openPlanStages.value[planId]) {
+      const plan = plans.value.find(p => p.id === planId);
+      if (plan) {
+        openPlanStages.value = { ...openPlanStages.value, [planId]: getActiveStageNumber(plan) };
+      }
+    }
+  }
+};
+
+const getStageName = (stageNum) => {
+  const names = {
+    1: 'تسليم ابتدائي',
+    2: 'مراجعة داخلية',
+    3: 'متابعة مع العميل',
+    4: 'التسليم النهائي'
+  };
+  return names[stageNum] || 'المرحلة';
+};
+
 // إدارة المرحلة المفتوحة لكل خطة في الأكورديون الزمني (سدل وطي المراحل)
 const openPlanStages = ref({});
 
@@ -2837,6 +2979,7 @@ const checkAndFocusTargetPlan = () => {
     const targetId = Number(route.query.plan_id);
     const targetPlan = plans.value.find(p => p.id === targetId);
     if (targetPlan) {
+      expandedCardId.value = targetPlan.id;
       let stageToOpen = 1;
       if (['under_review', 'rejected'].includes(targetPlan.status)) {
         stageToOpen = 2;
@@ -4082,6 +4225,7 @@ onBeforeUnmount(() => {
   grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
   gap: 16px;
   padding: 16px;
+  align-items: start;
 }
 
 .plan-card {
@@ -4097,6 +4241,15 @@ onBeforeUnmount(() => {
   box-shadow: 0 10px 30px rgba(4, 7, 27, 0.35);
   transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
   backdrop-filter: blur(12px);
+}
+
+.plan-card.is-card-collapsed {
+  box-shadow: 0 4px 18px rgba(4, 7, 27, 0.28);
+}
+
+.plan-card.is-card-expanded {
+  border-color: rgba(125, 232, 220, 0.45);
+  box-shadow: 0 16px 45px rgba(4, 7, 27, 0.55), 0 0 24px rgba(125, 232, 220, 0.12);
 }
 
 .plan-card:hover {
@@ -4147,7 +4300,7 @@ onBeforeUnmount(() => {
 
 .client-meta-group {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   flex: 1;
   min-width: 0;
@@ -4172,6 +4325,7 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 4px;
   min-width: 0;
+  flex: 1;
 }
 
 .client-title-line {
@@ -4345,6 +4499,194 @@ onBeforeUnmount(() => {
   border-color: #ff4757;
   background: rgba(255, 71, 87, 0.15);
   box-shadow: 0 2px 8px rgba(255, 71, 87, 0.25);
+}
+
+/* ذيل الكارت في الوضع المصغر وتوسيع/طي الكارت */
+.card-collapsed-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* سطر المرحلة الحالية السريع */
+.card-mini-stage-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 11px;
+  background: rgba(8, 13, 38, 0.6);
+  border: 1px solid rgba(137, 153, 226, 0.16);
+  border-radius: 9px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.card-mini-stage-strip:hover {
+  background: rgba(8, 13, 38, 0.85);
+  border-color: rgba(125, 232, 220, 0.4);
+}
+
+.mini-stage-leading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.mini-stage-dot {
+  width: 7.5px;
+  height: 7.5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.mini-stage-dot.stage-done { background: #10b981; box-shadow: 0 0 6px rgba(16, 185, 129, 0.6); }
+.mini-stage-dot.stage-active { background: #6366f1; box-shadow: 0 0 6px rgba(99, 102, 241, 0.6); animation: pulse-text 2s infinite; }
+.mini-stage-dot.stage-pending { background: #64748b; }
+.mini-stage-dot.stage-delayed { background: #ef4444; box-shadow: 0 0 6px rgba(239, 68, 68, 0.6); }
+
+.mini-stage-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #dbe2ff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mini-stage-chip {
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.mini-stage-chip.stage-done { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+.mini-stage-chip.stage-active { background: rgba(99, 102, 241, 0.18); color: #a5b4fc; }
+.mini-stage-chip.stage-pending { background: rgba(100, 116, 139, 0.2); color: #94a3b8; }
+.mini-stage-chip.stage-delayed { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+
+/* أزرار الإجراء السفلية */
+.card-bottom-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.card-quick-spreadsheet-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 12px;
+  background: linear-gradient(135deg, rgba(125, 232, 220, 0.15), rgba(99, 102, 241, 0.2));
+  border: 1px solid rgba(125, 232, 220, 0.35);
+  border-radius: 9px;
+  color: #7de8dc;
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
+}
+
+.card-quick-spreadsheet-btn:hover {
+  background: linear-gradient(135deg, rgba(125, 232, 220, 0.25), rgba(99, 102, 241, 0.35));
+  border-color: #7de8dc;
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(125, 232, 220, 0.2);
+}
+
+.card-bottom-expand-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1;
+  padding: 7px 12px;
+  background: rgba(10, 16, 47, 0.55);
+  border: 1px solid rgba(137, 153, 226, 0.22);
+  border-radius: 9px;
+  color: #9aa8d6;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-bottom-expand-btn:hover {
+  color: #7de8dc;
+  border-color: rgba(125, 232, 220, 0.45);
+  background: rgba(125, 232, 220, 0.12);
+  transform: translateY(-1px);
+}
+
+.card-bottom-expand-btn.full-width {
+  width: 100%;
+  flex: none;
+}
+
+.card-bottom-expand-btn .btn-arrow {
+  font-size: 10px;
+}
+
+.card-expanded-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: cardDrawerFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes cardDrawerFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.card-expanded-bottom-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 14px;
+  background: rgba(10, 16, 47, 0.45);
+  border: 1px dashed rgba(137, 153, 226, 0.25);
+  border-radius: 9px;
+  color: #9aa8d6;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  margin-top: 4px;
+}
+
+.card-expanded-bottom-close-btn:hover {
+  color: #7de8dc;
+  border-color: rgba(125, 232, 220, 0.45);
+  background: rgba(125, 232, 220, 0.1);
+  transform: translateY(-1px);
+}
+
+.card-expanded-bottom-close-btn .close-icon {
+  font-size: 9.5px;
 }
 
 /* صف الأدوار وفريق العمل */
@@ -6093,25 +6435,41 @@ button:disabled, .primary-btn:disabled, .confirm-btn:disabled {
 .stage-accordion-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   padding: 8px 12px;
   cursor: pointer;
   user-select: none;
   background: rgba(15, 23, 62, 0.45);
   transition: background 0.2s ease;
-  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .stage-accordion-header:hover {
   background: rgba(137, 153, 226, 0.1);
 }
 
-.header-main-info {
+.stage-header-content {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  min-width: 0;
+}
+
+.stage-header-top-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  flex: 1;
+  width: 100%;
+}
+
+.stage-title-group {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   min-width: 0;
+  flex: 1;
 }
 
 .stage-node-badge {
@@ -6168,17 +6526,61 @@ button:disabled, .primary-btn:disabled, .confirm-btn:disabled {
   white-space: nowrap;
 }
 
-.stage-header-date, .stage-header-count {
-  font-size: 10px;
-  color: #8b97c6;
+.current-stage-tag {
+  font-size: 9px;
+  font-weight: 700;
+  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  padding: 1px 6px;
+  border-radius: 4px;
   white-space: nowrap;
 }
 
 .header-status-side {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
+}
+
+/* السطر الفرعي للتواريخ والملاحظات */
+.stage-header-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-right: 29px;
+  min-width: 0;
+}
+
+.meta-date-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9.5px;
+  color: #9aa8d6;
+  font-weight: 600;
+  background: rgba(137, 153, 226, 0.08);
+  border: 1px solid rgba(137, 153, 226, 0.14);
+  padding: 1px 7px;
+  border-radius: 5px;
+  max-width: 100%;
+}
+
+.meta-icon {
+  font-size: 9.5px;
+  opacity: 0.9;
+}
+
+.meta-icon.success-icon {
+  color: #34d399;
+  font-weight: 800;
+}
+
+.meta-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .stage-status-chip {

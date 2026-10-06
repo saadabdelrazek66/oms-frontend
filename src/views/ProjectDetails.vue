@@ -314,6 +314,7 @@ import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import draggable from 'vuedraggable';
 import api from '../axios';
+import alertService from '../services/alertService';
 
 // استيراد المحرك الذكي
 import { getDeadlineStatus } from '../utils/timeHelper';
@@ -441,7 +442,14 @@ const submitEditComment = async () => {
 };
 
 const deleteCommentMessage = async (commentId) => {
-  if (!confirm('هل أنت متأكد من حذف هذه الرسالة؟')) return;
+  const confirmed = await alertService.confirm({
+    title: 'حذف الرسالة',
+    message: 'هل أنت متأكد من رغبتك في حذف هذه الرسالة؟',
+    type: 'danger',
+    confirmText: 'نعم، احذف',
+    cancelText: 'إلغاء'
+  });
+  if (!confirmed) return;
   try {
     const res = await api.delete(`/task-comments/${commentId}`);
     const index = comments.value.findIndex(c => c.id === commentId);
@@ -455,7 +463,19 @@ const taskForm = reactive({
   title: '', description: '', status: 'todo', priority: 'medium', due_date: '', assigned_to: ''
 });
 
-const showToast = (msg) => { toastMessage.value = msg; clearTimeout(toastTimer); toastTimer = setTimeout(() => toastMessage.value = '', 4000); };
+const showToast = (msg, type = 'info') => { 
+  if (!msg) return;
+  if (msg.includes('خطأ') || msg.includes('فشل') || msg.includes('تعذر') || msg.includes('غير مصرح') || msg.includes('لا تملك')) {
+    alertService.error(msg);
+  } else if (msg.includes('تم') || msg.includes('نجاح')) {
+    alertService.success(msg);
+  } else {
+    alertService.toast(msg, type);
+  }
+  toastMessage.value = msg; 
+  clearTimeout(toastTimer); 
+  toastTimer = setTimeout(() => toastMessage.value = '', 4000); 
+};
 const getInitials = (name) => name ? name.trim().split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase() : '';
 const truncate = (text, len) => (text && text.length > len) ? text.substring(0, len) + '...' : (text || '');
 const formatDate = (date) => {
@@ -656,10 +676,17 @@ const saveTask = async () => {
 };
 
 const deleteTask = async (taskId) => {
-  if (!confirm('تأكيد حذف المهمة نهائياً؟')) return;
+  const confirmed = await alertService.confirm({
+    title: 'تأكيد حذف المهمة',
+    message: 'هل أنت متأكد من حذف هذه المهمة نهائياً من المشروع؟',
+    type: 'danger',
+    confirmText: 'نعم، احذف المهمة',
+    cancelText: 'إلغاء'
+  });
+  if (!confirmed) return;
   try {
     await api.delete(`/tasks/${taskId}`);
-    showToast('تم الحذف');
+    showToast('تم حذف المهمة بنجاح');
     await fetchTasks();
   } catch (error) {
     showToast(error.response?.data?.message || 'لا تملك صلاحية الحذف');

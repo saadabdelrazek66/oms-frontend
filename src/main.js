@@ -18,4 +18,12 @@ window.$toast = alertService.toast
 window.$confirm = alertService.confirm
 window.$alert = alertService.alert
 
+// استبدال window.alert الافتراضي بتنبيه المنظومة الفاخر والاحترافي
+window.alert = (message) => {
+  if (typeof message === 'object' && message !== null) {
+    return alertService.alert(message)
+  }
+  return alertService.alert({ message: String(message ?? ''), title: 'تنبيه', type: 'info' })
+}
+
 app.mount('#app')

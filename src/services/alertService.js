@@ -67,10 +67,25 @@ export const alert = (options = {}) => {
     if (typeof options === 'string') {
       options = { message: options };
     }
-    alertState.title = options.title || 'تنبيه';
-    alertState.message = options.message || '';
-    alertState.type = options.type || 'info';
-    alertState.okText = options.okText || 'حسناً';
+    const msg = options.message || '';
+    let autoType = 'info';
+    let autoTitle = 'تنبيه';
+
+    if (msg.includes('خطأ') || msg.includes('فشل') || msg.includes('تعذر') || msg.includes('غير صالح') || msg.includes('غير مسموح') || msg.includes('غير مصرح')) {
+      autoType = 'error';
+      autoTitle = 'تنبيه خطأ';
+    } else if (msg.includes('نجاح') || msg.includes('تم ') || msg.includes('بنجاح')) {
+      autoType = 'success';
+      autoTitle = 'عملية ناجحة';
+    } else if (msg.includes('تحذير') || msg.includes('لا يمكن') || msg.includes('يرجى') || msg.includes('تأكد')) {
+      autoType = 'warning';
+      autoTitle = 'تنبيه هام';
+    }
+
+    alertState.title = options.title || autoTitle;
+    alertState.message = msg;
+    alertState.type = options.type || autoType;
+    alertState.okText = options.okText || 'حسناً، فهمت';
     alertState.resolve = resolve;
     alertState.isOpen = true;
   });

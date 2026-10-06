@@ -378,6 +378,64 @@ const getToastProgressColor = (type) => {
 </script>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@500;600;700;800;900&display=swap');
+
+.alert-modal-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 999999 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 16px !important;
+  background-color: rgba(7, 11, 34, 0.86) !important;
+  backdrop-filter: blur(14px) !important;
+  font-family: 'Cairo', sans-serif !important;
+}
+
+.alert-modal-card {
+  position: relative !important;
+  width: 100% !important;
+  max-width: 440px !important;
+  border-radius: 24px !important;
+  background-color: #0f153a !important;
+  padding: 26px 24px !important;
+  text-align: center !important;
+  color: #f1f4ff !important;
+  border: 1px solid rgba(137, 153, 226, 0.25) !important;
+  box-shadow: 0 25px 65px rgba(0, 0, 0, 0.75) !important;
+}
+
+.toast-stack-container {
+  position: fixed !important;
+  top: 24px !important;
+  left: 24px !important;
+  z-index: 999999 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  pointer-events: none !important;
+  max-width: 380px !important;
+  width: calc(100vw - 3rem) !important;
+  font-family: 'Cairo', sans-serif !important;
+}
+
+.toast-card-item {
+  pointer-events: auto !important;
+  position: relative !important;
+  overflow: hidden !important;
+  border-radius: 16px !important;
+  padding: 14px 16px !important;
+  background: rgba(15, 21, 56, 0.95) !important;
+  backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(137, 153, 226, 0.22) !important;
+  color: #f1f4ff !important;
+  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.55) !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 12px !important;
+}
+
 /* Modal Fade Animation */
 .modal-fade-enter-active,
 .modal-fade-leave-active {

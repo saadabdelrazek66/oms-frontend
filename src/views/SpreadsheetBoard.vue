@@ -111,7 +111,7 @@
         <thead>
           <tr>
             <th rowspan="2" class="group-header row-num-header " style="width: 45px; text-align: center; vertical-align: middle; z-index: 10;">#</th>
-            <th :colspan="isDesignerOrEditor ? 2 : (isMediaBuyer ? 3 : 5)" class="group-header red-group">حالة المنشور</th>
+            <th :colspan="isDesignerOrEditor ? 1 : (isMediaBuyer ? 3 : 5)" class="group-header red-group">حالة المنشور</th>
             <th v-if="!isMediaBuyer" :colspan="isDesignerOrEditor ? 5 : 6" class="group-header admin-group">الإدارة والتكليف والمراجعة</th>
             <th v-if="!isDesignerOrEditor" colspan="4" class="group-header dark-red-group">موقف التمويل</th>
             <th v-if="!isMediaBuyer" colspan="8" class="group-header blue-group">محتوى المنشور</th>
@@ -120,7 +120,7 @@
             <th v-if="canDeletePosts" colspan="1" class="group-header admin-group">إجراءات</th>
           </tr>
           <tr>
-            <th class="sub-th red-th ">تاريخ النشر المخطط</th>
+            <th v-if="!isDesignerOrEditor" class="sub-th red-th ">تاريخ النشر المخطط</th>
             <th v-if="!isMediaBuyer && !isDesignerOrEditor" class="sub-th red-th">النشر الفعلي</th>
             <th v-if="!isDesignerOrEditor" class="sub-th red-th">توقيت النشر</th>
             <th v-if="!isMediaBuyer" class="sub-th red-th">منصة النشر</th>
@@ -147,20 +147,29 @@
             <th v-if="!isMediaBuyer" class="sub-th blue-th">Hashtag</th>
             <th v-if="!isMediaBuyer" class="sub-th blue-th">Reference Link</th>
 
-            <th class="sub-th light-blue-th">روابط ووقت التسليم</th>
+            <th class="sub-th light-blue-th" style="min-width: 330px;">روابط ووقت التسليم</th>
             <th class="sub-th pink-th">Note</th>
             <th v-if="canDeletePosts" class="sub-th admin-th">حذف</th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="filteredPosts.length === 0">
-            <td :colspan="isMediaBuyer ? 10 : (isDesignerOrEditor ? 18 : (canDeletePosts ? 27 : 26))" class="text-center py-4 muted">لا توجد منشورات. قم بإضافة منشور جديد.</td>
+            <td :colspan="isMediaBuyer ? 10 : (isDesignerOrEditor ? 17 : (canDeletePosts ? 27 : 26))" class="text-center py-4 muted">لا توجد منشورات. قم بإضافة منشور جديد.</td>
           </tr>
           <tr v-for="(post, index) in filteredPosts" :key="post.id" :id="'post-row-' + post.id" class="post-row" :class="{ 'urgent-row': post.is_urgent }">
-            <td class="text-center readonly-cell row-num-cell " style="font-weight: 700; width: 45px; color: #8792be; vertical-align: middle;">{{ index + 1 }}</td>
+            <td class="text-center readonly-cell row-num-cell" style="font-weight: 700; width: 45px; color: #8792be; vertical-align: middle;">
+              <div v-if="isDesignerOrEditor" class="row-num-with-action">
+                <span class="row-index" :title="'منشور #' + (index + 1)">{{ index + 1 }}</span>
+                <button class="icon-btn row-view-btn" @click="openViewModal(post)" title="عرض تفاصيل المنشور 👁️">👁️</button>
+                <span v-if="post.is_urgent" class="urgent-dot" title="منشور عاجل 🚨">🚨</span>
+              </div>
+              <template v-else>
+                {{ index + 1 }}
+              </template>
+            </td>
             
             <!-- 2. حالة المنشور وموعد النشر الذكي -->
-            <td class="readonly-cell position-relative target-date-td" :class="getDeadlineStatus(currentPlan?.start_date || post.created_at, post.target_date, post.actual_publish_status).class + '-border'">
+            <td v-if="!isDesignerOrEditor" class="readonly-cell position-relative target-date-td" :class="getDeadlineStatus(currentPlan?.start_date || post.created_at, post.target_date, post.actual_publish_status).class + '-border'">
               <button class="icon-btn view-btn" @click="openViewModal(post)" title="عرض التفاصيل">👁️</button>
               
               <!-- صندوق تاريخ النشر المخطط (تفاعلي للمدير والأكونت مانجر قبل التسليم النهائي) -->
@@ -441,11 +450,9 @@
               <div class="lock-wrapper">
                 <select v-model="post.post_type" @change="autoSave(post, 'post_type')" :disabled="!canEditFields(post) || isFieldDisabled(post, 'post_type')">
                   <option value="">اختيار...</option>
-                  <option value="Infograph">Infograph</option>
-                  <option value="Video">Video</option>
-                  <option value="Reel/Shorts">Reel / Shorts</option>
-                  <option value="Text Only">Text Only</option>
-                  <option value="Carousel">Carousel</option>
+                  <option v-for="type in availablePostTypes" :key="type" :value="type">
+                    {{ type }}
+                  </option>
                 </select>
                 <span v-if="hasLockIcon(post, 'post_type')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'post_type')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
               </div>
@@ -523,52 +530,115 @@
             <td class="delivery-cell" 
                 :class="{ 'cell-invalid': isDeliveryInvalid(post) }"
                 :title="isDeliveryInvalid(post) ? getDeliveryError(post) : ''">
-              <div class="textarea-link-wrapper lock-wrapper">
-                <textarea 
-                  v-model="post.delivery_links" 
-                  @input="handleDeliveryInput(post)"
-                  @blur="autoSave(post, 'delivery_links')" 
-                  placeholder="رابط ملف التسليم (Google Drive / Docs)..." 
-                  dir="ltr" 
-                  rows="2"
-                  :class="{ 'input-invalid': isDeliveryInvalid(post) }"
-                  :disabled="!canEditDelivery(post) || isFieldDisabled(post, 'delivery_links')"
-                ></textarea>
-                <span v-if="hasLockIcon(post, 'delivery_links')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'delivery_links')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
-                <div class="extracted-links" v-if="getExtractedDelUrls(post).length">
-                  <a v-for="(url, i) in getExtractedDelUrls(post)" :key="i" :href="url" target="_blank" class="extracted-link-btn" :title="url">
-                    {{ getUrlLabel(url, i) }}
-                  </a>
+              <div class="delivery-split-grid">
+                <!-- 1. التسليم أثناء العمل (للمراجعة) -->
+                <div class="delivery-split-col work-delivery-col">
+                  <div class="delivery-sub-label">
+                    <span>📁 تسليم العمل (للمراجعة)</span>
+                  </div>
+                  <div class="textarea-link-wrapper lock-wrapper">
+                    <textarea 
+                      v-model="post.delivery_links" 
+                      @input="handleDeliveryInput(post)"
+                      @blur="autoSave(post, 'delivery_links')" 
+                      placeholder="رابط ملف التسليم (Google Drive / Docs)..." 
+                      dir="ltr" 
+                      rows="2"
+                      :class="{ 'input-invalid': isDeliveryInvalid(post) }"
+                      :disabled="!canEditDelivery(post) || isFieldDisabled(post, 'delivery_links')"
+                    ></textarea>
+                    <span v-if="hasLockIcon(post, 'delivery_links')" class="lock-indicator" :class="{ 'clickable-lock': isManager }" @click="unlockField(post, 'delivery_links')" :title="isManager ? 'اضغط لفك القفل وإتاحته للموظفين' : 'تم تثبيت هذا الحقل من قِبل الإدارة'">🔒</span>
+                    <div class="extracted-links" v-if="getExtractedDelUrls(post).length">
+                      <a v-for="(url, i) in getExtractedDelUrls(post)" :key="i" :href="url" target="_blank" class="extracted-link-btn" :title="url">
+                        {{ getUrlLabel(url, i) }}
+                      </a>
+                    </div>
+                  </div>
+                  <div class="delivery-status">
+                    <button 
+                      v-if="(post.review_status === 'مرفوض' || post.manager_review_status === 'مرفوض') && canEditDelivery(post)"
+                      @click="resubmitPost(post)"
+                      :disabled="!isPostDeliveryValid(post)"
+                      :class="{ 'disabled-delivery-btn': !isPostDeliveryValid(post) }"
+                      :title="!isPostDeliveryValid(post) ? (getDeliveryError(post) || 'لا يمكن إعادة الإرسال بدون رابط ملف درايف صالح') : 'إعادة إرسال للمراجعة 🔄'"
+                      class="primary-btn reject-submit-btn w-100 mt-1"
+                    >إعادة إرسال 🔄</button>
+                    <div v-else-if="post.delivered_at" class="delivered-info">
+                      <span class="delivery-time">✅ {{ formatDeliveryDate(post.delivered_at) }}</span>
+                      <button 
+                        v-if="canEditDelivery(post)" 
+                        @click="markAsDelivered(post)" 
+                        :disabled="!isPostDeliveryValid(post)"
+                        :class="{ 'disabled-delivery-btn': !isPostDeliveryValid(post) }"
+                        :title="!isPostDeliveryValid(post) ? (getDeliveryError(post) || 'لا يمكن تحديث الوقت بدون رابط ملف درايف صالح') : 'تحديث وقت التسليم'"
+                        class="update-time-btn"
+                      >تحديث</button>
+                    </div>
+                    <button 
+                      v-else-if="canEditDelivery(post)" 
+                      @click="markAsDelivered(post)" 
+                      :disabled="!isPostDeliveryValid(post)"
+                      :class="{ 'disabled-delivery-btn': !isPostDeliveryValid(post) }"
+                      :title="!isPostDeliveryValid(post) ? (getDeliveryError(post) || 'لا يمكن تسجيل التسليم بدون رابط ملف درايف صالح') : 'تسجيل التسليم'"
+                      class="primary-btn submit-delivery-btn"
+                    >تسجيل التسليم</button>
+                  </div>
                 </div>
-              </div>
-              <div class="delivery-status">
-                <button 
-                  v-if="(post.review_status === 'مرفوض' || post.manager_review_status === 'مرفوض') && canEditDelivery(post)"
-                  @click="resubmitPost(post)"
-                  :disabled="!isPostDeliveryValid(post)"
-                  :class="{ 'disabled-delivery-btn': !isPostDeliveryValid(post) }"
-                  :title="!isPostDeliveryValid(post) ? (getDeliveryError(post) || 'لا يمكن إعادة الإرسال بدون رابط ملف درايف صالح') : 'إعادة إرسال للمراجعة 🔄'"
-                  class="primary-btn reject-submit-btn w-100 mt-1"
-                >إعادة إرسال للمراجعة 🔄</button>
-                <div v-else-if="post.delivered_at" class="delivered-info">
-                  <span class="delivery-time">✅ تم التسليم: {{ formatDeliveryDate(post.delivered_at) }}</span>
-                  <button 
-                    v-if="canEditDelivery(post)" 
-                    @click="markAsDelivered(post)" 
-                    :disabled="!isPostDeliveryValid(post)"
-                    :class="{ 'disabled-delivery-btn': !isPostDeliveryValid(post) }"
-                    :title="!isPostDeliveryValid(post) ? (getDeliveryError(post) || 'لا يمكن تحديث الوقت بدون رابط ملف درايف صالح') : 'تحديث وقت التسليم'"
-                    class="update-time-btn"
-                  >تحديث الوقت</button>
+
+                <!-- فاصل رأسي بين تسليم العمل والتسليم النهائي -->
+                <div class="delivery-split-divider"></div>
+
+                <!-- 2. التسليم النهائي للأرشفة (بعد اعتماد القسم والمدير) -->
+                <div class="delivery-split-col final-delivery-col">
+                  <div class="delivery-sub-label">
+                    <span>📦 تسليم نهائي للأرشفة</span>
+                  </div>
+
+                  <!-- حالة 1: لم يُعتمد المنشور بالكامل بعد -->
+                  <div v-if="!isPostFullyApproved(post)" class="final-delivery-locked" title="لا يمكن إضافة رابط مجلد الأرشفة إلا بعد موافقة واعتماد القسم والمدير معاً">
+                    <span>🔒 متاح بعد اعتماد القسم والمدير</span>
+                  </div>
+
+                  <!-- حالة 2: تم تأكيد الرابط وحفظه مسبقاً (مؤرشف ومقفل للموظفين، متاح للتعديل للمدير فقط) -->
+                  <div v-else-if="hasConfirmedFinalDelivery(post)" class="final-delivery-confirmed">
+                    <div class="final-delivery-view-box">
+                      <a :href="formatExternalUrl(post.final_delivery_link)" target="_blank" class="extracted-link-btn final-folder-link" title="فتح مجلد الأرشيف على Google Drive">
+                        📁 مجلد الأرشيف ↗
+                      </a>
+                      <button 
+                        v-if="isManager" 
+                        type="button" 
+                        class="final-edit-btn" 
+                        @click="openArchiveModal(post)" 
+                        title="تعديل رابط الأرشفة (متاح للمدير فقط)">
+                        ✏️
+                      </button>
+                    </div>
+                    <div class="final-delivered-badge mt-1" :title="isManager ? 'مؤرشف - يمكن للمدير تعديله' : 'تم تثبيت رابط الأرشفة وقفله نهائياً ولا يمكن تعديله إلا من قِبل المدير 🔒'">
+                      <span class="badge-lock-text">🔒 مؤرشف</span>
+                      <small v-if="post.final_delivered_at">{{ formatDeliveryDate(post.final_delivered_at) }}</small>
+                    </div>
+                  </div>
+
+                  <!-- حالة 3: معتمد بالكامل والمستخدم مصرح له بالإضافة (المنفذ أو المدير) -->
+                  <div v-else-if="canAddFinalDelivery(post)" class="final-delivery-add-box">
+                    <button 
+                      type="button" 
+                      class="add-archive-btn" 
+                      @click="openArchiveModal(post)"
+                      title="إضافة رابط مجلد الأرشفة على Google Drive"
+                    >
+                      <span>＋ إضافة مجلد الأرشيف</span>
+                    </button>
+                  </div>
+
+                  <!-- حالة 4: معتمد بالكامل ومستخدم آخر (للعرض فقط دون صلاحية) -->
+                  <div v-else class="final-delivery-readonly">
+                    <div class="muted-notice">
+                      <span>⏳ بانتظار تسليم الأرشيف</span>
+                    </div>
+                  </div>
                 </div>
-                <button 
-                  v-else-if="canEditDelivery(post)" 
-                  @click="markAsDelivered(post)" 
-                  :disabled="!isPostDeliveryValid(post)"
-                  :class="{ 'disabled-delivery-btn': !isPostDeliveryValid(post) }"
-                  :title="!isPostDeliveryValid(post) ? (getDeliveryError(post) || 'لا يمكن تسجيل التسليم بدون رابط ملف درايف صالح') : 'تسجيل التسليم'"
-                  class="primary-btn submit-delivery-btn"
-                >تسجيل التسليم</button>
               </div>
             </td>
             <td>
@@ -728,24 +798,141 @@
     
     <Teleport to="body">
       <div v-if="showLinksModal" class="modal-overlay" @click.self="showLinksModal = false">
-      <div class="modal-content">
-        <h3>🔗 روابط النشر الفعلية</h3>
-        <p v-if="pendingPublishStatus" style="color: #ef6c00; font-weight: bold; font-size: 13px;">
-          ⚠️ لا يمكن إتمام عملية النشر قبل إرفاق الروابط الفعلية للمنصات المطلوبة!
+      <div class="modal-content links-modal-card" style="width: min(540px, 95%); border-radius: 14px; padding: 22px;" dir="rtl">
+        <div class="d-flex align-items-center justify-content-between mb-3" style="border-bottom: 1px solid #e2e8f0; padding-bottom: 12px;">
+          <h3 style="margin: 0; font-size: 17px; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+            <span>🔗</span>
+            <span>روابط النشر الفعلية</span>
+          </h3>
+          <button type="button" @click="showLinksModal = false" style="background: none; border: none; font-size: 20px; color: #94a3b8; cursor: pointer; line-height: 1;">✕</button>
+        </div>
+
+        <p v-if="pendingPublishStatus" style="color: #c2410c; font-weight: bold; font-size: 12.5px; background: #fff7ed; padding: 10px 12px; border-radius: 8px; border: 1px solid #ffedd5; margin-bottom: 15px;">
+          ⚠️ لا يمكن إتمام عملية النشر قبل إرفاق الروابط الفعلية الصحيحة لكل منصة مطلوبة!
         </p>
-        <p v-else>أدخل روابط المنشور بعد نشره على المنصات المحددة.</p>
+        <p v-else style="font-size: 12px; color: #64748b; margin-bottom: 15px;">
+          أدخل رابط المنشور الفعلي لكل منصة من المنصات المحددة أدناه (يتم التحقق تلقائياً من تطابق الرابط مع المنصة).
+        </p>
 
-        <div class="form-group mt-3" v-for="(link, platform) in tempLinks" :key="platform">
-          <label>رابط منصة: <strong>{{ platform }}</strong> <span class="required" style="color: #d32f2f;">*</span></label>
-          <input type="url" v-model="tempLinks[platform]" placeholder="https://..." dir="ltr" required />
-        </div>
+        <form @submit.prevent="savePublishedLinks">
+          <div class="form-group mb-3" v-for="(link, platform) in tempLinks" :key="platform" style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <label class="mb-0" style="font-size: 12px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 6px;">
+                <span>🌐 منصة:</span>
+                <span style="color: #2563eb; background: #eff6ff; padding: 2px 8px; border-radius: 4px; border: 1px solid #bfdbfe;">{{ platform }}</span>
+                <span class="required" style="color: #ef4444;">*</span>
+              </label>
 
-        <div class="modal-actions mt-4">
-          <button type="button" class="secondary-btn" @click="showLinksModal = false">إلغاء</button>
-          <button type="button" class="primary-btn" @click="savePublishedLinks">حفظ الروابط</button>
-        </div>
+              <a 
+                v-if="tempLinks[platform] && getPlatformValidation(platform, tempLinks[platform]).valid" 
+                :href="getPlatformValidation(platform, tempLinks[platform]).formattedUrl" 
+                target="_blank" 
+                class="test-platform-link-btn"
+                style="font-size: 11px; color: #2563eb; text-decoration: none; font-weight: 700; display: inline-flex; align-items: center; gap: 3px;"
+                title="فتح الرابط للتجربة في نافذة جديدة"
+              >
+                <span>🔗 تجربة الرابط ↗</span>
+              </a>
+            </div>
+
+            <input 
+              type="text" 
+              v-model="tempLinks[platform]" 
+              :placeholder="`أدخل رابط منشور ${platform} (مثال: https://...)`" 
+              dir="ltr" 
+              required 
+              style="width: 100%; padding: 9px 12px; border-radius: 6px; font-size: 12.5px; box-sizing: border-box; font-family: monospace; transition: all 0.2s;"
+              :style="{
+                border: !tempLinks[platform] || !tempLinks[platform].trim() ? '1.5px solid #cbd5e1' : (getPlatformValidation(platform, tempLinks[platform]).valid ? '1.5px solid #10b981' : '1.5px solid #ef4444'),
+                background: !tempLinks[platform] || !tempLinks[platform].trim() ? '#fff' : (getPlatformValidation(platform, tempLinks[platform]).valid ? '#f0fdf4' : '#fef2f2')
+              }"
+            />
+
+            <!-- رسالة التحقق الفوري -->
+            <div v-if="tempLinks[platform] && tempLinks[platform].trim() && !getPlatformValidation(platform, tempLinks[platform]).valid" style="color: #dc2626; font-size: 11px; margin-top: 5px; font-weight: 600; line-height: 1.35;">
+              ⚠️ {{ getPlatformValidation(platform, tempLinks[platform]).message }}
+            </div>
+            <div v-else-if="tempLinks[platform] && tempLinks[platform].trim() && getPlatformValidation(platform, tempLinks[platform]).valid" style="color: #059669; font-size: 11px; margin-top: 5px; font-weight: 600;">
+              ✅ رابط صالح ومطابق لمنصة {{ platform }}
+            </div>
+          </div>
+
+          <div class="modal-actions mt-4" style="display: flex; gap: 10px; justify-content: flex-end;">
+            <button type="button" class="secondary-btn" @click="showLinksModal = false">إلغاء</button>
+            <button type="submit" class="primary-btn" :disabled="saving || !areAllTempLinksValid">
+              {{ saving ? '⏳ جارٍ الحفظ...' : '💾 حفظ الروابط' }}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
+    </Teleport>
+
+    <!-- مودال إضافة / تعديل رابط مجلد الأرشفة -->
+    <Teleport to="body">
+      <div v-if="archiveModalPost" class="modal-overlay" @click.self="closeArchiveModal">
+        <div class="modal-content archive-modal-card" style="width: min(520px, 95%); border-radius: 14px; padding: 22px;" dir="rtl">
+          <div class="d-flex align-items-center justify-content-between mb-3" style="border-bottom: 1px solid #e2e8f0; padding-bottom: 12px;">
+            <h3 style="margin: 0; font-size: 17px; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+              <span>📁</span>
+              <span>{{ archiveModalPost.final_delivery_link ? 'تعديل رابط مجلد الأرشفة' : 'إضافة رابط مجلد الأرشفة' }}</span>
+            </h3>
+            <button type="button" @click="closeArchiveModal" style="background: none; border: none; font-size: 20px; color: #94a3b8; cursor: pointer; line-height: 1;">✕</button>
+          </div>
+
+          <p style="font-size: 12px; color: #64748b; margin-bottom: 15px;">
+            منشور #{{ getPostRowIndex(archiveModalPost) }} | تاريخ النشر: {{ formatDate(archiveModalPost.target_date) }}
+          </p>
+
+          <form @submit.prevent="saveArchiveModalLink">
+            <div class="form-group mb-3">
+              <label style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 6px; display: block;">
+                رابط مجلد الأرشفة على Google Drive <span style="color: #ef4444;">*</span>
+              </label>
+              <input 
+                type="url" 
+                v-model="archiveModalLink" 
+                @input="handleArchiveModalInput"
+                placeholder="https://drive.google.com/drive/folders/..." 
+                dir="ltr" 
+                required 
+                style="width: 100%; padding: 10px 12px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-size: 13px; font-family: monospace; box-sizing: border-box;"
+                :style="{ borderColor: archiveModalError ? '#ef4444' : (archiveModalValid ? '#10b981' : '#cbd5e1') }"
+              />
+              <div v-if="archiveModalError" style="color: #ef4444; font-size: 11px; margin-top: 5px; font-weight: 600;">
+                ⚠️ {{ archiveModalError }}
+              </div>
+              <div v-else-if="archiveModalValid" style="color: #059669; font-size: 11px; margin-top: 5px; font-weight: 600;">
+                ✅ رابط مجلد Google Drive صالح
+              </div>
+            </div>
+
+            <div v-if="archiveModalValid && archiveModalLink" class="mb-3">
+              <a :href="formatExternalUrl(archiveModalLink)" target="_blank" class="extracted-link-btn final-folder-link" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 11.5px;">
+                <span>🔗 فتح الرابط للتجربة والتأكد ↗</span>
+              </a>
+            </div>
+
+            <div style="background: #f8fafc; border: 1px dashed #cbd5e1; padding: 10px 12px; border-radius: 8px; font-size: 11px; color: #64748b; margin-bottom: 20px;">
+              🔒 <strong>تنبيه:</strong> بمجرد التأكيد، يتم تثبيت رابط الأرشفة للموظفين والمنفذ. التعديل لاحقاً متاح للمدير فقط.
+            </div>
+
+            <div class="modal-actions" style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 15px;">
+              <button type="button" class="secondary-btn" @click="closeArchiveModal" :disabled="savingArchiveModal">
+                إلغاء
+              </button>
+              <button 
+                type="submit" 
+                class="primary-btn" 
+                :disabled="!archiveModalValid || savingArchiveModal"
+                style="padding: 8px 18px; font-size: 13px; font-weight: 700; background: linear-gradient(135deg, #7c3aed, #6d28d9); color: white; border: none; border-radius: 6px; cursor: pointer;"
+              >
+                {{ savingArchiveModal ? '⏳ جارٍ الحفظ...' : (archiveModalPost.final_delivery_link ? '💾 حفظ التعديل' : '✅ تأكيد الإضافة وقفل الرابط') }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     </Teleport>
 
 
@@ -969,6 +1156,55 @@
                     </div>
                     <div v-else-if="!canEditDelivery(selectedPostForView)" class="no-data">لم يتم تسليم ملفات بعد</div>
                   </div>
+
+                  <!-- التسليم النهائي للأرشفة في المودال -->
+                  <div class="link-group mt-3" style="border-top: 1px dashed rgba(255,255,255,0.15); padding-top: 12px;">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                      <span class="group-label mb-0">📦 التسليم النهائي للأرشفة (Google Drive Folder)</span>
+                      <span v-if="hasConfirmedFinalDelivery(selectedPostForView) && !selectedPostForView._editingFinalLink" class="modal-badge-locked" title="تم تثبيت الرابط ولا يمكن تعديله إلا من قِبل المدير">
+                        🔒 مقفل (متاح للمدير فقط)
+                      </span>
+                    </div>
+                    
+                    <div v-if="!isPostFullyApproved(selectedPostForView)" class="modal-locked-notice">
+                      🔒 متاح بعد اعتماد وموافقة القسم والمدير معاً
+                    </div>
+
+                    <!-- إذا كان الرابط مؤكداً ومحفوظاً -->
+                    <div v-else-if="hasConfirmedFinalDelivery(selectedPostForView)" class="modal-delivery-view-box">
+                      <div class="premium-links-container">
+                        <a :href="formatExternalUrl(selectedPostForView.final_delivery_link)" target="_blank" class="premium-btn-link del-link">
+                          <span class="link-icon">📁</span> فتح مجلد الأرشيف ↗
+                        </a>
+                        <button 
+                          v-if="isManager" 
+                          type="button" 
+                          class="modal-edit-final-btn" 
+                          @click="openArchiveModal(selectedPostForView)"
+                          title="تعديل رابط الأرشفة (متاح للمدير فقط)">
+                          ✏️ تعديل الرابط
+                        </button>
+                      </div>
+                      <div class="final-delivered-badge mt-2" style="max-width: fit-content;">
+                        <span>🔒 مؤرشف</span>
+                        <small v-if="selectedPostForView.final_delivered_at">{{ formatDeliveryDate(selectedPostForView.final_delivered_at) }}</small>
+                      </div>
+                    </div>
+
+                    <!-- إذا لم يُضف بعد والمستخدم مصرح له -->
+                    <div v-else-if="canAddFinalDelivery(selectedPostForView)" class="mt-2">
+                      <button 
+                        type="button" 
+                        class="add-archive-btn" 
+                        @click="openArchiveModal(selectedPostForView)"
+                        style="max-width: 220px; padding: 8px 14px; font-size: 12px;"
+                      >
+                        <span>＋ إضافة مجلد الأرشيف</span>
+                      </button>
+                    </div>
+
+                    <div v-else class="no-data">لم يتم تسليم مجلد الأرشفة بعد</div>
+                  </div>
                   
                   <div class="link-group" v-if="hasPublishedLinks(selectedPostForView)">
                     <span class="group-label">تم النشر على (Live Links)</span>
@@ -1011,7 +1247,9 @@ import alertService from '../services/alertService';
 // استيراد المحرك الذكي
 import { getDeadlineStatus } from '../utils/timeHelper';
 // استيراد دالة التحقق من روابط درايف للبوست
-import { validatePostDriveLink } from '../utils/driveValidation';
+import { validatePostDriveLink, validateDriveFolderLink } from '../utils/driveValidation';
+// استيراد دالة التحقق من روابط منصات النشر
+import { validatePlatformLink, detectPlatformFromUrl } from '../utils/platformValidation';
 
 // دوال التحقق من صحة رابط تسليم البوست (Google Drive / Docs) مع التخزين المؤقت O(1)
 const isPostDeliveryValid = (post) => {
@@ -1058,6 +1296,123 @@ const getExtractedDelUrls = (post) => {
   return post._extractedDelUrls;
 };
 
+// دوال التحقق والتسليم النهائي للأرشفة (Google Drive Folder)
+const isPostFullyApproved = (post) => {
+  if (!post) return false;
+  return post.review_status === 'معتمد' && post.manager_review_status === 'معتمد';
+};
+
+const hasConfirmedFinalDelivery = (post) => {
+  if (!post) return false;
+  return Boolean(post.final_delivery_link && String(post.final_delivery_link).trim() !== '');
+};
+
+const canAddFinalDelivery = (post) => {
+  if (!post || !currentUser.value) return false;
+  if (!isPostFullyApproved(post)) return false;
+  const isExec = Number(currentUser.value.id) === Number(post.designer_id);
+  const isMgr = Boolean(isManager.value);
+  return isExec || isMgr;
+};
+
+const archiveModalPost = ref(null);
+const archiveModalLink = ref('');
+const archiveModalError = ref('');
+const archiveModalValid = ref(false);
+const savingArchiveModal = ref(false);
+
+const getPostRowIndex = (post) => {
+  if (!post) return '';
+  const idx = posts.value.findIndex(p => p.id === post.id);
+  return idx >= 0 ? idx + 1 : post.id;
+};
+
+const openArchiveModal = (post) => {
+  if (!post) return;
+  archiveModalPost.value = post;
+  archiveModalLink.value = post.final_delivery_link || '';
+  archiveModalError.value = '';
+  archiveModalValid.value = Boolean(post.final_delivery_link && validateDriveFolderLink(post.final_delivery_link).valid);
+};
+
+const closeArchiveModal = () => {
+  archiveModalPost.value = null;
+  archiveModalLink.value = '';
+  archiveModalError.value = '';
+  archiveModalValid.value = false;
+  savingArchiveModal.value = false;
+};
+
+const handleArchiveModalInput = () => {
+  const val = archiveModalLink.value ? archiveModalLink.value.trim() : '';
+  if (!val) {
+    archiveModalValid.value = false;
+    archiveModalError.value = 'يرجى إدخال الرابط';
+    return;
+  }
+  const res = validateDriveFolderLink(val);
+  archiveModalValid.value = res.valid;
+  archiveModalError.value = res.valid ? '' : res.message;
+};
+
+const saveArchiveModalLink = async () => {
+  if (!archiveModalPost.value) return;
+  const post = archiveModalPost.value;
+  const trimmed = String(archiveModalLink.value || '').trim();
+
+  if (!trimmed) {
+    archiveModalError.value = 'يرجى إدخال رابط مجلد الأرشفة أولاً.';
+    return;
+  }
+
+  const res = validateDriveFolderLink(trimmed);
+  if (!res.valid) {
+    archiveModalError.value = res.message || 'يجب أن يكون الرابط عبارة عن رابط مجلد صحيح على Google Drive.';
+    return;
+  }
+
+  savingArchiveModal.value = true;
+  saving.value = true;
+  try {
+    const apiRes = await api.put(`/plan-posts/${post.id}`, {
+      final_delivery_link: trimmed
+    });
+
+    const updatedData = apiRes.data?.data || {};
+    post.final_delivery_link = updatedData.final_delivery_link || trimmed;
+    post.final_delivered_at = updatedData.final_delivered_at || new Date().toISOString();
+    post._isFinalDeliveryValid = true;
+    post._finalDeliveryError = null;
+
+    if (selectedPostForView.value && selectedPostForView.value.id === post.id) {
+      selectedPostForView.value.final_delivery_link = post.final_delivery_link;
+      selectedPostForView.value.final_delivered_at = post.final_delivered_at;
+    }
+
+    alertService.success('تم تأكيد وحفظ رابط الأرشفة بنجاح ✅');
+    closeArchiveModal();
+  } catch (err) {
+    const errMsg = err.response?.data?.message || 'تعذر حفظ رابط الأرشفة!';
+    archiveModalError.value = errMsg;
+    alertService.error(errMsg);
+  } finally {
+    savingArchiveModal.value = false;
+    saving.value = false;
+  }
+};
+
+const canEditFinalDelivery = (post) => {
+  return canAddFinalDelivery(post);
+};
+
+
+const getExtractedFinalDelUrls = (post) => {
+  if (!post) return [];
+  if (post._extractedFinalDelUrls !== undefined) return post._extractedFinalDelUrls;
+  post._extractedFinalDelUrls = extractUrls(post.final_delivery_link);
+  return post._extractedFinalDelUrls;
+};
+
 const route = useRoute();
 const planId = route.params.id;
 
@@ -1073,6 +1428,68 @@ const posts = ref([]);
 const allUsers = ref([]);
 const currentUser = ref(getStoredUser());
 const currentPlan = ref(null);
+let cachedPlanCategories = null;
+const planCategories = ref([]);
+
+const fetchPlanCategories = async () => {
+  if (cachedPlanCategories && planCategories.value.length === 0) {
+    planCategories.value = cachedPlanCategories;
+  }
+  try {
+    const res = await api.get('/plan-categories/options');
+    const data = res.data?.data || res.data || [];
+    planCategories.value = data;
+    cachedPlanCategories = data;
+  } catch (error) {
+    console.error('Error fetching plan categories options:', error);
+  }
+};
+
+const currentPlanCategory = computed(() => {
+  if (!currentPlan.value?.plan_type || !planCategories.value?.length) return null;
+  const targetType = String(currentPlan.value.plan_type).trim().toLowerCase();
+  return planCategories.value.find(c => String(c.name || '').trim().toLowerCase() === targetType) || null;
+});
+
+const availablePostTypes = computed(() => {
+  const options = [];
+  
+  // 1. من عناصر نوع الخطة المحدد (Category items من إعدادات أنواع الخطط)
+  if (currentPlanCategory.value?.items && Array.isArray(currentPlanCategory.value.items)) {
+    currentPlanCategory.value.items.forEach(item => {
+      const name = String(item.name || '').trim();
+      if (name && !options.includes(name)) {
+        options.push(name);
+      }
+    });
+  }
+  
+  // 2. من عناصر ومخرجات الخطة الحالية نفسها إذا وُجدت
+  if (currentPlan.value?.items && Array.isArray(currentPlan.value.items)) {
+    currentPlan.value.items.forEach(item => {
+      const name = String(item.item_name || item.name || '').trim();
+      if (name && !options.includes(name)) {
+        options.push(name);
+      }
+    });
+  }
+
+  // 3. كإجراء احتياطي إذا لم يكن لنوع الخطة عناصر محددة في الإعدادات
+  if (options.length === 0) {
+    const defaultTypes = ['Infograph', 'Video', 'Reel/Shorts', 'Text Only', 'Carousel'];
+    defaultTypes.forEach(t => options.push(t));
+  }
+  
+  // 4. التأكد من بقاء أي نوع منشور محفوظ مسبقاً في الصفوف الحالية حتى لا يظهر فارغاً
+  (posts.value || []).forEach(p => {
+    const val = String(p.post_type || '').trim();
+    if (val && !options.includes(val)) {
+      options.push(val);
+    }
+  });
+
+  return options;
+});
 const isPlanResponsible = ref(false);
 const accessDenied = ref(false);
 const accessDeniedMessage = ref('');
@@ -1264,6 +1681,13 @@ const isViewModalOpen = ref(false);
 const selectedPostForView = ref(null);
 
 const openViewModal = (post) => {
+  if (post) {
+    if (post._finalDeliveryInput === undefined) {
+      post._finalDeliveryInput = post.final_delivery_link || '';
+    }
+    post._editingFinalLink = false;
+    post._finalDeliveryDraftTouched = false;
+  }
   selectedPostForView.value = post;
   isViewModalOpen.value = true;
 };
@@ -1398,9 +1822,24 @@ const canEditLinks = (post) => {
   return !hasLinks || isManager.value; 
 };
 
+const getPlatformValidation = (platform, link) => {
+  return validatePlatformLink(platform, link);
+};
+
+const areAllTempLinksValid = computed(() => {
+  const keys = Object.keys(tempLinks.value || {});
+  if (keys.length === 0) return false;
+  return keys.every(platform => {
+    const link = tempLinks.value[platform];
+    if (!link || !String(link).trim()) return false;
+    return validatePlatformLink(platform, link).valid;
+  });
+});
+
 const savePublishedLinks = async () => {
   if (isMediaBuyer.value) return;
   const post = currentPostForLinks.value;
+  if (!post) return;
   
   let platforms = [];
   if (post.publishing_platform) {
@@ -1411,6 +1850,7 @@ const savePublishedLinks = async () => {
     }
   }
 
+  // 1. التأكد من وجود روابط لجميع المنصات المحددة
   let missingPlatforms = [];
   platforms.forEach(platform => {
     if (!tempLinks.value[platform] || String(tempLinks.value[platform]).trim() === '') {
@@ -1420,13 +1860,22 @@ const savePublishedLinks = async () => {
 
   if (missingPlatforms.length > 0) {
     const missingStr = missingPlatforms.join('، ');
-    if (typeof showToast === 'function') {
-      showToast(`عذراً، يجب إدخال روابط لجميع المنصات المحددة: ${missingStr}`);
-    }
+    alertService.error(`عذراً، يجب إدخال روابط لجميع المنصات المحددة: ${missingStr}`);
     return;
   }
 
-  const payload = { published_links: tempLinks.value };
+  // 2. التحقق من مطابقة كل رابط للمنصة الخاصة به
+  const formattedLinks = {};
+  for (const platform of platforms) {
+    const valResult = validatePlatformLink(platform, tempLinks.value[platform]);
+    if (!valResult.valid) {
+      alertService.error(valResult.message);
+      return;
+    }
+    formattedLinks[platform] = valResult.formattedUrl;
+  }
+
+  const payload = { published_links: formattedLinks };
   
   if (pendingPublishStatus.value) {
     payload.actual_publish_status = 'تم النشر';
@@ -1435,7 +1884,7 @@ const savePublishedLinks = async () => {
   saving.value = true;
   try {
     const res = await api.put(`/plan-posts/${post.id}`, payload);
-    post.published_links = res.data.data ? res.data.data.published_links : tempLinks.value;
+    post.published_links = res.data.data ? res.data.data.published_links : formattedLinks;
     if (pendingPublishStatus.value) {
       post.actual_publish_status = 'تم النشر';
       const now = new Date();
@@ -1448,9 +1897,10 @@ const savePublishedLinks = async () => {
       autoSave(post, 'publishing_time');
     }
     showLinksModal.value = false;
-    if (typeof showToast === 'function') showToast('تم حفظ روابط النشر بنجاح ✅');
+    alertService.success('تم التحقق من الروابط وحفظها بنجاح ✅');
   } catch (error) {
-    if (typeof showToast === 'function') showToast(error.response?.data?.message || 'حدث خطأ أثناء حفظ الروابط');
+    const errMsg = error.response?.data?.message || 'حدث خطأ أثناء حفظ الروابط!';
+    alertService.error(errMsg);
     if (pendingPublishStatus.value) {
       post.actual_publish_status = 'لم يتم';
     }
@@ -1681,6 +2131,10 @@ const enrichPost = (post) => {
   if (!post) return post;
   post._lockedFieldsSet = new Set(Array.isArray(post.locked_fields) ? post.locked_fields : []);
   post._isDeliveryValid = (post.delivery_links && String(post.delivery_links).trim()) ? validatePostDriveLink(post.delivery_links).valid : false;
+  post._isFinalDeliveryValid = (post.final_delivery_link && String(post.final_delivery_link).trim()) ? validateDriveFolderLink(post.final_delivery_link).valid : false;
+  post._finalDeliveryInput = post.final_delivery_link || '';
+  post._editingFinalLink = false;
+  post._finalDeliveryDraftTouched = false;
   post._canEdit = computeCanEditFields(post);
   post._canEditPublishAndNotes = computeCanEditPublishAndNotes(post);
   post._canEditNotes = computeCanEditNotes(post);
@@ -2097,17 +2551,41 @@ const autoSave = async (post, field) => {
     post._isDeliveryValid = true;
   }
 
+  if (field === 'final_delivery_link') {
+    if (post.final_delivery_link && !isManager.value) {
+      showToast('عذراً، تم تثبيت رابط الأرشفة مسبقاً ولا يمكن تعديله إلا من قِبل المدير.');
+      return;
+    }
+    // التحقق الصارم من رابط مجلد الأرشفة (Google Drive Folder)
+    if (post.final_delivery_link && String(post.final_delivery_link).trim()) {
+      const valResult = validateDriveFolderLink(post.final_delivery_link);
+      if (!valResult.valid) {
+        post._finalDeliveryTouched = true;
+        post._finalDeliveryError = valResult.message;
+        post._isFinalDeliveryValid = false;
+        showToast(valResult.message || 'رابط مجلد الأرشفة غير صالح ولن يتم حفظه');
+        return;
+      }
+    }
+    post._finalDeliveryError = null;
+    post._isFinalDeliveryValid = true;
+  }
+
   saving.value = true;
   try {
     const res = await api.put(`/plan-posts/${post.id}`, { [field]: post[field] });
     if (res.data?.whatsapp_payload) openWaModal(res.data.whatsapp_payload);
-    if (field === 'delivery_links' || field === 'reference_link') {
+    if (field === 'delivery_links' || field === 'reference_link' || field === 'final_delivery_link') {
       post._extractedRefUrls = undefined;
       post._extractedDelUrls = undefined;
+      post._extractedFinalDelUrls = undefined;
+    }
+    if (res.data?.data?.final_delivered_at) {
+      post.final_delivered_at = res.data.data.final_delivered_at;
     }
     enrichPost(post);
   } catch (error) {
-    showToast('حدث خطأ أثناء الحفظ التلقائي!');
+    showToast(error.response?.data?.message || 'حدث خطأ أثناء الحفظ التلقائي!');
   } finally {
     setTimeout(() => { saving.value = false; }, 500);
   }
@@ -2232,7 +2710,10 @@ const handlePublishStatusChange = (post, event) => {
     }
     
     const hasAllLinks = platforms.length > 0 && platforms.every(platform => 
-      post.published_links && post.published_links[platform] && String(post.published_links[platform]).trim() !== ''
+      post.published_links && 
+      post.published_links[platform] && 
+      String(post.published_links[platform]).trim() !== '' &&
+      validatePlatformLink(platform, post.published_links[platform]).valid
     );
 
     if (!hasAllLinks) {
@@ -2280,6 +2761,7 @@ onMounted(async () => {
   fetchCurrentUser(); 
   fetchUsers();
   await Promise.allSettled([
+    fetchPlanCategories(),
     fetchCurrentPlan(),
     fetchPosts()
   ]);
@@ -3601,6 +4083,265 @@ input:disabled, select:disabled, textarea:disabled, .custom-multiselect.disabled
   font-family: inherit;
   color: #1e293b;
   cursor: pointer;
+}
+
+.row-num-with-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 2px 0;
+}
+
+.row-num-with-action .row-index {
+  font-size: 13px;
+  font-weight: 800;
+  color: #6366f1;
+  line-height: 1.1;
+}
+
+.row-num-with-action .row-view-btn {
+  font-size: 14px;
+  padding: 1px 3px;
+  line-height: 1;
+  border-radius: 4px;
+  transition: transform 0.2s ease, background 0.2s ease;
+  cursor: pointer;
+}
+
+.row-num-with-action .row-view-btn:hover {
+  transform: scale(1.25);
+  background: rgba(99, 102, 241, 0.15);
+}
+
+.row-num-with-action .urgent-dot {
+  font-size: 10px;
+  line-height: 1;
+}
+
+.sub-th.light-blue-th {
+  min-width: 330px !important;
+}
+
+.delivery-cell {
+  min-width: 330px;
+  max-width: 390px;
+  vertical-align: top;
+  padding: 5px 6px !important;
+}
+
+.delivery-split-grid {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+}
+
+.delivery-split-col {
+  flex: 1;
+  min-width: 155px;
+  display: flex;
+  flex-direction: column;
+}
+
+.delivery-split-divider {
+  width: 1px;
+  background: rgba(203, 213, 225, 0.7);
+  align-self: stretch;
+  margin: 0 1px;
+  flex-shrink: 0;
+}
+
+.delivery-sub-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #64748b;
+  margin-bottom: 3px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+.final-delivery-locked {
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 6px;
+  padding: 5px 6px;
+  font-size: 10px;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 4px;
+}
+
+.final-del-wrapper textarea {
+  border-color: #8b5cf6 !important;
+  background: #faf5ff !important;
+}
+
+.final-del-wrapper textarea:focus {
+  border-color: #7c3aed !important;
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2) !important;
+}
+
+.final-delivery-confirmed {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.final-delivery-view-box {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.final-folder-link {
+  background: #ede9fe !important;
+  color: #6d28d9 !important;
+  border: 1px solid #c4b5fd !important;
+  font-weight: 700 !important;
+  font-size: 10.5px !important;
+  flex: 1;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.final-folder-link:hover {
+  background: #ddd6fe !important;
+  color: #5b21b6 !important;
+}
+
+.final-edit-btn {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 3px 5px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.final-edit-btn:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+  transform: scale(1.08);
+}
+
+.final-actions-row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.add-archive-btn {
+  background: #f5f3ff !important;
+  color: #7c3aed !important;
+  border: 1px dashed #c4b5fd !important;
+  border-radius: 6px !important;
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  padding: 5px 8px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  width: 100% !important;
+  transition: all 0.2s ease !important;
+  text-align: center !important;
+  line-height: 1.2 !important;
+}
+
+.add-archive-btn:hover {
+  background: #ede9fe !important;
+  border-color: #8b5cf6 !important;
+  color: #6d28d9 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 5px rgba(124, 58, 237, 0.15) !important;
+}
+
+.archive-modal-card {
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25) !important;
+  border: 1px solid #e2e8f0;
+}
+
+.final-delivered-badge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #059669;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 4px;
+  padding: 2px 5px;
+  margin-top: 2px;
+}
+
+.badge-lock-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.modal-badge-locked {
+  font-size: 10px;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.modal-edit-final-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #e2e8f0;
+  padding: 4px 9px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-right: 6px;
+}
+
+.modal-edit-final-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.muted-notice {
+  font-size: 10px;
+  color: #94a3b8;
+  text-align: center;
+  padding: 4px;
+  background: #f8fafc;
+  border-radius: 4px;
+}
+
+.modal-locked-notice {
+  font-size: 11px;
+  color: #94a3b8;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  text-align: center;
 }
 
 </style>

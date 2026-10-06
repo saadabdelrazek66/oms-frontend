@@ -112,7 +112,7 @@
           <tr>
             <th rowspan="2" class="group-header row-num-header " style="width: 45px; text-align: center; vertical-align: middle; z-index: 10;">#</th>
             <th :colspan="isDesignerOrEditor ? 2 : (isMediaBuyer ? 3 : 5)" class="group-header red-group">حالة المنشور</th>
-            <th v-if="!isMediaBuyer" colspan="6" class="group-header admin-group">الإدارة والتكليف والمراجعة</th>
+            <th v-if="!isMediaBuyer" :colspan="isDesignerOrEditor ? 5 : 6" class="group-header admin-group">الإدارة والتكليف والمراجعة</th>
             <th v-if="!isDesignerOrEditor" colspan="4" class="group-header dark-red-group">موقف التمويل</th>
             <th v-if="!isMediaBuyer" colspan="8" class="group-header blue-group">محتوى المنشور</th>
             <th colspan="1" class="group-header light-blue-group">التسليم</th>
@@ -126,7 +126,7 @@
             <th v-if="!isMediaBuyer" class="sub-th red-th">منصة النشر</th>
             <th v-if="!isDesignerOrEditor" class="sub-th red-th">روابط النشر</th>
 
-            <th v-if="!isMediaBuyer" class="sub-th admin-th">المنفذ</th>
+            <th v-if="!isMediaBuyer && !isDesignerOrEditor" class="sub-th admin-th">المنفذ</th>
             <th v-if="!isMediaBuyer" class="sub-th admin-th">بدء التنفيذ</th>
             <th v-if="!isMediaBuyer" class="sub-th admin-th" style="min-width: 145px;">الديدلاين</th>
             <th v-if="!isMediaBuyer" class="sub-th admin-th">المراجعين (متعدد)</th>
@@ -154,7 +154,7 @@
         </thead>
         <tbody>
           <tr v-if="filteredPosts.length === 0">
-            <td :colspan="isMediaBuyer ? 10 : (isDesignerOrEditor ? 19 : (canDeletePosts ? 27 : 26))" class="text-center py-4 muted">لا توجد منشورات. قم بإضافة منشور جديد.</td>
+            <td :colspan="isMediaBuyer ? 10 : (isDesignerOrEditor ? 18 : (canDeletePosts ? 27 : 26))" class="text-center py-4 muted">لا توجد منشورات. قم بإضافة منشور جديد.</td>
           </tr>
           <tr v-for="(post, index) in filteredPosts" :key="post.id" :id="'post-row-' + post.id" class="post-row" :class="{ 'urgent-row': post.is_urgent }">
             <td class="text-center readonly-cell row-num-cell " style="font-weight: 700; width: 45px; color: #8792be; vertical-align: middle;">{{ index + 1 }}</td>
@@ -259,7 +259,7 @@
             </td>
 
             <!-- 1. الإدارة والتكليف -->
-            <td v-if="!isMediaBuyer">
+            <td v-if="!isMediaBuyer && !isDesignerOrEditor">
               <div class="lock-wrapper">
                 <select v-model="post.designer_id" @change="autoSave(post, 'designer_id')" :disabled="!canEditFields(post) || isFieldDisabled(post, 'designer_id')">
                   <option :value="null">لم يحدد</option>
@@ -823,7 +823,7 @@
                       <strong class="info-value text-red">{{ formatDeadlineDisplay(selectedPostForView.deadline) }}</strong>
                     </div>
                   </li>
-                  <li v-if="!isMediaBuyer">
+                  <li v-if="!isMediaBuyer && !isDesignerOrEditor">
                     <span class="info-icon">👨‍🎨</span>
                     <div class="info-data">
                       <span class="info-label">المنفذ</span>
@@ -1160,12 +1160,38 @@ const finalDeliveryFolderLink = computed(() => {
   return null;
 });
 
+const isManager = computed(() => {
+  if (!currentUser.value) return false;
+  return currentUser.value.role === 'manager';
+});
+
+const checkIfResponsibleFromPlan = (plan) => {
+  if (!plan || !currentUser.value) return false;
+  const uid = Number(currentUser.value.id);
+  if (plan.users && Array.isArray(plan.users)) {
+    return plan.users.some(u => Number(u.id) === uid && u.pivot?.task_role === 'responsible');
+  }
+  return false;
+};
+
+const checkIfExecutorFromPlan = (plan) => {
+  if (!plan || !currentUser.value) return false;
+  const uid = Number(currentUser.value.id);
+  if (plan.users && Array.isArray(plan.users)) {
+    return plan.users.some(u => Number(u.id) === uid && u.pivot?.task_role === 'executor');
+  }
+  return false;
+};
+
 const isMediaBuyer = computed(() => {
   return !isPlanResponsible.value && currentUser.value?.job_title === 'Media Buyer';
 });
 
 const isDesignerOrEditor = computed(() => {
-  return !isPlanResponsible.value && ['Graphic Designer', 'Video Editor'].includes(currentUser.value?.job_title);
+  if (isManager.value || isPlanResponsible.value || checkIfResponsibleFromPlan(currentPlan.value)) {
+    return false;
+  }
+  return ['Graphic Designer', 'Video Editor'].includes(currentUser.value?.job_title) || checkIfExecutorFromPlan(currentPlan.value);
 });
 
 const filteredPosts = computed(() => {
@@ -1466,19 +1492,7 @@ const showToast = (message, type = 'info') => {
   }
 };
 
-const isManager = computed(() => {
-  if (!currentUser.value) return false;
-  return currentUser.value.role === 'manager';
-});
 
-const checkIfResponsibleFromPlan = (plan) => {
-  if (!plan || !currentUser.value) return false;
-  const uid = Number(currentUser.value.id);
-  if (plan.users && Array.isArray(plan.users)) {
-    return plan.users.some(u => Number(u.id) === uid && u.pivot?.task_role === 'responsible');
-  }
-  return false;
-};
 
 // الأكونت مانجر: بالمسمى الوظيفي أو بالمسؤولية عن هذه الخطة
 const isAccountManager = computed(() => {

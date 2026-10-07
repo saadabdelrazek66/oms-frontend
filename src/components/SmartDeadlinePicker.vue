@@ -87,6 +87,12 @@
             <button type="button" class="close-btn" @click="closePicker">✕</button>
           </div>
 
+          <!-- شريط تنبيه الحد الأقصى للنشر المجدول -->
+          <div v-if="maxPublishDateStr" class="target-date-boundary-banner">
+            <span class="banner-icon">🛡️</span>
+            <span>الحد الأقصى للتسليم: موعد النشر <strong>{{ maxPublishDateStr }}</strong></span>
+          </div>
+
           <!-- شريط الاختصارات السريعة (Quick Presets) -->
           <div class="quick-presets-strip">
             <span class="presets-label">اختصارات سريعة:</span>
@@ -144,11 +150,18 @@
 
               <!-- رأس التقويم للشهر والسنة والتنقل -->
               <div class="cal-nav-bar">
-                <button type="button" class="nav-arrow" @click="changeMonth(1)">‹</button>
+                <button type="button" class="nav-arrow" @click="changeMonth(1)" title="الشهر القادم">‹</button>
                 <div class="current-month-label">
                   <strong>{{ monthNames[currentCalMonth] }}</strong> {{ currentCalYear }}
                 </div>
-                <button type="button" class="nav-arrow" @click="changeMonth(-1)">›</button>
+                <button
+                  type="button"
+                  class="nav-arrow"
+                  :class="{ disabled: !canGoPrevMonth }"
+                  :disabled="!canGoPrevMonth"
+                  @click="canGoPrevMonth && changeMonth(-1)"
+                  title="الشهر السابق"
+                >›</button>
               </div>
 
               <!-- أسماء أيام الأسبوع -->
@@ -166,9 +179,12 @@
                   :class="{
                     'other-month': !dayObj.isCurrentMonth,
                     'is-today': dayObj.isToday,
-                    'is-selected': dayObj.isSelected
+                    'is-selected': dayObj.isSelected,
+                    'is-disabled-target': dayObj.isDisabled,
+                    'is-disabled-past': dayObj.disabledReason === 'past'
                   }"
-                  :disabled="!dayObj.isCurrentMonth"
+                  :disabled="!dayObj.isCurrentMonth || dayObj.isDisabled"
+                  :title="dayObj.disabledReason === 'past' ? 'لا يمكن اختيار تاريخ سابق أو يوم مضى' : (dayObj.disabledReason === 'after_publish' ? `لا يمكن اختيار موعد بعد تاريخ النشر المخطط (${maxPublishDateStr})` : '')"
                   @click="selectDay(dayObj)"
                 >
                   {{ dayObj.dayNumber }}
@@ -445,6 +461,32 @@ const deadlineStatus = computed(() => {
   return getDeadlineStatus(start, props.modelValue, status);
 });
 
+// أقصى تاريخ مسموح به للديدلاين (تاريخ النشر المخطط للمنشور)
+const maxPublishDateStr = computed(() => {
+  if (!props.post?.target_date) return null;
+  return String(props.post.target_date).trim().substring(0, 10);
+});
+
+// دالة مساعدة لتاريخ اليوم بتنسيق YYYY-MM-DD
+const getTodayStr = () => {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+// منع التنقل للشهر السابق إذا كنا في الشهر الحالي (لمنع عرض أشهر ماضية)
+const canGoPrevMonth = computed(() => {
+  const today = new Date();
+  const todayYear = today.getFullYear();
+  const todayMonth = today.getMonth();
+  return (
+    currentCalYear.value > todayYear ||
+    (currentCalYear.value === todayYear && currentCalMonth.value > todayMonth)
+  );
+});
+
 // مصفوفة أيام التقويم للشهر المفتوح
 const calendarDays = computed(() => {
   const year = currentCalYear.value;
@@ -472,17 +514,28 @@ const calendarDays = computed(() => {
   }
 
   // أيام الشهر الحالي
-  const today = new Date();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const todayStr = getTodayStr();
 
   for (let d = 1; d <= daysInMonth; d++) {
     const dStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const isPastTarget = maxPublishDateStr.value ? (dStr > maxPublishDateStr.value) : false;
+    const isPastDay = dStr < todayStr;
+    const isDisabled = isPastTarget || isPastDay;
+    let disabledReason = null;
+    if (isPastDay) {
+      disabledReason = 'past';
+    } else if (isPastTarget) {
+      disabledReason = 'after_publish';
+    }
+
     days.push({
       dayNumber: d,
       isCurrentMonth: true,
       dateStr: dStr,
       isToday: dStr === todayStr,
-      isSelected: dStr === selectedDateStr.value
+      isSelected: dStr === selectedDateStr.value,
+      isDisabled: isDisabled,
+      disabledReason: disabledReason
     });
   }
 
@@ -549,7 +602,7 @@ const changeMonth = (delta) => {
 
 // اختيار يوم
 const selectDay = (dayObj) => {
-  if (!dayObj.isCurrentMonth || !dayObj.dateStr) return;
+  if (!dayObj.isCurrentMonth || !dayObj.dateStr || dayObj.isDisabled) return;
   selectedDateStr.value = dayObj.dateStr;
 };
 
@@ -622,10 +675,22 @@ const applyPreset = (presetType) => {
   const y = target.getFullYear();
   const m = target.getMonth();
   const d = target.getDate();
+  const dateStrCandidate = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
+  const todayStr = getTodayStr();
+  if (dateStrCandidate < todayStr) {
+    alert('عذراً، هذا الاختصار يقع في يوم مضى! لا يمكن تحديد ديدلاين في الماضي.');
+    return;
+  }
+
+  if (maxPublishDateStr.value && dateStrCandidate > maxPublishDateStr.value) {
+    alert(`عذراً، هذا الاختصار يتجاوز تاريخ النشر المخطط للمنشور (${maxPublishDateStr.value})! يجب تسليم العمل قبل أو في نفس يوم النشر.`);
+    return;
+  }
 
   currentCalYear.value = y;
   currentCalMonth.value = m;
-  selectedDateStr.value = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  selectedDateStr.value = dateStrCandidate;
 };
 
 // نص المعاينة الحية الكامل
@@ -654,24 +719,35 @@ const livePreviewFullText = computed(() => {
 const openPicker = (e) => {
   if (props.disabled) return;
 
+  const todayStr = getTodayStr();
+  const now = new Date();
+  const todayY = now.getFullYear();
+  const todayM = now.getMonth();
+
   // استخراج القيم الحالية
   const parsed = parseParts(props.modelValue);
   if (parsed) {
-    selectedDateStr.value = parsed.dateStr;
-    currentCalYear.value = parsed.year;
-    currentCalMonth.value = parsed.month;
-    selectedHour12.value = parsed.hour12;
-    selectedMinute.value = parsed.minute;
-    selectedPeriod.value = parsed.period;
+    if (parsed.dateStr < todayStr) {
+      // إذا كان الموعد المسجل مسبقاً في يوم مضى، نفتح التقويم على اليوم الحالي مع الاحتفاظ بالتوقيت لتسهيل التعديل
+      selectedDateStr.value = todayStr;
+      currentCalYear.value = todayY;
+      currentCalMonth.value = todayM;
+      selectedHour12.value = parsed.hour12;
+      selectedMinute.value = parsed.minute;
+      selectedPeriod.value = parsed.period;
+    } else {
+      selectedDateStr.value = parsed.dateStr;
+      currentCalYear.value = parsed.year;
+      currentCalMonth.value = parsed.month;
+      selectedHour12.value = parsed.hour12;
+      selectedMinute.value = parsed.minute;
+      selectedPeriod.value = parsed.period;
+    }
   } else {
     // القيمة الافتراضية: اليوم عند الساعة 5 مساءً
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = now.getMonth();
-    const d = now.getDate();
-    currentCalYear.value = y;
-    currentCalMonth.value = m;
-    selectedDateStr.value = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    currentCalYear.value = todayY;
+    currentCalMonth.value = todayM;
+    selectedDateStr.value = todayStr;
     selectedHour12.value = 5;
     selectedMinute.value = 0;
     selectedPeriod.value = 'PM';
@@ -719,6 +795,20 @@ const closePicker = () => {
 const saveAndApply = () => {
   if (!selectedDateStr.value) {
     closePicker();
+    return;
+  }
+
+  const todayStr = getTodayStr();
+
+  // 🛡️ حماية صارمة: منع اختيار موعد تسليم في يوم مضى
+  if (selectedDateStr.value < todayStr) {
+    alert(`عذراً، لا يمكن اختيار موعد تسليم ابتدائي في يوم مضى (${selectedDateStr.value})! يجب اختيار اليوم أو موعد قادم.`);
+    return;
+  }
+
+  // 🛡️ حماية صارمة: منع اختيار تاريخ تسليم بعد تاريخ النشر المخطط للمنشور
+  if (maxPublishDateStr.value && selectedDateStr.value > maxPublishDateStr.value) {
+    alert(`عذراً، لا يمكن أن يكون موعد التسليم الابتدائي (${selectedDateStr.value}) بعد تاريخ النشر المخطط للمنشور (${maxPublishDateStr.value})! يجب تسليم العمل قبل أو في نفس يوم النشر.`);
     return;
   }
 
@@ -1396,5 +1486,47 @@ const clearDeadline = () => {
 .footer-save-btn:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 14px rgba(125, 232, 220, 0.45);
+}
+
+.cal-day-cell.is-disabled-target,
+.cal-day-cell.is-disabled-past {
+  opacity: 0.22 !important;
+  cursor: not-allowed !important;
+  background: rgba(239, 68, 68, 0.06) !important;
+  color: #94a3b8 !important;
+  text-decoration: line-through !important;
+  pointer-events: none !important;
+}
+
+.nav-arrow:disabled,
+.nav-arrow.disabled {
+  opacity: 0.2 !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+}
+
+.target-date-boundary-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px dashed rgba(59, 130, 246, 0.35);
+  color: #2563eb;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  margin: 4px 16px 10px 16px;
+}
+
+.target-date-boundary-banner .banner-icon {
+  font-size: 13px;
+}
+
+.target-date-boundary-banner strong {
+  font-weight: 700;
+  color: #1d4ed8;
+  direction: ltr;
+  display: inline-block;
+  margin: 0 3px;
 }
 </style>

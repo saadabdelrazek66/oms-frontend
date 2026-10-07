@@ -157,14 +157,23 @@
             <td :colspan="isMediaBuyer ? 10 : (isDesignerOrEditor ? 17 : (canDeletePosts ? 27 : 26))" class="text-center py-4 muted">لا توجد منشورات. قم بإضافة منشور جديد.</td>
           </tr>
           <tr v-for="(post, index) in filteredPosts" :key="post.id" :id="'post-row-' + post.id" class="post-row" :class="{ 'urgent-row': post.is_urgent }">
-            <td class="text-center readonly-cell row-num-cell" style="font-weight: 700; width: 45px; color: #8792be; vertical-align: middle;">
+            <td class="text-center readonly-cell row-num-cell" style="font-weight: 700; width: 65px; color: #8792be; vertical-align: middle;">
               <div v-if="isDesignerOrEditor" class="row-num-with-action">
                 <span class="row-index" :title="'منشور #' + (index + 1)">{{ index + 1 }}</span>
                 <button class="icon-btn row-view-btn" @click="openViewModal(post)" title="عرض تفاصيل المنشور 👁️">👁️</button>
-                <span v-if="post.is_urgent" class="urgent-dot" title="منشور عاجل 🚨">🚨</span>
+                <button type="button" class="icon-btn" :class="{ 'urgent-active-glow': post.is_urgent }" @click.stop="toggleUrgent(post)" :title="post.is_urgent ? 'منشور عاجل 🚨 (اضغط لإلغاء العاجل)' : 'تحويل لمنشور عاجل ⚡ وإزاحة الفائض'">
+                  {{ post.is_urgent ? '🚨' : '⚡' }}
+                </button>
+                <span v-if="post.is_displaced" class="displaced-dot" :title="post.displaced_reason || 'منشور مُرحّل بقرار إداري 🔄'">🔄</span>
               </div>
               <template v-else>
-                {{ index + 1 }}
+                <div style="display: flex; align-items: center; justify-content: center; gap: 4px;">
+                  <span>{{ index + 1 }}</span>
+                  <button type="button" class="icon-btn" :class="{ 'urgent-active-glow': post.is_urgent }" @click.stop="toggleUrgent(post)" :title="post.is_urgent ? 'منشور عاجل 🚨 (اضغط لإلغاء العاجل)' : 'تحويل لمنشور عاجل ⚡ وإزاحة الفائض'">
+                    {{ post.is_urgent ? '🚨' : '⚡' }}
+                  </button>
+                  <span v-if="post.is_displaced" class="displaced-dot" :title="post.displaced_reason || 'منشور مُرحّل بقرار إداري 🔄'">🔄</span>
+                </div>
               </template>
             </td>
             
@@ -205,6 +214,7 @@
               </div>
 
               <div v-if="post.is_urgent" class="urgent-badge" title="هذا المنشور ذو أولوية قصوى وعاجلة">🚨 عاجل</div>
+              <div v-if="post.is_displaced" class="displaced-badge" :title="post.displaced_reason || 'تم ترحيل موعد تسليم المنشور لإفساح المجال لمنشور طارئ'">🔄 ترحيل موعد التسليم</div>
               
               <!-- SLA Smart Indicator لموعد النشر -->
               <div class="sla-indicator" style="margin-top: 5px;">
@@ -309,6 +319,15 @@
                 <div class="sla-progress-bg" v-if="!post.delivered_at">
                   <div class="sla-progress-fill" :class="getDeadlineStatus(post.execution_started_at || post.created_at, post.deadline, post.delivered_at ? 'completed' : 'pending').class + '-bg'" :style="{ width: getDeadlineStatus(post.execution_started_at || post.created_at, post.deadline, post.delivered_at ? 'completed' : 'pending').percentage + '%' }"></div>
                 </div>
+              </div>
+
+              <!-- شارة موعد التسليم المرحل بوضوح في عمود الديدلاين -->
+              <div v-if="post.is_displaced" class="displaced-deadline-tag" :title="post.displaced_reason || 'تم ترحيل موعد التسليم الابتدائي تلقائياً'">
+                <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 4px;">
+                  <span>🔄 موعد التسليم مُرحّل رسمياً</span>
+                  <button v-if="isManager" type="button" class="restore-deadline-mini-btn" @click.stop="restorePostDeadline(post)" title="استرجاع موعد التسليم الأصلي ↩️">↩️</button>
+                </div>
+                <small v-if="post.original_deadline" class="original-deadline-hint">الموعد السابق: {{ formatDeadlineDisplay(post.original_deadline) }}</small>
               </div>
             </td>
             
@@ -1008,6 +1027,15 @@
                     <div class="info-data">
                       <span class="info-label">الديدلاين</span>
                       <strong class="info-value text-red">{{ formatDeadlineDisplay(selectedPostForView.deadline) }}</strong>
+                      <div v-if="selectedPostForView.is_displaced" style="margin-top: 4px;">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                          <span class="displaced-badge">🔄 مُرحّل رسمياً</span>
+                          <button v-if="isManager" type="button" class="restore-deadline-mini-btn" @click="restorePostDeadline(selectedPostForView)" title="استرجاع موعد التسليم الأصلي ↩️">↩️ استرجاع</button>
+                        </div>
+                        <small v-if="selectedPostForView.original_deadline" style="display: block; font-size: 11px; color: #8fa0d4; margin-top: 2px;">
+                          الموعد الأصلي: {{ formatDeadlineDisplay(selectedPostForView.original_deadline) }}
+                        </small>
+                      </div>
                     </div>
                   </li>
                   <li v-if="!isMediaBuyer && !isDesignerOrEditor">
@@ -2018,6 +2046,16 @@ const handleTargetDateChange = async (post, event) => {
   if (!newDate) return;
   if (formatForDateInput(post.target_date) === newDate) return;
 
+  // 🛡️ فحص قفل الأمان: منع تقديم تاريخ النشر ليكون قبل موعد الديدلاين الحالي
+  if (post.deadline) {
+    const deadlineDateStr = String(post.deadline).trim().substring(0, 10);
+    if (deadlineDateStr > newDate) {
+      showToast(`عذراً، لا يمكن جعل تاريخ النشر (${newDate}) قبل موعد التسليم الابتدائي للمنشور (${deadlineDateStr})! يرجى تقديم الديدلاين أولاً.`, 'error');
+      event.target.value = formatForDateInput(post.target_date);
+      return;
+    }
+  }
+
   const oldDate = post.target_date;
   post.target_date = newDate;
 
@@ -2571,6 +2609,27 @@ const autoSave = async (post, field) => {
     post._isFinalDeliveryValid = true;
   }
 
+  if (field === 'deadline') {
+    if (post.deadline) {
+      const deadlineDateStr = String(post.deadline).trim().substring(0, 10);
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+      if (deadlineDateStr < todayStr) {
+        showToast(`عذراً، لا يمكن اختيار موعد تسليم ابتدائي في يوم مضى أو تاريخ سابق (${deadlineDateStr})!`, 'error');
+        return;
+      }
+
+      if (post.target_date) {
+        const targetDateStr = String(post.target_date).trim().substring(0, 10);
+        if (deadlineDateStr > targetDateStr) {
+          showToast(`عذراً، لا يمكن أن يكون موعد التسليم الابتدائي (${deadlineDateStr}) بعد تاريخ النشر المخطط (${targetDateStr})!`, 'error');
+          return;
+        }
+      }
+    }
+  }
+
   saving.value = true;
   try {
     const res = await api.put(`/plan-posts/${post.id}`, { [field]: post[field] });
@@ -2584,11 +2643,53 @@ const autoSave = async (post, field) => {
       post.final_delivered_at = res.data.data.final_delivered_at;
     }
     enrichPost(post);
+
+    if (res.data?.cascade_warning) {
+      showToast(res.data.cascade_warning, 'warning');
+      await fetchPosts();
+    } else if (res.data?.displaced_items && res.data.displaced_items.length > 0) {
+      showToast(`تم ترحيل ${res.data.displaced_items.length} من المهام/المنشورات تلقائياً لليوم التالي لتجاوز سعة العمل 8 ساعات 🔄`, 'info');
+      await fetchPosts();
+    } else if (res.data?.rolled_back_items && res.data.rolled_back_items.length > 0) {
+      showToast(`تم إرجاع ${res.data.rolled_back_items.length} من المهام/المنشورات لمواعيدها الأصلية بعد زوال حالة الطوارئ ↩️`, 'success');
+      await fetchPosts();
+    }
   } catch (error) {
     showToast(error.response?.data?.message || 'حدث خطأ أثناء الحفظ التلقائي!');
   } finally {
     setTimeout(() => { saving.value = false; }, 500);
   }
+};
+
+const restorePostDeadline = async (post) => {
+  if (!post) return;
+  const confirmed = await alertService.confirm({
+    title: 'استرجاع موعد التسليم الأصلي',
+    message: `هل أنت متأكد من استرجاع موعد التسليم الأصلي (${formatDeadlineDisplay(post.original_deadline)}) لهذا المنشور وإلغاء حالة الترحيل؟`,
+    confirmText: 'نعم، استرجع الموعد ↩️',
+    cancelText: 'إلغاء',
+    type: 'info'
+  });
+  if (!confirmed) return;
+  try {
+    const res = await api.post(`/plan-posts/${post.id}/restore-deadline`);
+    showToast(res.data?.message || 'تم استرجاع موعد التسليم الأصلي بنجاح ↩️', 'success');
+    if (selectedPostForView.value && selectedPostForView.value.id === post.id) {
+      selectedPostForView.value.is_displaced = false;
+      selectedPostForView.value.displaced_reason = null;
+      if (res.data?.data?.deadline) {
+        selectedPostForView.value.deadline = res.data.data.deadline;
+      }
+    }
+    await fetchPosts();
+  } catch (err) {
+    showToast(err.response?.data?.message || 'حدث خطأ أثناء استرجاع الموعد!', 'error');
+  }
+};
+
+const toggleUrgent = async (post) => {
+  post.is_urgent = !post.is_urgent;
+  await autoSave(post, 'is_urgent');
 };
 
 const approvePost = async (post, type) => {
@@ -2749,7 +2850,12 @@ const addNewRow = async () => {
     posts.value.sort((a, b) => new Date(a.target_date) - new Date(b.target_date));
     showAddRowModal.value = false;
     newRowDate.value = '';
-    showToast('تمت إضافة المنشور للجدول.');
+    if (newRowIsUrgent.value) {
+      showToast('تمت إضافة المنشور العاجل وإعادة جدولة الفائض تلقائياً للأيام التالية 🚀', 'success');
+      await fetchBoardData();
+    } else {
+      showToast('تمت إضافة المنشور للجدول.');
+    }
   } catch (error) {
     showToast('خطأ في إضافة المنشور.');
   } finally {
@@ -3726,6 +3832,23 @@ input:disabled, select:disabled, textarea:disabled, .custom-multiselect.disabled
   animation: pulse-urgent 2s infinite;
   white-space: nowrap;
 }
+.displaced-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(147, 51, 234, 0.15);
+  color: #c084fc;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  margin-top: 6px;
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  white-space: nowrap;
+}
+.displaced-dot {
+  font-size: 11px;
+}
 @keyframes pulse-urgent {
   0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
   70% { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0); }
@@ -4118,6 +4241,58 @@ input:disabled, select:disabled, textarea:disabled, .custom-multiselect.disabled
 .row-num-with-action .urgent-dot {
   font-size: 10px;
   line-height: 1;
+}
+
+.urgent-active-glow {
+  background: rgba(239, 68, 68, 0.25) !important;
+  border-radius: 4px;
+  animation: pulse-urgent 1.5s infinite;
+}
+@keyframes pulse-urgent {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+.displaced-deadline-tag {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-top: 5px;
+  padding: 4px 6px;
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px dashed rgba(59, 130, 246, 0.45);
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #3b82f6;
+  text-align: right;
+  line-height: 1.3;
+}
+
+.restore-deadline-mini-btn {
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  color: #60a5fa;
+  cursor: pointer;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.2;
+  transition: all 0.2s ease;
+}
+
+.restore-deadline-mini-btn:hover {
+  background: rgba(59, 130, 246, 0.35);
+  color: #fff;
+  transform: scale(1.1);
+}
+
+.displaced-deadline-tag .original-deadline-hint {
+  font-size: 10px;
+  font-weight: normal;
+  color: #8fa0d4;
+  margin-top: 2px;
 }
 
 .sub-th.light-blue-th {

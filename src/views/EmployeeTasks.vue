@@ -44,6 +44,37 @@
       </div>
     </div>
 
+    <!-- شريط سعة العمل اليومية للموظف (من 9 ص إلى 5 م) -->
+    <div class="daily-workload-card" v-if="dailyWorkload">
+      <div class="workload-header">
+        <div class="workload-title-box">
+          <span class="workload-icon">⚡</span>
+          <div>
+            <strong>سعة جدول العمل لليوم</strong>
+            <small>دوام رسمي 8 ساعات (9:00 ص - 5:00 م) • الجمعة إجازة رسمية</small>
+          </div>
+        </div>
+        <div class="workload-stats-box">
+          <span class="hours-badge" :class="getWorkloadBadgeClass(dailyWorkload.total_hours)">
+            {{ dailyWorkload.total_hours }} / 8 ساعات عمل
+          </span>
+          <span v-if="dailyWorkload.is_overloaded" class="overload-warning-tag">
+            ⚠️ تجاوز السعة (تمت جدولة الفائض تلقائياً)
+          </span>
+          <span v-else class="balanced-tag">
+            ✅ سعة متزنة (المتبقي: {{ dailyWorkload.remaining_hours }} س)
+          </span>
+        </div>
+      </div>
+      <div class="workload-progress-bar">
+        <div 
+          class="workload-progress-fill" 
+          :class="getWorkloadFillClass(dailyWorkload.total_hours)"
+          :style="{ width: `${Math.min(100, (dailyWorkload.total_hours / 8) * 100)}%` }"
+        ></div>
+      </div>
+    </div>
+
     <!-- شريط الفلاتر -->
     <div class="filters-bar">
       <div class="filter-group">
@@ -154,7 +185,9 @@
                     <p class="desc-text" v-if="task.publishing_platform">
                       {{ safeJoin(task.publishing_platform) }}
                     </p>
-                    <div class="smart-badges-container" v-if="task.smart_badges && task.smart_badges.length">
+                    <div class="smart-badges-container">
+                      <span v-if="task.is_urgent" class="smart-badge badge-urgent-glow" title="منشور عاجل ذو أولوية قصوى">🔥 عاجل</span>
+                      <span v-if="task.is_displaced" class="smart-badge badge-displaced-glow" :title="task.displaced_reason || 'تم الترحيل بقرار إداري لإفساح المجال لمنشور طارئ'">🔄 مُرحّل رسمياً</span>
                       <span v-for="badge in task.smart_badges" :key="badge.text" class="smart-badge" :style="{ backgroundColor: badge.color }">
                         {{ badge.text }}
                       </span>
@@ -192,9 +225,14 @@
 
               <!-- 3. الديدلاين -->
               <td>
-                <span :class="['status-badge', getDeadlineTheme(task.deadline, task.delivered_at)]">
-                  🕒 {{ formatDate(task.deadline) }}
-                </span>
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                  <span :class="['status-badge', getDeadlineTheme(task.deadline, task.delivered_at)]">
+                    🕒 {{ formatDate(task.deadline) }}
+                  </span>
+                  <small v-if="task.is_displaced && task.original_deadline" style="color: #a78bfa; font-size: 10px; font-weight: bold;" :title="task.displaced_reason || 'تم الترحيل بقرار إداري'">
+                    السابق: {{ formatDate(task.original_deadline) }}
+                  </small>
+                </div>
               </td>
 
               <!-- 4. موقف التسليم -->
@@ -374,9 +412,37 @@ const fetchPlans = async () => {
   }
 };
 
+const dailyWorkload = ref(null);
+
+const getWorkloadBadgeClass = (hours) => {
+  if (hours > 8) return 'badge-red';
+  if (hours >= 7) return 'badge-orange';
+  return 'badge-green';
+};
+
+const getWorkloadFillClass = (hours) => {
+  if (hours > 8) return 'fill-red';
+  if (hours >= 7) return 'fill-orange';
+  return 'fill-green';
+};
+
+const fetchWorkload = async () => {
+  try {
+    const params = {};
+    if (selectedUserId.value) params.user_id = selectedUserId.value;
+    const res = await api.get('/workload/daily-capacity', { params });
+    if (res.data?.success) {
+      dailyWorkload.value = res.data.data;
+    }
+  } catch (err) {
+    console.error('Error fetching workload:', err);
+  }
+};
+
 watch(selectedUserId, () => {
   currentPage.value = 1;
   fetchTasks();
+  fetchWorkload();
 });
 
 watch([
@@ -398,6 +464,7 @@ const changePage = (page) => {
 onMounted(() => {
   fetchTasks();
   fetchPlans();
+  fetchWorkload();
 });
 </script>
 
@@ -559,6 +626,113 @@ onMounted(() => {
 .summary-strip small, .summary-strip strong { display: block; }
 .summary-strip small { color: #929dc8; font-size: 12px; line-height: 1.5; }
 .summary-strip strong { margin-top: 2px; color: #eef0ff; font-size: 24px; line-height: 1.2; }
+
+/* بطاقة سعة جدول العمل اليومية */
+.daily-workload-card {
+  background: rgba(15, 23, 61, 0.7);
+  border: 1px solid rgba(137, 153, 226, 0.2);
+  border-radius: 14px;
+  padding: 16px 20px;
+  margin-bottom: 22px;
+  backdrop-filter: blur(10px);
+}
+.workload-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.workload-title-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.workload-icon {
+  font-size: 20px;
+  background: rgba(125, 232, 220, 0.15);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+.workload-title-box strong {
+  display: block;
+  font-size: 14px;
+  color: #f1f5f9;
+}
+.workload-title-box small {
+  font-size: 11px;
+  color: #94a3b8;
+}
+.workload-stats-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.hours-badge {
+  font-size: 12px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+.hours-badge.badge-green {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+.hours-badge.badge-orange {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+.hours-badge.badge-red {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.overload-warning-tag {
+  font-size: 11px;
+  color: #f87171;
+  font-weight: 700;
+}
+.balanced-tag {
+  font-size: 11px;
+  color: #7de8dc;
+  font-weight: 600;
+}
+.workload-progress-bar {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.workload-progress-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.4s ease, background-color 0.4s ease;
+}
+.fill-green {
+  background: linear-gradient(90deg, #10b981, #34d399);
+}
+.fill-orange {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+}
+.fill-red {
+  background: linear-gradient(90deg, #ef4444, #f87171);
+}
+.badge-urgent-glow {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: #ff8b9f !important;
+  border: 1px solid rgba(239, 68, 68, 0.4) !important;
+  font-weight: 800;
+}
+.badge-displaced-glow {
+  background: rgba(147, 51, 234, 0.2) !important;
+  color: #d8b4fe !important;
+  border: 1px solid rgba(168, 85, 247, 0.4) !important;
+  font-weight: 700;
+}
 
 .tasks-card {
   overflow: hidden;

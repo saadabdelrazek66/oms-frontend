@@ -110,7 +110,11 @@
                 ]"
               >
                 <div class="task-header">
-                  <span :class="['priority-badge', element.priority]">{{ getPriorityLabel(element.priority) }}</span>
+                  <div style="display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
+                    <span :class="['priority-badge', element.priority]">{{ getPriorityLabel(element.priority) }}</span>
+                    <span v-if="element.is_urgent" class="urgent-task-badge" title="مهمة طارئة ذات أولوية قصوى">🔥 عاجل</span>
+                    <span v-if="element.is_displaced" class="displaced-task-badge" :title="element.displaced_reason || 'تم الترحيل بقرار إداري'">🔄 مُرحّلة</span>
+                  </div>
                   <div class="task-actions">
                     <button v-if="canViewChat(element)" type="button" @click.stop="openChatModal(element)" class="t-btn" title="تفاصيل ومحادثة المهمة">💬</button>
                     <template v-if="isManager">
@@ -223,6 +227,20 @@
                 <div class="self-assigned-msg">
                   <span>👤</span> سيتم إسناد هذه المهمة إليك تلقائياً لتقوم بتنفيذها.
                 </div>
+              </div>
+            </div>
+
+            <!-- خيارات الطوارئ والساعات التقديرية للمدير -->
+            <div class="form-grid" v-if="isManager" style="margin-top: 10px;">
+              <div class="form-group">
+                <label>الساعات التقديرية لليوم</label>
+                <input v-model.number="taskForm.estimated_hours" type="number" step="0.5" min="0.5" max="24" placeholder="افتراضي ساعتان (2.0)" />
+              </div>
+              <div class="form-group" style="display: flex; align-items: flex-end;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #ef4444; font-weight: 700; margin-bottom: 8px;">
+                  <input type="checkbox" v-model="taskForm.is_urgent" style="width: 18px; height: 18px; accent-color: #ef4444;" />
+                  <span>🔥 مهمة طارئة (إزاحة الفائض تلقائياً)</span>
+                </label>
               </div>
             </div>
 
@@ -460,7 +478,8 @@ const deleteCommentMessage = async (commentId) => {
 };
 
 const taskForm = reactive({
-  title: '', description: '', status: 'todo', priority: 'medium', due_date: '', assigned_to: ''
+  title: '', description: '', status: 'todo', priority: 'medium', due_date: '', assigned_to: '',
+  is_urgent: false, estimated_hours: 2.0
 });
 
 const showToast = (msg, type = 'info') => { 
@@ -627,7 +646,9 @@ const openTaskModal = (task = null) => {
     isEditingTask.value = true; editTaskId.value = task.id;
     Object.assign(taskForm, {
       title: task.title, description: task.description || '', status: task.status,
-      priority: task.priority, due_date: '', assigned_to: task.assigned_to || ''
+      priority: task.priority, due_date: '', assigned_to: task.assigned_to || '',
+      is_urgent: !!task.is_urgent,
+      estimated_hours: task.estimated_hours ? Number(task.estimated_hours) : 2.0
     });
 
     if (task.due_date) {
@@ -636,7 +657,10 @@ const openTaskModal = (task = null) => {
     }
   } else {
     isEditingTask.value = false; editTaskId.value = null;
-    Object.assign(taskForm, { title: '', description: '', status: 'todo', priority: 'medium', due_date: '', assigned_to: '' });
+    Object.assign(taskForm, { 
+      title: '', description: '', status: 'todo', priority: 'medium', due_date: '', assigned_to: '',
+      is_urgent: false, estimated_hours: 2.0
+    });
   }
   showTaskModal.value = true;
 };
@@ -654,10 +678,18 @@ const saveTask = async () => {
     let res;
     if (isEditingTask.value) {
       res = await api.put(`/tasks/${editTaskId.value}`, payload);
-      showToast('تم التحديث بنجاح');
+      if (taskForm.is_urgent) {
+        showToast('تم تحديث المهمة العاجلة وإعادة جدولة الفائض تلقائياً للأيام التالية 🚀', 'success');
+      } else {
+        showToast('تم التحديث بنجاح');
+      }
     } else {
       res = await api.post(`/projects/${project.value.id}/tasks`, payload);
-      showToast('تمت إضافة المهمة للوحة');
+      if (taskForm.is_urgent) {
+        showToast('تم إنشاء المهمة العاجلة وإعادة جدولة الفائض تلقائياً للأيام التالية 🚀', 'success');
+      } else {
+        showToast('تمت إضافة المهمة للوحة');
+      }
     }
     
     if (res.data.whatsapp_link) {
@@ -883,6 +915,28 @@ onUnmounted(() => {
 .priority-badge.medium { background: rgba(201, 148, 255, 0.15); color: #c994ff; }
 .priority-badge.high { background: rgba(255, 196, 128, 0.15); color: #ffc480; }
 .priority-badge.urgent { background: rgba(255, 103, 139, 0.15); color: #ff9bad; border: 1px solid rgba(255, 103, 139, 0.3); }
+.urgent-task-badge {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(239, 68, 68, 0.2);
+  color: #ff8b9f;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 800;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+.displaced-task-badge {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(147, 51, 234, 0.2);
+  color: #d8b4fe;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  border: 1px solid rgba(168, 85, 247, 0.4);
+}
 
 .task-actions { display: flex; gap: 5px; opacity: 0; transition: 0.2s; }
 .task-card:hover .task-actions { opacity: 1; }

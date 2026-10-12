@@ -88,7 +88,7 @@
               <svg class="w-4 h-4 text-[#b28aff]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
               <span>رفع ملف بديل</span>
             </button>
-            <input type="file" ref="audioFileInput" accept="audio/*" @change="handleFileUpload" class="hidden" />
+            <input type="file" ref="audioFileInput" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.rtf,.jpg,.jpeg,.png,.webp,.gif,.svg,.bmp,.mp3,.wav,.ogg,.m4a,.webm,.mp4,.mov,.zip,.rar,.7z,.psd,.ai,.fig" @change="handleFileUpload" class="hidden" />
           </div>
         </div>
 
@@ -101,10 +101,10 @@
 
           <button @click="triggerFileInput" type="button" class="flex items-center justify-center space-x-2 space-x-reverse bg-[#141b48]/60 text-[#8390be] hover:text-[#f1f4ff] hover:bg-[#1c265c] border border-[#8999e2]/25 px-5 py-3.5 rounded-2xl font-bold transition-all duration-300">
             <svg class="w-5 h-5 text-[#b28aff]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
-            <span>اختيار ملف صوتي من الجهاز</span>
+            <span>إرفاق ملف من الجهاز</span>
           </button>
           
-          <input type="file" ref="audioFileInput" accept="audio/*" @change="handleFileUpload" class="hidden" />
+          <input type="file" ref="audioFileInput" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.rtf,.jpg,.jpeg,.png,.webp,.gif,.svg,.bmp,.mp3,.wav,.ogg,.m4a,.webm,.mp4,.mov,.zip,.rar,.7z,.psd,.ai,.fig" @change="handleFileUpload" class="hidden" />
         </div>
 
         <!-- واجهة التسجيل الجاري -->
@@ -298,6 +298,33 @@ const handleFileUpload = (event) => {
   const file = event.target.files?.[0];
   if (!file) return;
 
+  errorMessage.value = '';
+
+  // 1. التحقق من حجم الملف (الحد الأقصى 25 ميجابايت)
+  const maxBytes = 25 * 1024 * 1024;
+  if (file.size > maxBytes) {
+    errorMessage.value = `حجم الملف (${(file.size / (1024 * 1024)).toFixed(1)} ميجابايت) يتجاوز الحد الأقصى المسموح به (25 ميجابايت).`;
+    if (audioFileInput.value) audioFileInput.value.value = '';
+    return;
+  }
+
+  // 2. الحماية الصارمة من الامتدادات الخطرة والتنفيذية والحيل المزدوجة (shell.php.png)
+  const blockedExts = [
+    'php', 'php3', 'php4', 'php5', 'php7', 'php8', 'phtml', 'phar', 'phps', 'pht',
+    'exe', 'bat', 'cmd', 'sh', 'bash', 'bin', 'com', 'cpl', 'dll', 'jar', 'msi', 'scr', 'vbs',
+    'js', 'jsp', 'asp', 'aspx', 'cgi', 'pl', 'py', 'pyc', 'htaccess', 'htpasswd', 'env', 'config'
+  ];
+
+  const fileNameLower = file.name.toLowerCase();
+  const nameParts = fileNameLower.split('.');
+  const hasBlocked = nameParts.some(part => blockedExts.includes(part));
+
+  if (hasBlocked) {
+    errorMessage.value = 'نوع الملف محظور وغير آمن للرفع لأسباب أمنية.';
+    if (audioFileInput.value) audioFileInput.value.value = '';
+    return;
+  }
+
   clearRecording();
   newAudioBlob.value = file;
   audioFileName.value = file.name;
@@ -341,10 +368,16 @@ const submitUpdate = async () => {
   if (form.value.title) formData.append('title', form.value.title);
   if (form.value.description) formData.append('description', form.value.description);
   
-  // في حال قام بتسجيل أو رفع صوت جديد
+  // في حال قام بتسجيل أو رفع صوت أو ملف جديد
   if (newAudioBlob.value) {
     if (newAudioBlob.value.name) {
-      formData.append('voice_record', newAudioBlob.value, newAudioBlob.value.name);
+      const ext = newAudioBlob.value.name.split('.').pop()?.toLowerCase() || '';
+      const audioExts = ['mp3', 'wav', 'ogg', 'm4a', 'webm', 'aac', 'flac', 'wma', 'amr'];
+      if (audioExts.includes(ext) || (newAudioBlob.value.type && newAudioBlob.value.type.startsWith('audio/'))) {
+        formData.append('voice_record', newAudioBlob.value, newAudioBlob.value.name);
+      } else {
+        formData.append('attachment_file', newAudioBlob.value, newAudioBlob.value.name);
+      }
     } else {
       let ext = 'webm';
       if (newAudioBlob.value.type?.includes('mp4')) ext = 'mp4';

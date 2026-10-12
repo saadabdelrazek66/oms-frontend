@@ -364,12 +364,13 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, reactive, computed, onMounted, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import api from '../axios';
 import alertService from '../services/alertService';
 
 const router = useRouter();
+const route = useRoute();
 
 const userRole = ref(localStorage.getItem('role') || 'employee');
 const isManager = computed(() => userRole.value === 'manager');
@@ -387,7 +388,11 @@ const isEditing = ref(false);
 const editId = ref(null);
 
 const searchQuery = ref('');
-const currentFilter = ref('all');
+const currentFilter = ref(route.query.status ? String(route.query.status) : 'all');
+
+watch(() => route.query.status, (newStatus) => {
+  currentFilter.value = newStatus ? String(newStatus) : 'all';
+});
 
 const setFilter = (filter) => {
   currentFilter.value = currentFilter.value === filter && filter !== 'all' ? 'all' : filter;

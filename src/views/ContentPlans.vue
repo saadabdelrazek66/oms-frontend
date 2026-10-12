@@ -68,10 +68,11 @@
             <label>حالة الخطة</label>
             <select v-model="filters.status">
               <option value="">الكل</option>
-              <option value="pending">قيد الانتظار</option>
+              <option value="pending">معلقة / قيد الانتظار</option>
               <option value="in_progress">قيد التنفيذ</option>
-              <option value="in_review">قيد المراجعة</option>
-              <option value="completed">مكتملة</option>
+              <option value="under_review">قيد المراجعة</option>
+              <option value="reviewed">تمت المراجعة</option>
+              <option value="completed">مكتملة ومغلقة</option>
               <option value="rejected">مرفوضة</option>
             </select>
           </div>
@@ -2359,11 +2360,29 @@ const isPlanDelayed = (plan) => {
   return plan.status === 'rejected' || getDeadlineStatus(plan.created_at || plan.start_date, plan.planned_delivery_date, plan.status, currentTime.value).isOverdue;
 };
 
+const queryStatus = route.query.status ? String(route.query.status) : '';
+const initialStatus = queryStatus === 'in_review' ? 'under_review' : queryStatus;
+if (initialStatus) {
+  showAdvancedFilters.value = true;
+}
+
 const filters = reactive({
-  search: '', client_id: '', plan_type: '', status: '', employee_id: '',
+  search: '', client_id: '', plan_type: '', 
+  status: initialStatus, 
+  employee_id: '',
   start_date: '', end_date: '', delivery_from: '', delivery_to: '',
   review_from: '', review_to: '', is_overdue: false, requires_review: false,
   plan_id: route.query.plan_id ? String(route.query.plan_id) : ''
+});
+
+watch(() => route.query.status, (newStatus) => {
+  if (newStatus !== undefined) {
+    const s = newStatus === 'in_review' ? 'under_review' : String(newStatus || '');
+    filters.status = s;
+    if (s) showAdvancedFilters.value = true;
+    pagination.current_page = 1;
+    fetchPlans();
+  }
 });
 
 const pagination = reactive({ current_page: 1, last_page: 1, total: 0, per_page: 10 });
@@ -2374,7 +2393,7 @@ const hasActiveFilters = computed(() => {
 
 const resetFilters = () => {
   Object.keys(filters).forEach(key => filters[key] = (typeof filters[key] === 'boolean' ? false : ''));
-  if (route.query.plan_id) {
+  if (route.query.plan_id || route.query.status) {
     router.replace({ query: {} });
   }
   pagination.current_page = 1;

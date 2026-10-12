@@ -123,6 +123,14 @@ export function normalizeNotificationUrl(rawUrl) {
     return '/plan-contents'
   }
 
+  // 4. Matches /quick-tasks/:id (with optional query params)
+  const quickTaskMatch = trimmed.match(/^\/quick-tasks\/(\d+)\/?(?:\?(.*))?$/)
+  if (quickTaskMatch) {
+    const qTaskId = quickTaskMatch[1]
+    const queryPart = quickTaskMatch[2] ? `&${quickTaskMatch[2]}` : ''
+    return `/quick-tasks?task_id=${qTaskId}${queryPart}`
+  }
+
   return trimmed
 }
 

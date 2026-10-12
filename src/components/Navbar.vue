@@ -88,7 +88,7 @@
                       <span class="item-time">{{ formatTimeAgo(item.created_at) }}</span>
                     </div>
                     <p v-if="item.data?.body || item.data?.message" class="item-body">
-                      {{ item.data?.body || item.data?.message }}
+                      {{ formatNotificationBody(item.data?.body || item.data?.message) }}
                     </p>
                   </div>
                 </div>
@@ -164,6 +164,11 @@ const handleClickOutside = (event) => {
   if (notificationWrapperRef.value && !notificationWrapperRef.value.contains(event.target)) {
     closeDropdown()
   }
+}
+
+const formatNotificationBody = (text) => {
+  if (!text) return ''
+  return text.replace(/\s+00:00:00/g, '')
 }
 
 // متغيرات حالة المستخدم
@@ -570,6 +575,9 @@ const logout = async () => {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  direction: rtl;
+  text-align: right;
+  unicode-bidi: isolate;
 }
 
 .spinner-sm {

@@ -93,23 +93,72 @@
       </div>
 
       <!-- التوجيه الصوتي الأساسي -->
-      <div v-if="task.voice_record_url" class="section-card voice-details-card">
-        <div class="section-header">
-          <div class="section-icon purple">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-              <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-              <line x1="12" y1="19" x2="12" y2="23"></line>
-              <line x1="8" y1="23" x2="16" y2="23"></line>
-            </svg>
+      <!-- المرفقات والتوجيهات الصوتية الأساسية للمهمة -->
+      <div v-if="task.voice_record_url || task.attachment_url" class="space-y-4">
+        <!-- التوجيه الصوتي الأساسي -->
+        <div v-if="task.voice_record_url" class="section-card voice-details-card">
+          <div class="section-header">
+            <div class="section-icon purple">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
+            </div>
+            <div class="section-header-text">
+              <h4>التوجيه الصوتي الأساسي</h4>
+              <small>استمع إلى التسجيل الصوتي المرفق من صاحب المهمة</small>
+            </div>
           </div>
-          <div class="section-header-text">
-            <h4>التوجيه الصوتي الأساسي</h4>
-            <small>استمع إلى التسجيل الصوتي المرفق من صاحب المهمة</small>
+          <div class="audio-wrap mt-2">
+            <AudioVoicePlayer :src="task.voice_record_url" variant="full" theme="purple" />
           </div>
         </div>
-        <div class="audio-wrap mt-2">
-          <AudioVoicePlayer :src="task.voice_record_url" variant="full" theme="purple" />
+
+        <!-- الملف المرفق الأساسي -->
+        <div v-if="task.attachment_url" class="section-card voice-details-card">
+          <div class="section-header">
+            <div class="section-icon teal">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+              </svg>
+            </div>
+            <div class="section-header-text">
+              <h4>المرفق الأساسي للمهمة</h4>
+              <small>ملف مرفق مع تعليمات وتفاصيل التكليف</small>
+            </div>
+          </div>
+          <div class="mt-2">
+            <!-- إذا كانت صورة -->
+            <div v-if="getAttachmentCategory(task.attachment_url, task.attachment_type) === 'image'" class="mt-1">
+              <a :href="task.attachment_url" target="_blank" rel="noopener noreferrer" class="block group relative overflow-hidden rounded-xl border border-[#8999e2]/25 max-w-sm">
+                <img :src="task.attachment_url" alt="مرفق المهمة" class="max-h-56 w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs font-bold gap-1">
+                  <span>فتح الصورة بالحجم الكامل 🔍</span>
+                </div>
+              </a>
+            </div>
+            <!-- إذا كان صوت مرفوع كملف -->
+            <AudioVoicePlayer v-else-if="getAttachmentCategory(task.attachment_url, task.attachment_type) === 'audio'" :src="task.attachment_url" variant="full" theme="teal" />
+            <!-- إذا كان مستند أو ملف آخر -->
+            <div v-else class="mt-1">
+              <a :href="task.attachment_url" target="_blank" download class="generic-file-bubble-link">
+                <div class="file-bubble-icon" :class="getAttachmentCategory(task.attachment_url, task.attachment_type)">
+                  <span class="text-xs uppercase font-extrabold">{{ getFileExt(task.attachment_name || task.attachment_url) }}</span>
+                </div>
+                <div class="flex-1 min-w-0 text-right">
+                  <strong class="text-xs text-[#f1f4ff] truncate block">{{ task.attachment_name || getFileNameFromUrl(task.attachment_url) }}</strong>
+                  <small class="text-[10px] text-[#7de8dc]">{{ task.attachment_size || 'انقر للتحميل / المعاينة' }}</small>
+                </div>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" class="text-[#7de8dc]">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+              </a>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -186,6 +235,7 @@
 
               <div v-if="task.description" class="chat-bubble-content" v-html="linkifyText(task.description)"></div>
 
+              <!-- التوجيه الصوتي الأصلي للمهمة إن وجد -->
               <div v-if="task.voice_record_url" class="chat-bubble-audio-box">
                 <div class="flex items-center gap-1.5 mb-2 text-xs font-bold text-[#b28aff]">
                   <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
@@ -195,6 +245,44 @@
                   <span>التوجيه الصوتي الأصلي</span>
                 </div>
                 <AudioVoicePlayer :src="task.voice_record_url" variant="bubble" theme="purple" />
+              </div>
+
+              <!-- الملف المرفق مع المهمة إن وجد -->
+              <div v-if="task.attachment_url" class="chat-bubble-audio-box mt-2">
+                <div class="flex items-center gap-1.5 mb-2 text-xs font-bold text-[#b28aff]">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                  </svg>
+                  <span>الملف المرفق مع المهمة</span>
+                </div>
+
+                <div v-if="getAttachmentCategory(task.attachment_url, task.attachment_type) === 'image'" class="chat-attachment-img-wrap">
+                  <a :href="task.attachment_url" target="_blank" rel="noopener noreferrer" class="block group relative overflow-hidden rounded-xl border border-[#b28aff]/30">
+                    <img :src="task.attachment_url" alt="مرفق المهمة" class="max-h-48 w-full object-cover transition-transform group-hover:scale-105" />
+                    <span class="absolute bottom-1 right-1 bg-black/60 px-2 py-0.5 rounded text-[10px] text-white">معاينة الصورة 🔍</span>
+                  </a>
+                </div>
+
+                <div v-else-if="getAttachmentCategory(task.attachment_url, task.attachment_type) === 'audio'">
+                  <AudioVoicePlayer :src="task.attachment_url" variant="bubble" theme="purple" />
+                </div>
+
+                <div v-else class="chat-attachment-file-wrap">
+                  <a :href="task.attachment_url" target="_blank" download class="generic-file-bubble-link">
+                    <div class="file-bubble-icon" :class="getAttachmentCategory(task.attachment_url, task.attachment_type)">
+                      <span class="text-xs uppercase font-extrabold">{{ getFileExt(task.attachment_name || task.attachment_url) }}</span>
+                    </div>
+                    <div class="flex-1 min-w-0 text-right">
+                      <strong class="text-xs text-[#f1f4ff] truncate block">{{ task.attachment_name || getFileNameFromUrl(task.attachment_url) }}</strong>
+                      <small class="text-[10px] text-[#7de8dc]">{{ task.attachment_size || 'انقر للتحميل / المعاينة' }}</small>
+                    </div>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" class="text-[#7de8dc]">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                      <polyline points="7 10 12 15 17 10"></polyline>
+                      <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                  </a>
+                </div>
               </div>
             </div>
           </div>
@@ -233,7 +321,7 @@
               <!-- نص الملاحظة إن وجد -->
               <div v-if="log.feedback_text" class="chat-bubble-content" v-html="linkifyText(log.feedback_text)"></div>
 
-              <!-- التسجيل الصوتي إن وجد -->
+              <!-- التسجيل الصوتي المرفق مع الرد إن وجد -->
               <div v-if="log.voice_record_url" class="chat-bubble-audio-box">
                 <div 
                   class="flex items-center gap-1.5 mb-2 text-xs font-bold" 
@@ -246,6 +334,47 @@
                   <span>تسجيل صوتي مرفق</span>
                 </div>
                 <AudioVoicePlayer :src="log.voice_record_url" variant="bubble" :theme="isMyMessage(log) ? 'teal' : 'purple'" />
+              </div>
+
+              <!-- الملف المرفق مع الرد إن وجد -->
+              <div v-if="log.attachment_url" class="chat-bubble-audio-box mt-2">
+                <div 
+                  class="flex items-center gap-1.5 mb-2 text-xs font-bold" 
+                  :class="isMyMessage(log) ? 'text-[#7de8dc]' : 'text-[#b28aff]'"
+                >
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                  </svg>
+                  <span>ملف مرفق مع المتابعة</span>
+                </div>
+
+                <div v-if="getAttachmentCategory(log.attachment_url, log.attachment_type) === 'image'" class="chat-attachment-img-wrap">
+                  <a :href="log.attachment_url" target="_blank" rel="noopener noreferrer" class="block group relative overflow-hidden rounded-xl border border-white/10">
+                    <img :src="log.attachment_url" alt="مرفق المتابعة" class="max-h-48 w-full object-cover transition-transform group-hover:scale-105" />
+                    <span class="absolute bottom-1 right-1 bg-black/60 px-2 py-0.5 rounded text-[10px] text-white">معاينة الصورة 🔍</span>
+                  </a>
+                </div>
+
+                <div v-else-if="getAttachmentCategory(log.attachment_url, log.attachment_type) === 'audio'">
+                  <AudioVoicePlayer :src="log.attachment_url" variant="bubble" :theme="isMyMessage(log) ? 'teal' : 'purple'" />
+                </div>
+
+                <div v-else class="chat-attachment-file-wrap">
+                  <a :href="log.attachment_url" target="_blank" download class="generic-file-bubble-link">
+                    <div class="file-bubble-icon" :class="getAttachmentCategory(log.attachment_url, log.attachment_type)">
+                      <span class="text-xs uppercase font-extrabold">{{ getFileExt(log.attachment_name || log.attachment_url) }}</span>
+                    </div>
+                    <div class="flex-1 min-w-0 text-right">
+                      <strong class="text-xs text-[#f1f4ff] truncate block">{{ log.attachment_name || getFileNameFromUrl(log.attachment_url) }}</strong>
+                      <small class="text-[10px]" :class="isMyMessage(log) ? 'text-[#7de8dc]' : 'text-[#b28aff]'">{{ log.attachment_size || 'انقر للتحميل / المعاينة' }}</small>
+                    </div>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" class="text-current">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                      <polyline points="7 10 12 15 17 10"></polyline>
+                      <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                  </a>
+                </div>
               </div>
             </div>
           </div>
@@ -317,11 +446,13 @@
               ></textarea>
             </div>
 
-            <!-- مشغل وتسجيل الصوت بتقنية Web Audio API -->
-            <div class="recording-dock">
-              <!-- أزرار البدء والرفع -->
-              <div v-if="!isRecording && !feedbackAudioUrl" class="flex items-center gap-2 flex-wrap">
+            <!-- مشغل وتسجيل الصوت والمرفقات -->
+            <div class="recording-dock space-y-2.5">
+              <!-- أزرار الإجراءات (تسجيل بالمايك + إرفاق ملف) -->
+              <div class="flex items-center gap-2 flex-wrap">
+                <!-- زر بدء التسجيل بالمايك (يظهر إذا لم يكن هناك تسجيل حالياً) -->
                 <button
+                  v-if="!isRecording && !feedbackAudioUrl"
                   type="button"
                   @click="startRecording"
                   class="btn-composer-mic"
@@ -333,30 +464,31 @@
                   <span>تسجيل صوتي بالمايك</span>
                 </button>
 
+                <!-- زر إرفاق ملف (يظهر إذا لم يتم إرفاق ملف بعد) -->
                 <button
+                  v-if="!attachedFile"
                   type="button"
                   @click="triggerFeedbackFileInput"
                   class="btn-composer-upload"
-                  title="رفع ملف صوتي من الجهاز"
+                  title="إرفاق ملف (مستند، صورة، ملف مضغوط، صوت، فيديو... حتى 25 ميجابايت)"
                 >
                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                    <polyline points="17 8 12 3 7 8"></polyline>
-                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
                   </svg>
-                  <span>أو رفع ملف صوت</span>
+                  <span>إرفاق ملف من الجهاز</span>
                 </button>
+
                 <input
                   type="file"
                   ref="feedbackFileInput"
-                  accept="audio/*"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.rtf,.jpg,.jpeg,.png,.webp,.gif,.svg,.bmp,.mp3,.wav,.ogg,.m4a,.webm,.mp4,.mov,.zip,.rar,.7z,.psd,.ai,.fig"
                   @change="handleFeedbackFileUpload"
                   class="hidden"
                 />
               </div>
 
               <!-- شريط التسجيل النشط مع مؤشر الصوت الحقيقي وتحذير المايك الصامت -->
-              <div v-else-if="isRecording" class="recording-live-bar">
+              <div v-if="isRecording" class="recording-live-bar">
                 <div class="flex items-center gap-2.5">
                   <span class="recording-ping-dot"></span>
                   <span class="text-xs font-bold text-[#ff6b7b]">جاري التسجيل...</span>
@@ -380,15 +512,51 @@
                 </button>
               </div>
 
-              <!-- معاينة الصوت المسجل قبل الإرسال -->
-              <div v-else-if="feedbackAudioUrl" class="recording-preview-card">
-                <div class="flex items-center justify-between text-xs text-[#7de8dc] font-bold mb-1">
-                  <span>{{ feedbackFileName ? `ملف: ${feedbackFileName}` : 'تم حفظ التسجيل بنجاح ✓' }}</span>
-                  <button type="button" @click="clearRecording" class="text-[#ff6b7b] hover:underline font-bold text-xs cursor-pointer">
-                    حذف وإعادة التسجيل
+              <!-- بطاقة معاينة الصوت المسجل -->
+              <div v-if="feedbackAudioUrl && !isRecording" class="recording-preview-card">
+                <div class="flex items-center justify-between text-xs text-[#7de8dc] font-bold mb-1.5">
+                  <div class="flex items-center gap-1.5">
+                    <span class="file-preview-pill">تسجيل صوتي</span>
+                    <span>تسجيل صوتي جاهز ✓</span>
+                  </div>
+                  <button type="button" @click="clearVoiceRecording" class="text-[#ff6b7b] hover:underline font-bold text-xs cursor-pointer shrink-0">
+                    حذف التسجيل
                   </button>
                 </div>
                 <AudioVoicePlayer :src="feedbackAudioUrl" variant="bubble" theme="teal" />
+              </div>
+
+              <!-- بطاقة معاينة الملف المرفق -->
+              <div v-if="attachedFile" class="recording-preview-card">
+                <div class="flex items-center justify-between text-xs text-[#7de8dc] font-bold mb-1.5">
+                  <div class="flex items-center gap-1.5 truncate">
+                    <span class="file-preview-pill">{{ getFileBadgeLabel(attachedFileType) }}</span>
+                    <span class="truncate max-w-[220px]">{{ attachedFileName }}</span>
+                    <span class="text-[10px] text-[#8390be]">({{ attachedFileSize }})</span>
+                  </div>
+                  <button type="button" @click="clearAttachedFile" class="text-[#ff6b7b] hover:underline font-bold text-xs cursor-pointer shrink-0">
+                    حذف الملف
+                  </button>
+                </div>
+
+                <!-- إذا كانت صورة -->
+                <div v-if="attachedFileType === 'image' && attachedFilePreviewUrl" class="file-preview-img-box">
+                  <img :src="attachedFilePreviewUrl" alt="معاينة الملف" class="max-h-32 rounded-lg border border-[#7de8dc]/30 object-contain mx-auto" />
+                </div>
+                <!-- إذا كان صوت -->
+                <AudioVoicePlayer v-else-if="attachedFileType === 'audio' && attachedFilePreviewUrl" :src="attachedFilePreviewUrl" variant="bubble" theme="teal" />
+                <!-- إذا كان ملف آخر -->
+                <div v-else class="file-preview-generic-box">
+                  <div class="flex items-center gap-2.5 p-2 bg-[#0a102f]/80 rounded-lg border border-[#8999e2]/20">
+                    <div class="file-type-icon-box" :class="attachedFileType">
+                      <span class="text-xs uppercase font-extrabold">{{ getFileExt(attachedFileName) }}</span>
+                    </div>
+                    <div class="flex-1 min-w-0 text-right">
+                      <strong class="text-xs text-[#f1f4ff] truncate block">{{ attachedFileName }}</strong>
+                      <small class="text-[10px] text-[#8390be]">{{ attachedFileSize }} • جاهز للتسليم</small>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -447,11 +615,13 @@
               ></textarea>
             </div>
 
-            <!-- تسجيل الصوت بتقنية Web Audio API للمدير -->
-            <div class="recording-dock">
+            <!-- تسجيل الصوت بتقنية Web Audio API والمرفقات للمدير -->
+            <div class="recording-dock space-y-2.5">
               <!-- أزرار البدء والرفع -->
-              <div v-if="!isRecording && !feedbackAudioUrl" class="flex items-center gap-2 flex-wrap">
+              <div class="flex items-center gap-2 flex-wrap">
+                <!-- زر تسجيل توجيه صوتي بالمايك -->
                 <button
+                  v-if="!isRecording && !feedbackAudioUrl"
                   type="button"
                   @click="startRecording"
                   class="btn-composer-mic"
@@ -463,30 +633,31 @@
                   <span>تسجيل توجيه صوتي بالمايك</span>
                 </button>
 
+                <!-- زر إرفاق ملف -->
                 <button
+                  v-if="!attachedFile"
                   type="button"
                   @click="triggerFeedbackFileInput"
                   class="btn-composer-upload"
-                  title="رفع ملف صوتي من الجهاز"
+                  title="إرفاق ملف (مستند، صورة، ملف مضغوط، صوت، فيديو... حتى 25 ميجابايت)"
                 >
                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                    <polyline points="17 8 12 3 7 8"></polyline>
-                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
                   </svg>
-                  <span>أو رفع ملف صوت</span>
+                  <span>إرفاق ملف من الجهاز</span>
                 </button>
+
                 <input
                   type="file"
                   ref="feedbackFileInput"
-                  accept="audio/*"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.rtf,.jpg,.jpeg,.png,.webp,.gif,.svg,.bmp,.mp3,.wav,.ogg,.m4a,.webm,.mp4,.mov,.zip,.rar,.7z,.psd,.ai,.fig"
                   @change="handleFeedbackFileUpload"
                   class="hidden"
                 />
               </div>
 
               <!-- شريط التسجيل النشط -->
-              <div v-else-if="isRecording" class="recording-live-bar">
+              <div v-if="isRecording" class="recording-live-bar">
                 <div class="flex items-center gap-2.5">
                   <span class="recording-ping-dot"></span>
                   <span class="text-xs font-bold text-[#ff6b7b]">جاري التسجيل...</span>
@@ -508,15 +679,48 @@
                 </button>
               </div>
 
-              <!-- معاينة الصوت المسجل للمدير -->
-              <div v-else-if="feedbackAudioUrl" class="recording-preview-card">
-                <div class="flex items-center justify-between text-xs text-[#7de8dc] font-bold mb-1">
-                  <span>{{ feedbackFileName ? `ملف: ${feedbackFileName}` : 'تم حفظ التسجيل بنجاح ✓' }}</span>
-                  <button type="button" @click="clearRecording" class="text-[#ff6b7b] hover:underline font-bold text-xs cursor-pointer">
-                    حذف وإعادة التسجيل
+              <!-- بطاقة معاينة الصوت المسجل للمدير -->
+              <div v-if="feedbackAudioUrl && !isRecording" class="recording-preview-card">
+                <div class="flex items-center justify-between text-xs text-[#7de8dc] font-bold mb-1.5">
+                  <div class="flex items-center gap-1.5">
+                    <span class="file-preview-pill">توجيه صوتي</span>
+                    <span>تسجيل صوتي جاهز ✓</span>
+                  </div>
+                  <button type="button" @click="clearVoiceRecording" class="text-[#ff6b7b] hover:underline font-bold text-xs cursor-pointer shrink-0">
+                    حذف التسجيل
                   </button>
                 </div>
                 <AudioVoicePlayer :src="feedbackAudioUrl" variant="bubble" theme="teal" />
+              </div>
+
+              <!-- بطاقة معاينة الملف المرفق للمدير -->
+              <div v-if="attachedFile" class="recording-preview-card">
+                <div class="flex items-center justify-between text-xs text-[#7de8dc] font-bold mb-1.5">
+                  <div class="flex items-center gap-1.5 truncate">
+                    <span class="file-preview-pill">{{ getFileBadgeLabel(attachedFileType) }}</span>
+                    <span class="truncate max-w-[220px]">{{ attachedFileName }}</span>
+                    <span class="text-[10px] text-[#8390be]">({{ attachedFileSize }})</span>
+                  </div>
+                  <button type="button" @click="clearAttachedFile" class="text-[#ff6b7b] hover:underline font-bold text-xs cursor-pointer shrink-0">
+                    حذف الملف
+                  </button>
+                </div>
+
+                <div v-if="attachedFileType === 'image' && attachedFilePreviewUrl" class="file-preview-img-box">
+                  <img :src="attachedFilePreviewUrl" alt="معاينة الملف" class="max-h-32 rounded-lg border border-[#7de8dc]/30 object-contain mx-auto" />
+                </div>
+                <AudioVoicePlayer v-else-if="attachedFileType === 'audio' && attachedFilePreviewUrl" :src="attachedFilePreviewUrl" variant="bubble" theme="teal" />
+                <div v-else class="file-preview-generic-box">
+                  <div class="flex items-center gap-2.5 p-2 bg-[#0a102f]/80 rounded-lg border border-[#8999e2]/20">
+                    <div class="file-type-icon-box" :class="attachedFileType">
+                      <span class="text-xs uppercase font-extrabold">{{ getFileExt(attachedFileName) }}</span>
+                    </div>
+                    <div class="flex-1 min-w-0 text-right">
+                      <strong class="text-xs text-[#f1f4ff] truncate block">{{ attachedFileName }}</strong>
+                      <small class="text-[10px] text-[#8390be]">{{ attachedFileSize }} • جاهز للإرسال</small>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -812,15 +1016,31 @@ const linkifyText = (text) => {
   });
 };
 
-// --- تسجيل الصوت بالمايك (Web Audio API + Silent Mic Detection) ---
+// --- تسجيل الصوت بالمايك وإرفاق الملفات ---
 const isRecording = ref(false);
 const audioBlob = ref(null);
 const feedbackAudioUrl = ref(null);
-const feedbackFileName = ref('');
 const recordingDuration = ref(0);
-const feedbackFileInput = ref(null);
 const audioLevel = ref(0);
 const isSilentMic = ref(false);
+
+// الملفات المرفقة المستقلة (يمكن رفع ملف مع التسجيل الصوتي معاً)
+const attachedFile = ref(null);
+const attachedFileName = ref('');
+const attachedFileType = ref('');
+const attachedFileSize = ref('');
+const attachedFilePreviewUrl = ref(null);
+const feedbackFileInput = ref(null);
+
+const getAudioExtension = (mimeType) => {
+  if (!mimeType) return 'webm';
+  if (mimeType.includes('webm')) return 'webm';
+  if (mimeType.includes('ogg')) return 'ogg';
+  if (mimeType.includes('mp4') || mimeType.includes('m4a') || mimeType.includes('aac')) return 'mp4';
+  if (mimeType.includes('wav')) return 'wav';
+  if (mimeType.includes('mp3') || mimeType.includes('mpeg')) return 'mp3';
+  return 'webm';
+};
 
 let mediaRecorder = null;
 let audioChunks = [];
@@ -841,7 +1061,7 @@ const formattedDuration = computed(() => {
 const startRecording = async () => {
   try {
     submitError.value = '';
-    clearRecording();
+    clearVoiceRecording();
     recordingDuration.value = 0;
     audioChunks = [];
     audioLevel.value = 0;
@@ -924,7 +1144,6 @@ const startRecording = async () => {
       const blob = new Blob(audioChunks, { type: mimeType });
       audioBlob.value = blob;
       feedbackAudioUrl.value = URL.createObjectURL(blob);
-      feedbackFileName.value = '';
       isRecording.value = false;
     };
 
@@ -986,14 +1205,13 @@ const stopRecordingCleanup = () => {
   isRecording.value = false;
 };
 
-const clearRecording = () => {
+const clearVoiceRecording = () => {
   stopRecordingCleanup();
   if (mediaRecorder && mediaRecorder.state !== 'inactive') {
     try { mediaRecorder.stop(); } catch (e) {}
   }
   mediaRecorder = null;
   audioBlob.value = null;
-  feedbackFileName.value = '';
   if (feedbackAudioUrl.value) {
     URL.revokeObjectURL(feedbackAudioUrl.value);
     feedbackAudioUrl.value = null;
@@ -1001,9 +1219,25 @@ const clearRecording = () => {
   audioChunks = [];
   recordingDuration.value = 0;
   isSilentMic.value = false;
+};
+
+const clearAttachedFile = () => {
+  attachedFile.value = null;
+  attachedFileName.value = '';
+  attachedFileType.value = '';
+  attachedFileSize.value = '';
+  if (attachedFilePreviewUrl.value) {
+    URL.revokeObjectURL(attachedFilePreviewUrl.value);
+    attachedFilePreviewUrl.value = null;
+  }
   if (feedbackFileInput.value) {
     feedbackFileInput.value.value = '';
   }
+};
+
+const clearRecording = () => {
+  clearVoiceRecording();
+  clearAttachedFile();
 };
 
 const triggerFeedbackFileInput = () => {
@@ -1012,23 +1246,123 @@ const triggerFeedbackFileInput = () => {
   }
 };
 
+// فحص أمني وتصنيف للملفات المرفوعة من العميل
 const handleFeedbackFileUpload = (event) => {
   const file = event.target.files?.[0];
   if (!file) return;
 
-  clearRecording();
-  audioBlob.value = file;
-  feedbackFileName.value = file.name;
-  feedbackAudioUrl.value = URL.createObjectURL(file);
+  submitError.value = '';
+
+  // 1. التحقق من حجم الملف (الحد الأقصى 25 ميجابايت)
+  const maxBytes = 25 * 1024 * 1024;
+  if (file.size > maxBytes) {
+    submitError.value = `حجم الملف (${(file.size / (1024 * 1024)).toFixed(1)} ميجابايت) يتجاوز الحد الأقصى المسموح به (25 ميجابايت).`;
+    if (feedbackFileInput.value) feedbackFileInput.value.value = '';
+    return;
+  }
+
+  // 2. الحماية الصارمة من الامتدادات الخطرة والتنفيذية والحيل المزدوجة (shell.php.png)
+  const blockedExts = [
+    'php', 'php3', 'php4', 'php5', 'php7', 'php8', 'phtml', 'phar', 'phps', 'pht',
+    'exe', 'bat', 'cmd', 'sh', 'bash', 'bin', 'com', 'cpl', 'dll', 'jar', 'msi', 'scr', 'vbs',
+    'js', 'jsp', 'asp', 'aspx', 'cgi', 'pl', 'py', 'pyc', 'htaccess', 'htpasswd', 'env', 'config'
+  ];
+
+  const fileNameLower = file.name.toLowerCase();
+  const nameParts = fileNameLower.split('.');
+  const hasBlocked = nameParts.some(part => blockedExts.includes(part));
+
+  if (hasBlocked) {
+    submitError.value = 'نوع الملف محظور وغير آمن للرفع لأسباب أمنية.';
+    if (feedbackFileInput.value) feedbackFileInput.value.value = '';
+    return;
+  }
+
+  clearAttachedFile();
+  attachedFile.value = file;
+  attachedFileName.value = file.name;
+  attachedFileType.value = getFileCategory(file.name, file.type);
+  attachedFileSize.value = formatFileSize(file.size);
+  if (file.type && (file.type.startsWith('image/') || file.type.startsWith('audio/'))) {
+    attachedFilePreviewUrl.value = URL.createObjectURL(file);
+  }
 };
 
-const getAudioExtension = (mimeType) => {
-  if (!mimeType) return 'webm';
-  if (mimeType.includes('mp4')) return 'mp4';
-  if (mimeType.includes('ogg')) return 'ogg';
-  if (mimeType.includes('mpeg') || mimeType.includes('mp3')) return 'mp3';
-  if (mimeType.includes('wav')) return 'wav';
-  return 'webm';
+// دوال مساعدة لتصنيف وتنسيق وعرض الملفات المرفقة
+const getFileCategory = (filename, mimeType = '') => {
+  if (mimeType && mimeType.startsWith('audio/')) return 'audio';
+  if (mimeType && mimeType.startsWith('image/')) return 'image';
+  if (mimeType && mimeType.startsWith('video/')) return 'video';
+
+  if (!filename) return 'file';
+  const ext = filename.split('.').pop().toLowerCase();
+  
+  const audio = ['mp3', 'wav', 'ogg', 'm4a', 'webm', 'aac', 'flac', 'wma', 'amr'];
+  const image = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg', 'bmp', 'ico'];
+  const video = ['mp4', 'mov', 'avi', 'mkv', 'wmv'];
+  const pdf = ['pdf'];
+  const doc = ['doc', 'docx', 'txt', 'rtf'];
+  const sheet = ['xls', 'xlsx', 'csv'];
+  const pres = ['ppt', 'pptx'];
+  const archive = ['zip', 'rar', '7z', 'tar', 'gz'];
+
+  if (audio.includes(ext)) return 'audio';
+  if (image.includes(ext)) return 'image';
+  if (video.includes(ext)) return 'video';
+  if (pdf.includes(ext)) return 'pdf';
+  if (doc.includes(ext)) return 'document';
+  if (sheet.includes(ext)) return 'spreadsheet';
+  if (pres.includes(ext)) return 'presentation';
+  if (archive.includes(ext)) return 'archive';
+
+  return 'file';
+};
+
+const getAttachmentCategory = (url, type) => {
+  if (type && type !== 'none') return type;
+  if (!url) return 'file';
+  return getFileCategory(url);
+};
+
+const getFileExt = (filename) => {
+  if (!filename) return 'ملف';
+  const parts = filename.split('?')[0].split('.');
+  if (parts.length > 1) {
+    return parts.pop().toLowerCase();
+  }
+  return 'ملف';
+};
+
+const getFileNameFromUrl = (url) => {
+  if (!url) return 'ملف مرفق';
+  const clean = url.split('?')[0];
+  const parts = clean.split('/');
+  return parts.pop() || 'ملف مرفق';
+};
+
+const formatFileSize = (bytes) => {
+  if (!bytes) return '';
+  if (bytes >= 1048576) {
+    return (bytes / 1048576).toFixed(1) + ' MB';
+  }
+  if (bytes >= 1024) {
+    return (bytes / 1024).toFixed(0) + ' KB';
+  }
+  return bytes + ' B';
+};
+
+const getFileBadgeLabel = (type) => {
+  switch (type) {
+    case 'audio': return 'ملف صوتي';
+    case 'image': return 'صورة';
+    case 'video': return 'فيديو';
+    case 'pdf': return 'مستند PDF';
+    case 'document': return 'مستند Word';
+    case 'spreadsheet': return 'جدول بيانات';
+    case 'presentation': return 'عرض تقديمي';
+    case 'archive': return 'ملف مضغوط';
+    default: return 'ملف مرفق';
+  }
 };
 
 // --- إجراءات التسليم والمراجعة ---
@@ -1051,6 +1385,7 @@ const submitTaskAction = async () => {
     if (messageText.value?.trim()) {
       formData.append('feedback_text', messageText.value.trim());
     }
+    // التسجيل الصوتي
     if (audioBlob.value) {
       if (audioBlob.value.name) {
         formData.append('voice_record', audioBlob.value, audioBlob.value.name);
@@ -1058,6 +1393,10 @@ const submitTaskAction = async () => {
         const ext = getAudioExtension(audioBlob.value.type);
         formData.append('voice_record', audioBlob.value, `submission_voice.${ext}`);
       }
+    }
+    // الملف المرفق
+    if (attachedFile.value) {
+      formData.append('attachment_file', attachedFile.value, attachedFile.value.name);
     }
 
     const res = await api.post(`/quick-tasks/${props.task.id}/submit`, formData);
@@ -1088,9 +1427,9 @@ const submitTaskAction = async () => {
 const reviewTaskAction = async (decisionStatus) => {
   if (isSubmitting.value) return;
 
-  // إذا كان القرار رفض للتعديل، يجب كتابة أسباب الرفض أو تسجيل توجيه صوتي
-  if (decisionStatus === 'rejected' && !messageText.value?.trim() && !audioBlob.value) {
-    submitError.value = 'يرجى كتابة أسباب طلب التعديل وملاحظاتك للموظف أو تسجيل توجيه صوتي.';
+  // إذا كان القرار رفض للتعديل، يجب كتابة أسباب الرفض أو تسجيل توجيه صوتي أو إرفاق ملف
+  if (decisionStatus === 'rejected' && !messageText.value?.trim() && !audioBlob.value && !attachedFile.value) {
+    submitError.value = 'يرجى كتابة أسباب طلب التعديل وملاحظاتك للموظف أو تسجيل توجيه صوتي أو إرفاق ملف.';
     return;
   }
 
@@ -1104,6 +1443,7 @@ const reviewTaskAction = async (decisionStatus) => {
     if (messageText.value?.trim()) {
       formData.append('feedback_text', messageText.value.trim());
     }
+    // التسجيل الصوتي
     if (audioBlob.value) {
       if (audioBlob.value.name) {
         formData.append('voice_record', audioBlob.value, audioBlob.value.name);
@@ -1111,6 +1451,10 @@ const reviewTaskAction = async (decisionStatus) => {
         const ext = getAudioExtension(audioBlob.value.type);
         formData.append('voice_record', audioBlob.value, `review_voice.${ext}`);
       }
+    }
+    // الملف المرفق
+    if (attachedFile.value) {
+      formData.append('attachment_file', attachedFile.value, attachedFile.value.name);
     }
 
     const res = await api.post(`/quick-tasks/${props.task.id}/review`, formData);
@@ -2118,5 +2462,121 @@ const formatLogTime = (log) => {
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(125, 232, 220, 0.4);
+}
+
+/* بطاقات وتنسيقات المرفقات العامة */
+.file-preview-pill {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(125, 232, 220, 0.18);
+  color: #7de8dc;
+  border: 1px solid rgba(125, 232, 220, 0.35);
+}
+
+.file-preview-img-box {
+  padding: 6px;
+  background: rgba(10, 16, 47, 0.6);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.file-preview-generic-box {
+  margin-top: 2px;
+}
+
+.file-type-icon-box {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: rgba(137, 153, 226, 0.15);
+  color: #7de8dc;
+  border: 1px solid rgba(137, 153, 226, 0.25);
+}
+
+.file-type-icon-box.pdf {
+  background: rgba(255, 71, 87, 0.15);
+  color: #ff6b7b;
+  border-color: rgba(255, 71, 87, 0.3);
+}
+
+.file-type-icon-box.image {
+  background: rgba(125, 232, 220, 0.15);
+  color: #7de8dc;
+  border-color: rgba(125, 232, 220, 0.3);
+}
+
+.file-type-icon-box.spreadsheet {
+  background: rgba(46, 213, 115, 0.15);
+  color: #2ed573;
+  border-color: rgba(46, 213, 115, 0.3);
+}
+
+.file-type-icon-box.archive {
+  background: rgba(255, 193, 7, 0.15);
+  color: #ffc107;
+  border-color: rgba(255, 193, 7, 0.3);
+}
+
+.generic-file-bubble-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(10, 16, 47, 0.7);
+  border: 1px solid rgba(137, 153, 226, 0.2);
+  border-radius: 12px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.generic-file-bubble-link:hover {
+  background: rgba(20, 27, 72, 0.9);
+  border-color: rgba(125, 232, 220, 0.4);
+  transform: translateY(-1px);
+}
+
+.file-bubble-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: rgba(125, 232, 220, 0.12);
+  color: #7de8dc;
+  border: 1px solid rgba(125, 232, 220, 0.25);
+}
+
+.file-bubble-icon.pdf {
+  background: rgba(255, 71, 87, 0.12);
+  color: #ff6b7b;
+  border-color: rgba(255, 71, 87, 0.25);
+}
+
+.file-bubble-icon.spreadsheet {
+  background: rgba(46, 213, 115, 0.12);
+  color: #2ed573;
+  border-color: rgba(46, 213, 115, 0.25);
+}
+
+.file-bubble-icon.archive {
+  background: rgba(255, 193, 7, 0.12);
+  color: #ffc107;
+  border-color: rgba(255, 193, 7, 0.25);
+}
+
+.chat-attachment-img-wrap {
+  margin-top: 4px;
+}
+
+.chat-attachment-file-wrap {
+  margin-top: 4px;
 }
 </style>

@@ -125,6 +125,46 @@ import GlobalAlertsProvider from './components/GlobalAlertsProvider.vue';
 }
 
 /* ==========================================================================
+   Mobile Optimization (max-width: 768px):
+   Sticky ONLY First Column (#) on Mobile to Prevent Obscuring Content
+   ========================================================================== */
+@media (max-width: 768px) {
+  /* في وضع الموبايل: إلغاء تثبيت العمود الثاني تماماً لتجنب حجب باقي أعمدة وبيانات الجدول */
+  .table-responsive table th:nth-child(2),
+  .table-responsive table td:nth-child(2),
+  .table-responsive table thead th:nth-child(2) {
+    position: static !important;
+    right: auto !important;
+    z-index: auto !important;
+    box-shadow: none !important;
+    border-left: none !important;
+  }
+
+  /* العمود الأول فقط يبقى مثبتاً مع خط ظل وفاصل بصري ناعم أثناء التمرير */
+  .table-responsive table th:first-child,
+  .table-responsive table td:first-child {
+    border-left: 1px solid rgba(138, 152, 222, 0.22) !important;
+    box-shadow: -4px 0 10px rgba(0, 0, 0, 0.35) !important;
+  }
+
+  /* جداول Spreadsheet Board: إلغاء تثبيت العمود الثاني في الموبايل */
+  .spreadsheet-container thead tr:nth-child(2) th:first-child,
+  .spreadsheet-container tbody td:nth-child(2) {
+    position: static !important;
+    right: auto !important;
+    z-index: auto !important;
+    box-shadow: none !important;
+    border-left: none !important;
+  }
+
+  .spreadsheet-container .row-num-header,
+  .spreadsheet-container tbody td:first-child {
+    border-left: 1px solid #cbd5e1 !important;
+    box-shadow: -3px 0 6px rgba(0, 0, 0, 0.15) !important;
+  }
+}
+
+/* ==========================================================================
    Global Responsive & UX Enhancements
    ========================================================================== */
 

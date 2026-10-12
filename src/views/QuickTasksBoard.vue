@@ -100,34 +100,55 @@
           <TransitionGroup 
             name="task-list" 
             tag="div" 
-            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-5 sm:gap-6"
           >
             <div 
               v-for="task in filteredTasks" 
               :key="task.id" 
-              class="bg-gradient-to-b from-[#131b4b]/95 via-[#0e143b]/95 to-[#080d29]/95 backdrop-blur-xl rounded-[1.85rem] p-5 sm:p-6 border border-[#8999e2]/18 shadow-[0_12px_36px_rgba(0,0,0,0.45)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.65),0_0_30px_rgba(125,232,220,0.15)] hover:border-[#7de8dc]/45 transition-all duration-300 flex flex-col group relative overflow-hidden hover:-translate-y-1.5 cursor-pointer"
+              class="executive-task-card group relative flex flex-col justify-between rounded-[1.75rem] p-5 sm:p-5.5 bg-gradient-to-b from-[#141d4f]/85 via-[#0e153f]/90 to-[#080d2a]/95 backdrop-blur-2xl border border-[#8999e2]/18 hover:border-[#7de8dc]/55 shadow-[0_12px_36px_rgba(0,0,0,0.45)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.65),0_0_35px_rgba(125,232,220,0.18)] transition-all duration-300 overflow-hidden hover:-translate-y-1.5 cursor-pointer select-none"
               @click="openTaskDetails(task)"
             >
-              <!-- شريط علوي وتوهج محيطي -->
-              <div class="absolute top-0 left-0 right-0 h-1 transition-all duration-300 opacity-75 group-hover:opacity-100" :class="getStatusColor(task.status).border"></div>
-              <div class="absolute -top-12 -right-12 w-28 h-28 rounded-full blur-2xl opacity-10 group-hover:opacity-25 transition-opacity pointer-events-none bg-[#7de8dc]"></div>
+              <!-- هالة التوهج المحيطي التفاعلية -->
+              <div 
+                class="absolute -top-14 -right-14 w-36 h-36 rounded-full blur-3xl opacity-20 group-hover:opacity-40 transition-opacity duration-500 pointer-events-none" 
+                :class="getStatusColor(task.status).glowBg || 'bg-[#7de8dc]'"
+              ></div>
 
-              <!-- رأس الكارت: الحالة + أزرار التعديل والحذف + المنفذ -->
-              <div class="flex justify-between items-center mb-4 mt-0.5">
-                <!-- شارة الحالة -->
-                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black border transition-all shadow-sm backdrop-blur-md" :class="getStatusColor(task.status).badge">
-                  <span class="w-2 h-2 rounded-full shadow-[0_0_8px_currentColor] animate-pulse" :class="getStatusColor(task.status).dot"></span>
-                  {{ getStatusColor(task.status).text }}
-                </span>
-                
-                <!-- أزرار الإجراءات السريعة والموظف المنفذ -->
-                <div class="flex items-center gap-2">
-                  <!-- أزرار التعديل والحذف للكارت للمدير -->
-                  <div v-if="canModifyTask(task)" class="flex items-center gap-1 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity" @click.stop>
+              <!-- شريط نيون علوي فاخر يتبع حالة المهمة -->
+              <div 
+                class="absolute top-0 inset-x-0 h-[3px] transition-all duration-300 opacity-90 group-hover:opacity-100" 
+                :class="getStatusColor(task.status).border"
+              ></div>
+
+              <!-- 1. شريط الرأس: الحالة ورقم المهمة + أدوات الإدارة + العداد التنازلي -->
+              <div class="relative flex items-center justify-between gap-2 mb-3.5 z-10">
+                <!-- شارة الحالة ورقم المهمة -->
+                <div class="flex items-center gap-2 min-w-0">
+                  <span 
+                    class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black border transition-all shadow-sm backdrop-blur-md shrink-0" 
+                    :class="getStatusColor(task.status).badge"
+                  >
+                    <span class="w-2 h-2 rounded-full shadow-[0_0_8px_currentColor] animate-pulse" :class="getStatusColor(task.status).dot"></span>
+                    {{ getStatusColor(task.status).text }}
+                  </span>
+
+                  <span class="text-[11px] font-mono font-bold text-[#6a7aa8] group-hover:text-[#91a3db] transition-colors">
+                    #{{ task.id }}
+                  </span>
+                </div>
+
+                <!-- أدوات المدير والعداد التنازلي -->
+                <div class="flex items-center gap-2 shrink-0">
+                  <!-- أزرار الإجراءات السريعة للمدير (تظهر بسلاسة عند التمرير) -->
+                  <div 
+                    v-if="canModifyTask(task)" 
+                    class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200" 
+                    @click.stop
+                  >
                     <button 
                       type="button" 
                       @click.stop="openEditModal(task)" 
-                      class="w-7 h-7 rounded-xl bg-[#141c4d]/90 hover:bg-[#7de8dc]/20 text-[#8390be] hover:text-[#7de8dc] border border-[#8999e2]/25 flex items-center justify-center transition-all cursor-pointer"
+                      class="w-7 h-7 rounded-xl bg-[#18235a]/90 hover:bg-[#7de8dc]/20 text-[#8ea0dc] hover:text-[#7de8dc] border border-[#8999e2]/25 flex items-center justify-center transition-all cursor-pointer shadow-sm hover:scale-105"
                       title="تعديل المهمة"
                     >
                       <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
@@ -135,48 +156,99 @@
                     <button 
                       type="button" 
                       @click.stop="confirmDeleteTask(task)" 
-                      class="w-7 h-7 rounded-xl bg-[#141c4d]/90 hover:bg-[#ff4757]/20 text-[#8390be] hover:text-[#ff4757] border border-[#8999e2]/25 flex items-center justify-center transition-all cursor-pointer"
+                      class="w-7 h-7 rounded-xl bg-[#18235a]/90 hover:bg-[#ff4757]/20 text-[#8ea0dc] hover:text-[#ff4757] border border-[#8999e2]/25 flex items-center justify-center transition-all cursor-pointer shadow-sm hover:scale-105"
                       title="حذف المهمة"
                     >
                       <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                     </button>
                   </div>
 
-                  <!-- الموظف المنفذ -->
-                  <div class="flex items-center gap-1.5" :title="`المُكلَّف: ${task.assignee_name || 'غير محدد'}`">
-                    <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#1b265d] to-[#0c143d] border border-[#8999e2]/30 flex items-center justify-center text-xs font-black text-[#7de8dc] shadow-md group-hover:border-[#7de8dc]/50 group-hover:scale-105 transition-all duration-300">
-                      {{ getInitials(task.assignee_name) }}
-                    </div>
+                  <!-- شارة الوقت والعداد التنازلي الفاخرة -->
+                  <div 
+                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-black border transition-all backdrop-blur-md shadow-xs shrink-0"
+                    :class="getCountdownBadgeStyle(task.deadline)"
+                    :title="`الموعد النهائي: ${task.deadline || 'غير محدد'}`"
+                  >
+                    <svg class="w-3.5 h-3.5 shrink-0 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <span>{{ getCountdown(task.deadline).text }}</span>
                   </div>
                 </div>
               </div>
 
-              <!-- العنوان والوصف -->
-              <div class="flex-1 flex flex-col justify-start">
-                <h4 class="text-[17px] font-black text-[#f1f4ff] mb-2 line-clamp-1 group-hover:text-[#7de8dc] transition-colors leading-snug" :title="task.title">
+              <!-- 2. جسم الكارت: العنوان والوصف والوسائط -->
+              <div class="relative flex-1 flex flex-col justify-start mb-3.5 z-10">
+                <!-- العنوان الرئيسي -->
+                <h4 
+                  class="text-[16px] sm:text-[17px] font-black text-[#f4f7ff] group-hover:text-[#7de8dc] transition-colors leading-snug mb-1.5 line-clamp-1 tracking-tight" 
+                  :title="task.title"
+                >
                   {{ task.title || 'توجيه سريع' }}
                 </h4>
-                <p v-if="task.description" class="text-xs sm:text-[13px] text-[#8696cb] line-clamp-2 mb-3.5 leading-relaxed font-medium">
+
+                <!-- الوصف التوضيحي -->
+                <p 
+                  v-if="task.description" 
+                  class="text-xs sm:text-[13px] text-[#8e9ecb] line-clamp-2 leading-relaxed mb-3 font-medium" 
+                  :title="task.description"
+                >
                   {{ task.description }}
                 </p>
-                
+
                 <!-- مشغل الصوت الفاخر والموجات التفاعلية -->
-                <div v-if="task.voice_record_url" class="mb-4 mt-auto" @click.stop>
-                  <AudioVoicePlayer :src="task.voice_record_url" variant="card" theme="teal" />
+                <div v-if="task.voice_record_url" class="my-2" @click.stop>
+                  <AudioVoicePlayer 
+                    :src="task.voice_record_url" 
+                    variant="card" 
+                    theme="teal" 
+                    class="task-card-player"
+                  />
+                </div>
+
+                <!-- شارات المرفقات والمناقشات -->
+                <div v-if="task.attachment_url || (task.feedback_logs && task.feedback_logs.length > 0)" class="flex flex-wrap items-center gap-2 mt-auto pt-1">
+                  <!-- شارة الملف المرفق -->
+                  <a 
+                    v-if="task.attachment_url" 
+                    :href="task.attachment_url" 
+                    target="_blank" 
+                    @click.stop 
+                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#151f54]/90 hover:bg-[#7de8dc]/20 text-[#a0b2ea] hover:text-[#7de8dc] border border-[#8999e2]/20 hover:border-[#7de8dc]/40 text-xs font-bold transition-all shadow-xs"
+                    :title="`مرفق: ${task.attachment_name || 'ملف مرفق'}`"
+                  >
+                    <svg class="w-3.5 h-3.5 text-[#7de8dc] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                    <span class="truncate max-w-[120px]">{{ task.attachment_name || 'مرفق' }}</span>
+                  </a>
+
+                  <!-- شارة عدد الردود والمراجعات -->
+                  <span 
+                    v-if="task.feedback_logs && task.feedback_logs.length > 0" 
+                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#1c184c]/90 text-[#c89eff] border border-[#b28aff]/25 text-xs font-bold shadow-xs"
+                    :title="`${task.feedback_logs.length} مراجعات وردود`"
+                  >
+                    <svg class="w-3.5 h-3.5 text-[#b28aff] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                    <span>{{ task.feedback_logs.length }} ردود</span>
+                  </span>
                 </div>
               </div>
 
-              <!-- العداد التنازلي والفوتر الفاخر -->
-              <div class="mt-2 pt-3.5 border-t border-[#8999e2]/15 flex items-center justify-between gap-2">
-                <div class="flex items-center gap-2 bg-[#090f33]/80 px-3 py-1.5 rounded-xl border border-[#8999e2]/12 group-hover:border-[#8999e2]/25 transition-colors">
-                  <svg class="w-3.5 h-3.5 text-[#7de8dc] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                  <span class="text-xs font-extrabold tracking-wide" :class="getCountdown(task.deadline).colorClass">
-                    {{ getCountdown(task.deadline).text }}
-                  </span>
+              <!-- 3. فوتر الكارت: هوية الموظف المنفذ + زر فتح المهمة -->
+              <div class="relative pt-3 border-t border-[#8999e2]/15 flex items-center justify-between gap-3 z-10 mt-auto">
+                <!-- المنفذ: صورة بحلقة نيون + الاسم وتسمية وظيفية مصغرة -->
+                <div class="flex items-center gap-2.5 min-w-0" :title="`المُكلَّف: ${task.assignee_name || 'غير محدد'}`">
+                  <div class="relative w-8 h-8 rounded-xl bg-gradient-to-tr from-[#1b2763] to-[#0c143d] border border-[#7de8dc]/40 flex items-center justify-center text-xs font-black text-[#7de8dc] shadow-[0_0_12px_rgba(125,232,220,0.18)] group-hover:scale-105 transition-transform shrink-0">
+                    {{ getInitials(task.assignee_name) }}
+                  </div>
+                  <div class="flex flex-col min-w-0">
+                    <span class="text-[11px] text-[#7180b5] font-semibold leading-none mb-1">المُكلّف بالعمل</span>
+                    <span class="text-[13px] font-extrabold text-[#edf1ff] truncate group-hover:text-white transition-colors leading-none">
+                      {{ task.assignee_name || 'غير محدد' }}
+                    </span>
+                  </div>
                 </div>
-                
-                <div class="w-8 h-8 rounded-xl bg-[#141c4d]/80 text-[#8390be] flex items-center justify-center border border-[#8999e2]/20 group-hover:bg-[#7de8dc] group-hover:text-[#0b1131] group-hover:border-[#7de8dc] transition-all duration-300 shadow-sm group-hover:shadow-[0_0_15px_rgba(125,232,220,0.4)] group-hover:translate-x-[-2px]">
-                  <svg class="w-4 h-4 rtl:rotate-180 transition-transform" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path></svg>
+
+                <!-- زر فتح تفاصيل المهمة التفاعلي -->
+                <div class="w-8 h-8 rounded-xl bg-[#141d4c]/90 text-[#8ea0dc] flex items-center justify-center border border-[#8999e2]/25 group-hover:bg-[#7de8dc] group-hover:text-[#0b1131] group-hover:border-[#7de8dc] group-hover:shadow-[0_0_16px_rgba(125,232,220,0.45)] transition-all duration-300 shrink-0">
+                  <svg class="w-4 h-4 rtl:rotate-180 transition-transform group-hover:-translate-x-0.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path></svg>
                 </div>
               </div>
             </div>
@@ -267,7 +339,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import api from '@/axios';
 import alertService from '@/services/alertService';
 import CreateQuickTask from '@/components/CreateQuickTask.vue';
@@ -283,6 +356,7 @@ const props = defineProps({
 
 const emit = defineEmits(['openCreateModal', 'viewTimeline', 'taskCreated', 'taskUpdated', 'taskDeleted']);
 
+const route = useRoute();
 const tasks = ref([]);
 const isLoading = ref(true);
 const internalUsers = ref([]);
@@ -463,8 +537,26 @@ const fetchTasks = async () => {
     tasks.value = [];
   } finally {
     isLoading.value = false;
+    checkUrlForTask();
   }
 };
+
+const checkUrlForTask = () => {
+  const targetId = Number(route.query?.task_id);
+  if (targetId && tasks.value.length > 0) {
+    const task = tasks.value.find(t => t.id === targetId);
+    if (task) {
+      openTaskDetails(task);
+    }
+  }
+};
+
+watch(
+  () => route.query?.task_id,
+  () => {
+    checkUrlForTask();
+  }
+);
 
 const fetchUsers = async () => {
   try {
@@ -515,14 +607,61 @@ const getCountdown = (dueDate) => {
   return { text: text.trim(), colorClass };
 };
 
-// دالة ألوان وحالات المهمة (بألوان النيون الفاخرة)
+// دالة مظهر شارة الموعد النهائي الفاخرة
+const getCountdownBadgeStyle = (dueDate) => {
+  if (!dueDate) {
+    return 'border-[#8999e2]/20 text-[#8391c4] bg-[#0c133a]/80';
+  }
+  const due = new Date(dueDate).getTime();
+  const diff = due - currentTime.value;
+  if (diff < 0) {
+    return 'border-[#ff4757]/45 text-[#ff4757] bg-[#ff4757]/15 shadow-[0_0_12px_rgba(255,71,87,0.25)] animate-pulse';
+  }
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  if (days === 0) {
+    return 'border-[#ffc107]/45 text-[#ffc107] bg-[#ffc107]/15 shadow-[0_0_12px_rgba(255,193,7,0.2)]';
+  }
+  return 'border-[#7de8dc]/30 text-[#7de8dc] bg-[#7de8dc]/10 shadow-[0_0_12px_rgba(125,232,220,0.15)]';
+};
+
+// دالة ألوان وحالات المهمة (بألوان النيون والزجاج الفاخرة)
 const getStatusColor = (status) => {
   const map = {
-    pending: { text: 'قيد الانتظار', badge: 'bg-[#0a102f]/80 text-[#8390be] border-[#8390be]/30', dot: 'bg-[#8390be]', border: 'bg-[#8390be]' },
-    in_progress: { text: 'جاري التنفيذ', badge: 'bg-[#0a102f]/80 text-[#65b5ff] border-[#65b5ff]/30', dot: 'bg-[#65b5ff]', border: 'bg-gradient-to-r from-[#65b5ff] to-[#3b82f6]' },
-    under_review: { text: 'قيد المراجعة', badge: 'bg-[#0a102f]/80 text-[#b28aff] border-[#b28aff]/30', dot: 'bg-[#b28aff]', border: 'bg-gradient-to-r from-[#b28aff] to-[#ec4899]' },
-    rejected: { text: 'مرفوضة', badge: 'bg-[#0a102f]/80 text-[#ff4757] border-[#ff4757]/30', dot: 'bg-[#ff4757]', border: 'bg-gradient-to-r from-[#ff4757] to-[#fd7e14]' },
-    completed: { text: 'مكتملة', badge: 'bg-[#0a102f]/80 text-[#7de8dc] border-[#7de8dc]/30', dot: 'bg-[#7de8dc]', border: 'bg-gradient-to-r from-[#7de8dc] to-[#10b981]' },
+    pending: { 
+      text: 'قيد الانتظار', 
+      badge: 'bg-[#151c4a]/90 text-[#96a4d8] border-[#8999e2]/30 shadow-[0_0_10px_rgba(137,153,226,0.15)]', 
+      dot: 'bg-[#96a4d8]', 
+      border: 'bg-gradient-to-r from-[#96a4d8] to-[#5a6796]', 
+      glowBg: 'bg-[#8999e2]' 
+    },
+    in_progress: { 
+      text: 'جاري التنفيذ', 
+      badge: 'bg-[#0f245c]/90 text-[#60a5fa] border-[#3b82f6]/40 shadow-[0_0_12px_rgba(59,130,246,0.25)]', 
+      dot: 'bg-[#60a5fa]', 
+      border: 'bg-gradient-to-r from-[#38bdf8] via-[#3b82f6] to-[#6366f1]', 
+      glowBg: 'bg-[#3b82f6]' 
+    },
+    under_review: { 
+      text: 'قيد المراجعة', 
+      badge: 'bg-[#211554]/90 text-[#c084fc] border-[#a855f7]/40 shadow-[0_0_12px_rgba(168,85,247,0.25)]', 
+      dot: 'bg-[#c084fc]', 
+      border: 'bg-gradient-to-r from-[#c084fc] via-[#a855f7] to-[#ec4899]', 
+      glowBg: 'bg-[#a855f7]' 
+    },
+    rejected: { 
+      text: 'مرفوضة', 
+      badge: 'bg-[#3b1226]/90 text-[#fb7185] border-[#f43f5e]/40 shadow-[0_0_12px_rgba(244,63,94,0.25)]', 
+      dot: 'bg-[#fb7185]', 
+      border: 'bg-gradient-to-r from-[#f43f5e] via-[#e11d48] to-[#ea580c]', 
+      glowBg: 'bg-[#f43f5e]' 
+    },
+    completed: { 
+      text: 'مكتملة', 
+      badge: 'bg-[#092d3b]/90 text-[#2dd4bf] border-[#14b8a6]/40 shadow-[0_0_12px_rgba(20,184,166,0.25)]', 
+      dot: 'bg-[#2dd4bf]', 
+      border: 'bg-gradient-to-r from-[#2dd4bf] via-[#10b981] to-[#059669]', 
+      glowBg: 'bg-[#2dd4bf]' 
+    },
   };
   return map[status] || map.pending;
 };
@@ -962,5 +1101,41 @@ onUnmounted(() => {
 .modal-fade-enter-from .relative,
 .modal-fade-leave-to .relative {
   transform: scale(0.92) translateY(15px);
+}
+
+/* تنسيقات كروت المهام التنفيذية الفاخرة */
+.executive-task-card {
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, box-shadow;
+}
+
+:deep(.task-card-player) {
+  padding: 8px 12px !important;
+  border-radius: 16px !important;
+  background: rgba(10, 16, 48, 0.75) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(137, 153, 226, 0.16) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
+}
+
+:deep(.task-card-player:hover) {
+  border-color: rgba(125, 232, 220, 0.4) !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35) !important;
+}
+
+:deep(.task-card-player .player-play-btn) {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 11px !important;
+}
+
+:deep(.task-card-player .player-waveform-track) {
+  height: 20px !important;
+}
+
+:deep(.task-card-player .player-time) {
+  font-size: 11px !important;
 }
 </style>

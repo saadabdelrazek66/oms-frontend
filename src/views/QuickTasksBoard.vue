@@ -147,6 +147,20 @@
                   >
                     <button 
                       type="button" 
+                      :disabled="task.status === 'completed'"
+                      :class="[
+                        'w-7 h-7 rounded-xl border flex items-center justify-center transition-all shadow-sm',
+                        task.status === 'completed'
+                          ? 'opacity-30 cursor-not-allowed bg-[#18235a]/40 border-gray-700/50 text-gray-500'
+                          : 'bg-[#18235a]/90 hover:bg-[#7de8dc]/20 text-[#8ea0dc] hover:text-[#7de8dc] border-[#8999e2]/25 cursor-pointer hover:scale-105'
+                      ]"
+                      @click.stop="task.status !== 'completed' && openShiftQuickTask(task)" 
+                      :title="task.status === 'completed' ? 'لا يمكن تشفيت مهمة مكتملة بالفعل' : 'تشفيت ساعات من هذه المهمة'"
+                    >
+                      ⏱️
+                    </button>
+                    <button 
+                      type="button" 
                       @click.stop="openEditModal(task)" 
                       class="w-7 h-7 rounded-xl bg-[#18235a]/90 hover:bg-[#7de8dc]/20 text-[#8ea0dc] hover:text-[#7de8dc] border border-[#8999e2]/25 flex items-center justify-center transition-all cursor-pointer shadow-sm hover:scale-105"
                       title="تعديل المهمة"
@@ -218,6 +232,14 @@
                     <svg class="w-3.5 h-3.5 text-[#7de8dc] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
                     <span class="truncate max-w-[120px]">{{ task.attachment_name || 'مرفق' }}</span>
                   </a>
+
+                  <!-- شارة الساعات التقديرية -->
+                  <span 
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-xl bg-[#0e173d] text-[#7de8dc] border border-[#7de8dc]/25 text-[11px] font-bold shadow-xs"
+                    :title="`الساعات المقدرة: ${task.estimated_hours || 1} ساعة`"
+                  >
+                    ⏱️ {{ task.estimated_hours || 1 }}س
+                  </span>
 
                   <!-- شارة عدد الردود والمراجعات -->
                   <span 
@@ -335,6 +357,53 @@
       :users="usersList"
     />
 
+    <!-- مودال تشفيت ساعات المهمة السريعة -->
+    <Teleport to="body">
+      <Transition name="modal-fade">
+        <div v-if="showShiftModal && shiftTask" class="fixed inset-0 z-[10001] flex items-center justify-center p-4 sm:p-6 bg-[#080d26]/80 backdrop-blur-md" @click.self="showShiftModal = false">
+          <div class="relative w-full max-w-md rounded-[2rem] shadow-[0_20px_60px_rgba(0,0,0,0.6),0_0_30px_rgba(125,232,220,0.1)] border border-[#8999e2]/20 bg-[#10163a] p-6 text-[#f1f4ff]">
+            <button type="button" @click="showShiftModal = false" class="absolute top-5 left-5 text-[#8390be] hover:text-[#fff] text-xl font-bold">×</button>
+            
+            <div class="flex items-center gap-3 mb-4">
+              <span class="text-2xl p-2 rounded-xl bg-[#7de8dc]/15 border border-[#7de8dc]/30">⏱️</span>
+              <div>
+                <h3 class="text-lg font-black text-white">تشفيت ساعات المهمة</h3>
+                <p class="text-xs text-[#8390be]">نقل جزء من ساعات المهمة السريعة ليوم عمل آخر</p>
+              </div>
+            </div>
+
+            <div class="bg-[#0a102f]/80 p-3.5 rounded-xl border border-[#8999e2]/15 mb-4 text-xs">
+              <span class="text-[#7de8dc] font-bold block mb-1">المهمة: {{ shiftTask.title }}</span>
+              <span class="text-[#8390be]">إجمالي الساعات: <strong>{{ shiftTask.estimated_hours || 1 }}</strong> ساعة</span>
+            </div>
+
+            <form @submit.prevent="submitShiftQuickTask" class="space-y-4">
+              <div>
+                <label class="block text-xs font-bold text-[#8390be] mb-1.5">عدد الساعات المراد تشفيتها: <span class="text-[#7de8dc] font-black">{{ shiftForm.hours }} س</span></label>
+                <input type="number" step="0.5" min="0.5" :max="shiftTask.estimated_hours || 1" v-model.number="shiftForm.hours" required class="w-full bg-[#0a102f]/90 text-white p-2.5 rounded-xl border border-[#8999e2]/25 text-center font-bold text-sm outline-none">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-[#8390be] mb-1.5">تاريخ التشفيت إليه:</label>
+                <input type="date" v-model="shiftForm.to_date" required class="w-full bg-[#0a102f]/90 text-white p-2.5 rounded-xl border border-[#8999e2]/25 text-sm outline-none">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-[#8390be] mb-1.5">سبب التشفيت (اختياري):</label>
+                <input type="text" v-model="shiftForm.reason" placeholder="سبب التشفيت..." class="w-full bg-[#0a102f]/90 text-white p-2.5 rounded-xl border border-[#8999e2]/25 text-sm outline-none">
+              </div>
+
+              <div class="flex justify-end gap-2 pt-2">
+                <button type="button" class="px-4 py-2 text-xs rounded-xl border border-[#8999e2]/20 text-[#8390be]" @click="showShiftModal = false">إلغاء</button>
+                <button type="submit" class="px-5 py-2 text-xs rounded-xl bg-gradient-to-r from-[#7de8dc] to-[#10b981] text-[#080d26] font-extrabold" :disabled="isShifting">
+                  {{ isShifting ? 'جارٍ التشفيت...' : 'تأكيد التشفيت ⏱️' }}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </section>
 </template>
 
@@ -390,6 +459,68 @@ const showDetailsModal = ref(false);
 const showEditModal = ref(false);
 const taskToEdit = ref(null);
 const selectedTask = ref(null);
+
+// حالة مودال تشفيت الساعات
+const showShiftModal = ref(false);
+const isShifting = ref(false);
+const shiftTask = ref(null);
+const shiftForm = ref({
+  hours: 1,
+  to_date: '',
+  reason: ''
+});
+
+const openShiftQuickTask = (task) => {
+  if (task.status === 'completed') {
+    alertService.warning('لا يمكن تشفيت مهمة مكتملة بالفعل.');
+    return;
+  }
+  shiftTask.value = task;
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  const tomorrowStr = d.toISOString().split('T')[0];
+  shiftForm.value = {
+    hours: task.estimated_hours || 1,
+    to_date: tomorrowStr,
+    reason: ''
+  };
+  showShiftModal.value = true;
+};
+
+const submitShiftQuickTask = async () => {
+  if (!shiftTask.value) return;
+  const task = shiftTask.value;
+  const assigneeId = task.assigned_to || task.assignee_id || task.assignee?.id;
+  if (!assigneeId) {
+    alertService.error('لا يمكن التشفيت لمهمة غير مسندة لموظف محدد.');
+    return;
+  }
+
+  isShifting.value = true;
+  try {
+    const fromDate = task.deadline ? task.deadline.split('T')[0].split(' ')[0] : new Date().toISOString().split('T')[0];
+    const res = await api.post('/workload/shift-hours', {
+      user_id: assigneeId,
+      task_type: 'quick_task',
+      task_id: task.id,
+      hours: Number(shiftForm.value.hours),
+      from_date: fromDate,
+      to_date: shiftForm.value.to_date,
+      reason: shiftForm.value.reason || 'تشفيت يدوي من لوحة المهام السريعة'
+    });
+
+    if (res.data.status) {
+      alertService.success(res.data.message || 'تم تشفيت الساعات بنجاح! ⏱️');
+      showShiftModal.value = false;
+      fetchTasks();
+    }
+  } catch (err) {
+    console.error('Error shifting quick task hours:', err);
+    alertService.error(err.response?.data?.message || 'حدث خطأ أثناء تشفيت الساعات.');
+  } finally {
+    isShifting.value = false;
+  }
+};
 
 // حالة مودال الواتساب
 const showWaModal = ref(false);

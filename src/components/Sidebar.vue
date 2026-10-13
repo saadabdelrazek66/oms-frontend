@@ -75,6 +75,18 @@
               <em class="nav-shortcut">⌘</em>
             </router-link>
 
+            <!-- لوحة اليوم (الشريط الزمني الاستعراضي) -->
+            <router-link to="/today-board" class="nav-item">
+              <span class="nav-icon-box">
+                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+              </span>
+              <span class="nav-label">لوحة اليوم (Timeline)</span>
+              <em class="nav-shortcut">T</em>
+            </router-link>
+
             <!-- مساحة العمل / مهامي -->
             <router-link to="/my-tasks" class="nav-item">
               <span class="nav-icon-box">

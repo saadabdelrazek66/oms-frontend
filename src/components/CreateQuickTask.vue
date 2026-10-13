@@ -32,8 +32,8 @@
         {{ errorMessage }}
       </div>
 
-      <!-- اختيار الموظف والديدلاين -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <!-- اختيار الموظف والديدلاين وساعات العمل التقديرية -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <label class="block text-sm font-bold text-[#8390be] mb-2">إسناد إلى (الموظف) <span class="text-[#ff4757]">*</span></label>
           <select v-model="form.assigned_to" required class="w-full bg-[#0a102f]/80 text-[#f1f4ff] border-[#8999e2]/20 rounded-xl shadow-inner focus:ring-2 focus:ring-[#7de8dc]/30 focus:border-[#7de8dc] p-3 border outline-none transition-all">
@@ -47,6 +47,11 @@
         <div>
           <label class="block text-sm font-bold text-[#8390be] mb-2">وقت التسليم (الديدلاين) <span class="text-[#ff4757]">*</span></label>
           <input type="datetime-local" v-model="form.deadline" required class="w-full bg-[#0a102f]/80 text-[#f1f4ff] border-[#8999e2]/20 rounded-xl shadow-inner focus:ring-2 focus:ring-[#7de8dc]/30 focus:border-[#7de8dc] p-3 border outline-none transition-all [color-scheme:dark]">
+        </div>
+
+        <div>
+          <label class="block text-sm font-bold text-[#8390be] mb-2">الساعات التقديرية (س) <span class="text-[#7de8dc]">*</span></label>
+          <input type="number" step="0.5" min="0.5" max="24" v-model.number="form.estimated_hours" required placeholder="1.0" class="w-full bg-[#0a102f]/80 text-[#f1f4ff] border-[#8999e2]/20 rounded-xl shadow-inner focus:ring-2 focus:ring-[#7de8dc]/30 focus:border-[#7de8dc] p-3 border outline-none transition-all">
         </div>
       </div>
 
@@ -162,7 +167,8 @@ const form = ref({
   assigned_to: '',
   title: '',
   description: '',
-  deadline: ''
+  deadline: '',
+  estimated_hours: 1.0
 });
 const isSubmitting = ref(false);
 const errorMessage = ref('');
@@ -334,6 +340,7 @@ const submitTask = async () => {
   const formData = new FormData();
   formData.append('assigned_to', form.value.assigned_to);
   formData.append('deadline', form.value.deadline);
+  formData.append('estimated_hours', form.value.estimated_hours || 1.0);
   
   if (form.value.title) formData.append('title', form.value.title);
   if (form.value.description) formData.append('description', form.value.description);

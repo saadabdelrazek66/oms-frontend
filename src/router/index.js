@@ -80,6 +80,12 @@ const router = createRouter({
           component: SpreadsheetBoard,
         },
         {
+          path: '/today-board',
+          name: 'TodayBoard',
+          component: () => import('@/views/TodayBoard.vue'),
+          meta: { title: 'لوحة اليوم / الشريط الزمني' },
+        },
+        {
           path: '/my-tasks',
           name: 'EmployeeTasks',
           component: () => import('@/views/EmployeeTasks.vue'),

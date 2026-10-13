@@ -1183,7 +1183,7 @@
               </div>
               <div class="form-group" :class="{ 'has-field-error': managerFieldErrors.plan_type }">
                 <label>نوع الخطة <span class="text-red">*</span></label>
-                <select v-model="form.plan_type" required @change="clearFieldError('plan_type')">
+                <select v-model="form.plan_type" required @change="onPlanTypeChange">
                   <option value="" disabled>اختر نوع الخطة...</option>
                   <option v-for="cat in planCategories" :key="cat.id" :value="cat.name">
                     {{ cat.name }}
@@ -2919,6 +2919,7 @@ const form = reactive({
   required_brief_fields: Object.keys(availableBriefFields),
   items: []
 });
+const previousPlanType = ref('');
 
 // getReviewHistories & getFollowUps are defined above with caching
 
@@ -3511,14 +3512,17 @@ const removeReferenceLink = (index) => { form.reference_links.splice(index, 1); 
 const openReferencesModal = (plan) => { selectedReferencesPlan.value = plan; showReferencesModal.value = true; };
 const closeReferencesModal = () => { showReferencesModal.value = false; selectedReferencesPlan.value = null; };
 
-const resetForm = () => Object.assign(form, { 
-  client_id: '', plan_type: '', start_date: '', end_date: '', requires_review: true, 
-  planned_delivery_date: '', planned_review_date: '', planned_initial_delivery_date: '',
-  final_link: '', notes: '', reference_links: [],
-  responsible_ids: [], reviewer_ids: [], executor_ids: [],
-  required_brief_fields: Object.keys(availableBriefFields),
-  items: []
-});
+const resetForm = () => {
+  previousPlanType.value = '';
+  Object.assign(form, { 
+    client_id: '', plan_type: '', start_date: '', end_date: '', requires_review: true, 
+    planned_delivery_date: '', planned_review_date: '', planned_initial_delivery_date: '',
+    final_link: '', notes: '', reference_links: [],
+    responsible_ids: [], reviewer_ids: [], executor_ids: [],
+    required_brief_fields: Object.keys(availableBriefFields),
+    items: []
+  });
+};
 
 const openManagerModal = (plan = null) => { 
   if (user.value?.role !== 'manager' && user.value?.job_title !== 'Account Manager') {
@@ -3537,6 +3541,7 @@ const openManagerModal = (plan = null) => {
   isEditing.value = Boolean(plan); 
   editId.value = plan?.id || null; 
   if (plan) { 
+    previousPlanType.value = plan.plan_type || '';
     Object.assign(form, { 
       client_id: plan.client_id, 
       plan_type: plan.plan_type, 
@@ -3573,6 +3578,7 @@ const closeManagerModal = () => {
   showManagerModal.value = false; 
   managerModalErrors.value = [];
   Object.keys(managerFieldErrors).forEach(key => delete managerFieldErrors[key]);
+  previousPlanType.value = '';
 };
 const closeCreationModal = () => { 
   showCreationSuccessModal.value = false; 
@@ -3839,6 +3845,20 @@ watch(showManagerModal, async (open) => {
 // ==========================================
 // منطق عناصر ومخرجات الخطة وتقدير ساعات العمل
 // ==========================================
+const onPlanTypeChange = (event) => {
+  clearFieldError('plan_type');
+  const selectedType = (event && event.target) ? event.target.value : form.plan_type;
+
+  // إذا تم تغيير نوع الخطة وكان هناك عناصر مضافة مسبقاً من النوع السابق
+  if (previousPlanType.value && previousPlanType.value !== selectedType && form.items && form.items.length > 0) {
+    form.items = [];
+    showToast('⚠️ تم تفريغ عناصر ومخرجات النوع السابق لتحديد مخرجات النوع الجديد');
+  }
+
+  form.plan_type = selectedType;
+  previousPlanType.value = selectedType || '';
+};
+
 const selectedCategory = computed(() => {
   if (!form.plan_type) return null;
   return (planCategories.value || []).find(c => c.name === form.plan_type) || null;

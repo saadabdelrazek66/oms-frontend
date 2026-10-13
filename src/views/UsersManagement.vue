@@ -65,6 +65,7 @@
               <th scope="col" style="width: 50px; text-align: center;">#</th>
               <th scope="col">المستخدم</th>
               <th scope="col">الأقسام (الأساسي والفرعية)</th>
+              <th scope="col">مواعيد وأيام العمل</th>
               <th scope="col">رقم الهاتف</th>
               <th scope="col">الدور</th>
               <th scope="col">نظام العمل</th>
@@ -73,10 +74,10 @@
           </thead>
           <tbody>
             <tr v-if="loading">
-              <td colspan="7" class="state-cell"><span class="spinner" aria-hidden="true"></span> جارٍ تحميل البيانات...</td>
+              <td colspan="8" class="state-cell"><span class="spinner" aria-hidden="true"></span> جارٍ تحميل البيانات...</td>
             </tr>
             <tr v-else-if="users.length === 0">
-              <td colspan="7" class="state-cell empty">لا توجد بيانات مطابقة للفلاتر الحالية</td>
+              <td colspan="8" class="state-cell empty">لا توجد بيانات مطابقة للفلاتر الحالية</td>
             </tr>
             <tr v-for="(user, index) in users" v-else :key="user.id">
               <td class="row-num-cell">{{ ((pagination.current_page - 1) * (pagination.per_page || 10)) + index + 1 }}</td>
@@ -96,6 +97,17 @@
                   <div v-if="getAdditionalDepartments(user).length" class="sub-depts">
                     <span v-for="dept in getAdditionalDepartments(user)" :key="dept.id" class="badge sub-dept" :title="'قسم فرعي: ' + dept.name">{{ dept.name }}</span>
                   </div>
+                </div>
+              </td>
+              <td>
+                <div class="schedule-cell">
+                  <span class="days-chip" v-if="user.work_start_day && user.work_end_day">
+                    📅 {{ formatDaysRange(user.work_start_day, user.work_end_day) }}
+                  </span>
+                  <span class="hours-chip">⏱️ {{ user.daily_work_hours || 8 }} س/يوم</span>
+                  <small class="time-range-text" v-if="user.work_start_time && user.work_end_time">
+                    {{ formatTimeLabel(user.work_start_time) }} - {{ formatTimeLabel(user.work_end_time) }}
+                  </small>
                 </div>
               </td>
               <td>
@@ -223,6 +235,91 @@
           </div>
           <div class="form-group full"><label for="user-phone">رقم الهاتف <span class="text-red">*</span></label><input id="user-phone" v-model="form.phone" type="text" placeholder="01xxxxxxxx" required /></div>
           <div class="form-group full"><label for="user-work-type">نظام العمل <span class="text-red">*</span></label><select id="user-work-type" v-model="form.work_type" required><option value="remote">عن بعد</option><option value="onsite">من الشركة</option><option value="per_task">بالتاسك</option><option value="commission">بالعمولة</option></select></div>
+
+          <!-- مواعيد وأيام العمل اليومية والاستنتاج التلقائي -->
+          <div class="form-group-card full">
+            <div class="card-mini-header">
+              <span class="header-icon">⏰</span>
+              <div>
+                <strong>مواعيد وأيام العمل</strong>
+                <p>حدد أيام وساعات العمل اليومية ليتم احتساب سعة وأيام الدوام تلقائياً للموظف.</p>
+              </div>
+            </div>
+
+            <!-- تحديد أيام أسبوع العمل -->
+            <div class="time-pickers-row">
+              <div class="form-group">
+                <label for="work-start-day">بداية أسبوع العمل (من يوم) <span class="text-red">*</span></label>
+                <select 
+                  id="work-start-day" 
+                  v-model="form.work_start_day" 
+                  @change="recalculateWorkingDays"
+                  required
+                >
+                  <option v-for="d in availableDays" :key="d.key" :value="d.key">{{ d.label }}</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="work-end-day">نهاية أسبوع العمل (إلى يوم) <span class="text-red">*</span></label>
+                <select 
+                  id="work-end-day" 
+                  v-model="form.work_end_day" 
+                  @change="recalculateWorkingDays"
+                  required
+                >
+                  <option v-for="d in availableDays" :key="d.key" :value="d.key">{{ d.label }}</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- ساعات الدوام اليومية -->
+            <div class="time-pickers-row">
+              <div class="form-group">
+                <label for="work-start-time">بداية الدوام (من) <span class="text-red">*</span></label>
+                <input 
+                  id="work-start-time" 
+                  type="time" 
+                  v-model="form.work_start_time" 
+                  @input="recalculateDailyHours"
+                  required 
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="work-end-time">نهاية الدوام (إلى) <span class="text-red">*</span></label>
+                <input 
+                  id="work-end-time" 
+                  type="time" 
+                  v-model="form.work_end_time" 
+                  @input="recalculateDailyHours"
+                  required 
+                />
+              </div>
+            </div>
+
+            <!-- استنتاج وحساب عدد ساعات وأيام العمل تلقائياً -->
+            <div class="calculated-hours-strip">
+              <div class="calc-main">
+                <span class="calc-label">💡 إجمالي ساعات العمل اليومية المستنتجة:</span>
+                <span class="calc-badge">
+                  <strong>{{ form.daily_work_hours || 8 }}</strong> ساعة / يوم
+                </span>
+              </div>
+              <div class="calc-main">
+                <span class="calc-label">📅 أيام العمل المعتمدة ({{ (form.working_days || []).length }} أيام/أسبوع):</span>
+                <span class="calc-days-tags">
+                  <span v-for="dayKey in form.working_days" :key="dayKey" class="day-tag">
+                    {{ getDayLabel(dayKey) }}
+                  </span>
+                </span>
+              </div>
+              <small class="calc-hint">
+                يتم احتساب الساعات وأيام العمل أسبوعياً كسعة تشغيلية معتمدة (من {{ getDayLabel(form.work_start_day) }} إلى {{ getDayLabel(form.work_end_day) }}، ومن {{ formatTimeLabel(form.work_start_time) }} إلى {{ formatTimeLabel(form.work_end_time) }}).
+              </small>
+            </div>
+          </div>
+
           <div class="modal-actions"><button type="button" class="secondary-btn" @click="closeModal">إلغاء</button><button type="submit" class="primary-btn" :disabled="saving">{{ saving ? 'جارٍ الحفظ...' : 'حفظ البيانات' }}</button></div>
         </form>
       </div>
@@ -265,8 +362,99 @@ const jobTitles = [
   'Sales',
 ]
 
-// إضافة job_title إلى المتغير التفاعلي form
-const form = reactive({ name: '', job_title: '', email: '', password: '', phone: '', role: 'employee', work_type: 'onsite', primary_department_id: '', additional_department_ids: [] })
+// قائمة أيام الأسبوع المعتمدة
+const availableDays = [
+  { key: 'saturday', label: 'السبت' },
+  { key: 'sunday', label: 'الأحد' },
+  { key: 'monday', label: 'الإثنين' },
+  { key: 'tuesday', label: 'الثلاثاء' },
+  { key: 'wednesday', label: 'الأربعاء' },
+  { key: 'thursday', label: 'الخميس' },
+  { key: 'friday', label: 'الجمعة' }
+]
+
+const getDayLabel = (key) => {
+  const found = availableDays.find(d => d.key === key)
+  return found ? found.label : key
+}
+
+const formatDaysRange = (startKey, endKey) => {
+  if (!startKey || !endKey) return ''
+  return `من ${getDayLabel(startKey)} إلى ${getDayLabel(endKey)}`
+}
+
+// إضافة job_title ومواعيد وأيام العمل إلى المتغير التفاعلي form
+const form = reactive({ 
+  name: '', 
+  job_title: '', 
+  email: '', 
+  password: '', 
+  phone: '', 
+  role: 'employee', 
+  work_type: 'onsite', 
+  work_start_day: 'saturday',
+  work_end_day: 'thursday',
+  working_days: ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday'],
+  work_start_time: '09:00',
+  work_end_time: '17:00',
+  daily_work_hours: 8,
+  primary_department_id: '', 
+  additional_department_ids: [] 
+})
+
+// دالة احتساب أيام العمل أسبوعياً
+const recalculateWorkingDays = () => {
+  const daysKeys = ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday']
+  const startIdx = daysKeys.indexOf(form.work_start_day)
+  const endIdx = daysKeys.indexOf(form.work_end_day)
+  if (startIdx === -1 || endIdx === -1) {
+    form.working_days = ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday']
+    return
+  }
+
+  const result = []
+  let curr = startIdx
+  while (true) {
+    result.push(daysKeys[curr])
+    if (curr === endIdx) break
+    curr = (curr + 1) % 7
+  }
+  form.working_days = result
+}
+
+// دالة تنسيق الوقت للعرض العربي 12 ساعة
+const formatTimeLabel = (timeStr) => {
+  if (!timeStr) return ''
+  const parts = timeStr.slice(0, 5).split(':')
+  let h = parseInt(parts[0], 10)
+  const m = parts[1] || '00'
+  if (isNaN(h)) return timeStr
+  const ampm = h >= 12 ? 'م' : 'ص'
+  h = h % 12 || 12
+  return `${h}:${m} ${ampm}`
+}
+
+// دالة استنتاج وحساب عدد ساعات العمل تلقائياً
+const recalculateDailyHours = () => {
+  if (!form.work_start_time || !form.work_end_time) {
+    form.daily_work_hours = 8
+    return
+  }
+  const [startH, startM] = form.work_start_time.split(':').map(Number)
+  const [endH, endM] = form.work_end_time.split(':').map(Number)
+  
+  const startTotalMins = (startH * 60) + (startM || 0)
+  const endTotalMins = (endH * 60) + (endM || 0)
+
+  let diffMins = endTotalMins - startTotalMins
+  if (diffMins <= 0) {
+    // دوام عابر لمنتصف الليل (مثال: من 22:00 إلى 06:00)
+    diffMins = (1440 - startTotalMins) + endTotalMins
+  }
+
+  const hours = diffMins / 60
+  form.daily_work_hours = Math.round(hours * 10) / 10
+}
 
 const handleRoleChange = () => {
   if (form.role === 'manager') {
@@ -372,8 +560,24 @@ const fetchDepartmentsList = async () => {
   }
 }
 
-// تصفير المسمى الوظيفي
-const resetForm = () => Object.assign(form, { name: '', job_title: '', email: '', password: '', phone: '', role: 'employee', work_type: 'onsite', primary_department_id: '', additional_department_ids: [] })
+// تصفير النموذج
+const resetForm = () => Object.assign(form, { 
+  name: '', 
+  job_title: '', 
+  email: '', 
+  password: '', 
+  phone: '', 
+  role: 'employee', 
+  work_type: 'onsite', 
+  work_start_day: 'saturday',
+  work_end_day: 'thursday',
+  working_days: ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday'],
+  work_start_time: '09:00',
+  work_end_time: '17:00',
+  daily_work_hours: 8,
+  primary_department_id: '', 
+  additional_department_ids: [] 
+})
 
 const openModal = (user = null) => {
   showPassword.value = false
@@ -399,9 +603,17 @@ const openModal = (user = null) => {
       phone: user.phone,
       role: user.role,
       work_type: user.work_type,
+      work_start_day: user.work_start_day || 'saturday',
+      work_end_day: user.work_end_day || 'thursday',
+      working_days: Array.isArray(user.working_days) && user.working_days.length ? user.working_days : ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday'],
+      work_start_time: user.work_start_time ? user.work_start_time.slice(0, 5) : '09:00',
+      work_end_time: user.work_end_time ? user.work_end_time.slice(0, 5) : '17:00',
+      daily_work_hours: Number(user.daily_work_hours || 8),
       primary_department_id: primaryDeptId,
       additional_department_ids: additionalDeptIds,
     })
+    recalculateDailyHours()
+    recalculateWorkingDays()
   } else {
     resetForm()
   }
@@ -421,6 +633,7 @@ const saveUser = async () => {
     if (payload.role === 'manager') {
       payload.job_title = ''
     }
+    payload.daily_work_hours = Number(form.daily_work_hours || 8)
     if (isEditing.value) await api.put(`/users/${editId.value}`, payload)
     else await api.post('/users', payload)
     const successMessage = isEditing.value ? 'تم تحديث بيانات المستخدم' : 'تم إنشاء المستخدم بنجاح'
@@ -604,6 +817,149 @@ onBeforeUnmount(() => {
 .custom-cb input[type='checkbox'] { width: 18px; height: 18px; flex: 0 0 18px; margin: 0; accent-color: #76e8de; cursor: inherit; }
 .custom-cb .cb-text { overflow: hidden; color: #d9ddf5; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .no-departments { margin: 8px 0 0; direction: rtl; }
+
+/* تنسيقات عمود ساعات ومواعيد العمل في الجدول */
+.schedule-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: flex-start;
+}
+
+.days-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(99, 102, 241, 0.15);
+  color: #a5b4fc;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.hours-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(125, 232, 220, 0.12);
+  color: #7de8dc;
+  border: 1px solid rgba(125, 232, 220, 0.25);
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.time-range-text {
+  color: #8da0d6;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* بطاقة تحديد ساعات العمل والاستنتاج التلقائي في المودال */
+.form-group-card {
+  grid-column: 1 / -1;
+  background: rgba(13, 19, 56, 0.5);
+  border: 1px solid rgba(125, 232, 220, 0.22);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 4px;
+}
+
+.card-mini-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.card-mini-header .header-icon {
+  font-size: 20px;
+}
+
+.card-mini-header strong {
+  display: block;
+  font-size: 13px;
+  color: #f0f4ff;
+  font-weight: 800;
+}
+
+.card-mini-header p {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: #8da0d6;
+}
+
+.time-pickers-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.calculated-hours-strip {
+  background: linear-gradient(135deg, rgba(125, 232, 220, 0.12), rgba(99, 102, 241, 0.12));
+  border: 1px solid rgba(125, 232, 220, 0.3);
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.calc-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.calc-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #c5d2ff;
+}
+
+.calc-badge {
+  display: inline-flex;
+  align-items: center;
+  background: #7de8dc;
+  color: #050a24;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 900;
+  box-shadow: 0 0 10px rgba(125, 232, 220, 0.4);
+}
+
+.calc-days-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.day-tag {
+  background: rgba(125, 232, 220, 0.15);
+  color: #7de8dc;
+  border: 1px solid rgba(125, 232, 220, 0.25);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.calc-hint {
+  font-size: 10.5px;
+  color: #8999cc;
+}
+
 .modal-actions { display: flex; justify-content: flex-start; gap: 10px; grid-column: 1 / -1; margin-top: 8px; }
 .secondary-btn { border: 1px solid rgba(143,157,226,.24); color: #b8c1e2; background: transparent; }
 .secondary-btn:hover { border-color: rgba(143,157,226,.45); background: rgba(122,140,224,.08); }

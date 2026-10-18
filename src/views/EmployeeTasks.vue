@@ -56,7 +56,7 @@
         </div>
         <div class="workload-stats-box">
           <span class="hours-badge" :class="getWorkloadBadgeClass(dailyWorkload.total_hours)">
-            {{ dailyWorkload.total_hours }} / 8 ساعات عمل
+            {{ dailyWorkload.total_hours }} / {{ dailyWorkload.max_daily_capacity || 8 }} ساعات عمل
           </span>
           <span v-if="dailyWorkload.is_overloaded" class="overload-warning-tag">
             ⚠️ تجاوز السعة (تمت جدولة الفائض تلقائياً)
@@ -70,7 +70,7 @@
         <div 
           class="workload-progress-fill" 
           :class="getWorkloadFillClass(dailyWorkload.total_hours)"
-          :style="{ width: `${Math.min(100, (dailyWorkload.total_hours / 8) * 100)}%` }"
+          :style="{ width: `${Math.min(100, (dailyWorkload.total_hours / (dailyWorkload.max_daily_capacity || 8)) * 100)}%` }"
         ></div>
       </div>
 
@@ -420,7 +420,7 @@
               <p>استعراض كافة المنشورات والمهام المجدولة لليوم وإدارة تشفيتها بالساعات</p>
             </div>
             <div class="hub-total-badge" :class="getWorkloadBadgeClass(dailyWorkload?.total_hours || 0)">
-              {{ dailyWorkload?.total_hours || 0 }} / 8 ساعات عمل
+              {{ dailyWorkload?.total_hours || 0 }} / {{ dailyWorkload?.max_daily_capacity || 8 }} ساعات عمل
             </div>
           </div>
 

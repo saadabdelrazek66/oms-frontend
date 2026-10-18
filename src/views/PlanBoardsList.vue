@@ -54,12 +54,14 @@
             </div>
             
             <div class="bc-header-badges">
-              <!-- شارة نوع الخطة تظهر فقط إذا كان العنوان لا يحتوي عليها (لتجنب أي تكرار) -->
+              <!-- شارة نوع الخطة المميزة بأسلوب وأيقونة مخصصة -->
               <span 
-                class="plan-type-pill" 
                 v-if="plan.plan_type && !parsePlan(plan).displayTitle.includes(plan.plan_type)"
+                :class="['plan-type-pill', getPlanTypeInfo(plan.plan_type).class]"
+                :title="'نوع الخطة: ' + plan.plan_type"
               >
-                {{ plan.plan_type }}
+                <span class="plan-type-icon" aria-hidden="true">{{ getPlanTypeInfo(plan.plan_type).icon }}</span>
+                <span class="plan-type-text">{{ plan.plan_type }}</span>
               </span>
               <span 
                 class="plan-hours-pill" 
@@ -179,6 +181,7 @@ import { useRouter } from 'vue-router';
 import api from '../axios';
 import alertService from '../services/alertService';
 import ClientAvatar from '@/components/ClientAvatar.vue';
+import { getPlanTypeInfo } from '@/utils/planTheme';
 
 const router = useRouter();
 
@@ -473,6 +476,7 @@ onMounted(() => fetchPlans(1));
   align-items: center;
   gap: 10px;
   min-width: 0;
+  flex: 1;
 }
 
 .bc-avatar { 
@@ -494,6 +498,7 @@ onMounted(() => fetchPlans(1));
   display: flex;
   flex-direction: column;
   min-width: 0;
+  flex: 1;
 }
 
 .bc-client-label {
@@ -512,6 +517,7 @@ onMounted(() => fetchPlans(1));
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.2;
+  max-width: 140px;
 }
 
 .bc-header-badges {
@@ -519,17 +525,143 @@ onMounted(() => fetchPlans(1));
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
+  max-width: 60%;
 }
 
 .plan-type-pill { 
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-size: 10px; 
   font-weight: 700;
-  color: #7de8dc; 
-  background: rgba(125, 232, 220, 0.08); 
-  border: 1px solid rgba(125, 232, 220, 0.2);
-  padding: 2px 7px; 
-  border-radius: 6px; 
+  line-height: 1.2;
+  padding: 3px 8px 3px 7px; 
+  border-radius: 7px; 
   white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.22s ease-in-out;
+  max-width: 100%;
+}
+
+.plan-type-pill:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.12);
+}
+
+.plan-type-pill .plan-type-icon {
+  font-size: 11px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.plan-type-pill .plan-type-text {
+  line-height: 1.2;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* سمات ألوان أنواع الخطط المتوافقة */
+.plan-type-pill.type-content {
+  color: #34d399;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.22) 0%, rgba(5, 150, 105, 0.10) 100%);
+  border: 1px solid rgba(52, 211, 153, 0.42);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.16);
+}
+
+.plan-type-pill.type-content-marketing {
+  color: #22d3ee;
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.24) 0%, rgba(14, 116, 144, 0.12) 100%);
+  border: 1px solid rgba(34, 211, 238, 0.45);
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.2);
+}
+
+.plan-type-pill.type-media-buying {
+  color: #fbbf24;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.24) 0%, rgba(180, 83, 9, 0.12) 100%);
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
+}
+
+.plan-type-pill.type-social-media {
+  color: #c084fc;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.24) 0%, rgba(126, 34, 206, 0.12) 100%);
+  border: 1px solid rgba(192, 132, 252, 0.45);
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.2);
+}
+
+.plan-type-pill.type-media-production {
+  color: #fb7185;
+  background: linear-gradient(135deg, rgba(244, 63, 94, 0.24) 0%, rgba(190, 18, 60, 0.12) 100%);
+  border: 1px solid rgba(251, 113, 133, 0.45);
+  box-shadow: 0 0 10px rgba(244, 63, 94, 0.2);
+}
+
+.plan-type-pill.type-seo {
+  color: #38bdf8;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.24) 0%, rgba(3, 105, 161, 0.12) 100%);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  box-shadow: 0 0 10px rgba(14, 165, 233, 0.2);
+}
+
+.plan-type-pill.type-strategy {
+  color: #818cf8;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.24) 0%, rgba(67, 56, 202, 0.12) 100%);
+  border: 1px solid rgba(129, 140, 248, 0.45);
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.2);
+}
+
+.plan-type-pill.type-analytics {
+  color: #a3e635;
+  background: linear-gradient(135deg, rgba(132, 204, 22, 0.24) 0%, rgba(77, 124, 15, 0.12) 100%);
+  border: 1px solid rgba(163, 230, 53, 0.45);
+  box-shadow: 0 0 10px rgba(132, 204, 22, 0.2);
+}
+
+.plan-type-pill.type-design {
+  color: #f472b6;
+  background: linear-gradient(135deg, rgba(236, 72, 153, 0.24) 0%, rgba(190, 24, 93, 0.12) 100%);
+  border: 1px solid rgba(244, 114, 182, 0.45);
+  box-shadow: 0 0 10px rgba(236, 72, 153, 0.2);
+}
+
+.plan-type-pill.type-monthly {
+  color: #2dd4bf;
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.24) 0%, rgba(15, 118, 110, 0.12) 100%);
+  border: 1px solid rgba(45, 212, 191, 0.45);
+  box-shadow: 0 0 10px rgba(20, 184, 166, 0.2);
+}
+
+.plan-type-pill.type-general,
+.plan-type-pill.type-teal {
+  color: #7de8dc;
+  background: rgba(125, 232, 220, 0.14);
+  border: 1px solid rgba(125, 232, 220, 0.35);
+}
+.plan-type-pill.type-amber {
+  color: #fcd34d;
+  background: rgba(245, 158, 11, 0.18);
+  border: 1px solid rgba(245, 158, 11, 0.42);
+}
+.plan-type-pill.type-indigo {
+  color: #a5b4fc;
+  background: rgba(99, 102, 241, 0.18);
+  border: 1px solid rgba(99, 102, 241, 0.42);
+}
+.plan-type-pill.type-rose {
+  color: #fda4af;
+  background: rgba(244, 63, 94, 0.18);
+  border: 1px solid rgba(244, 63, 94, 0.42);
+}
+.plan-type-pill.type-sky {
+  color: #7dd3fc;
+  background: rgba(14, 165, 233, 0.18);
+  border: 1px solid rgba(14, 165, 233, 0.42);
 }
 
 .plan-id-pill {
@@ -570,12 +702,13 @@ onMounted(() => fetchPlans(1));
   font-size: 14.5px; 
   font-weight: 800; 
   color: #ffffff; 
-  line-height: 1.35;
+  line-height: 1.4;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   word-break: break-word;
+  overflow-wrap: anywhere;
   transition: color 0.2s ease;
 }
 

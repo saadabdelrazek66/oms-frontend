@@ -128,6 +128,16 @@
               <td><span :class="['badge', getWorkTypeInfo(user.work_type).class]">{{ getWorkTypeInfo(user.work_type).text }}</span></td>
               <td>
                 <div class="actions-cell">
+                  <button 
+                    v-if="user.role !== 'manager'"
+                    class="action permissions-btn" 
+                    type="button" 
+                    title="إدارة الصلاحيات" 
+                    aria-label="إدارة صلاحيات المستخدم" 
+                    @click="openPermissionsModal(user)"
+                  >
+                    <span aria-hidden="true">🔐</span>
+                  </button>
                   <button class="action edit" type="button" title="تعديل" aria-label="تعديل بيانات المستخدم" @click="openModal(user)"><span aria-hidden="true">✎</span></button>
                   <button class="action delete" type="button" title="حذف" aria-label="حذف المستخدم" @click="deleteUser(user.id)"><span aria-hidden="true">🗑️</span></button>
                 </div>
@@ -327,6 +337,14 @@
     </Teleport>
 
 
+    <!-- نافذة إدارة الصلاحيات للموظف -->
+    <UserPermissionsModal 
+      :show="showPermissionsModal" 
+      :user="selectedUserForPermissions" 
+      @close="showPermissionsModal = false" 
+      @updated="handlePermissionsUpdated" 
+    />
+
     <transition name="toast"><div v-if="toastMessage" class="toast-message" role="status" aria-live="polite">{{ toastMessage }}</div></transition>
   </section>
 </template>
@@ -335,6 +353,19 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import api from '../axios'
 import alertService from '../services/alertService'
+import UserPermissionsModal from '../components/UserPermissionsModal.vue'
+
+const showPermissionsModal = ref(false)
+const selectedUserForPermissions = ref(null)
+
+const openPermissionsModal = (user) => {
+  selectedUserForPermissions.value = user
+  showPermissionsModal.value = true
+}
+
+const handlePermissionsUpdated = () => {
+  fetchUsers(pagination.value.current_page)
+}
 
 const users = ref([])
 const departmentsList = ref([])
@@ -1005,6 +1036,18 @@ onBeforeUnmount(() => {
   .stat-card small { font-size: 10px; }
   .users-table th, .users-table td { padding-right: 13px; padding-left: 13px; }
   .modal-content { padding-inline: 15px; }
+}
+
+.action.permissions-btn {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.3);
+  color: #818cf8;
+}
+.action.permissions-btn:hover {
+  background: rgba(99, 102, 241, 0.3);
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
 }
 
 @media (prefers-reduced-motion: reduce) {

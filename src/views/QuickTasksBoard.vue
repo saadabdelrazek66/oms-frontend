@@ -7,7 +7,7 @@
         <h2>المهام السريعة</h2>
         <p>تابع، استمع، وأنجز مهام فريقك السريعة والتوجيهات الصوتية بكل سهولة.</p>
       </div>
-      <button v-if="isManagerUser" class="primary-btn" type="button" @click="openCreateModal">
+      <button v-permission="'quick_tasks.create'" class="primary-btn" type="button" @click="openCreateModal">
         <span aria-hidden="true">＋</span>
         إضافة مهمة جديدة
       </button>
@@ -160,6 +160,7 @@
                       ⏱️
                     </button>
                     <button 
+                      v-permission="'quick_tasks.edit'"
                       type="button" 
                       @click.stop="openEditModal(task)" 
                       class="w-7 h-7 rounded-xl bg-[#18235a]/90 hover:bg-[#7de8dc]/20 text-[#8ea0dc] hover:text-[#7de8dc] border border-[#8999e2]/25 flex items-center justify-center transition-all cursor-pointer shadow-sm hover:scale-105"
@@ -168,6 +169,7 @@
                       <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                     </button>
                     <button 
+                      v-permission="'quick_tasks.delete'"
                       type="button" 
                       @click.stop="confirmDeleteTask(task)" 
                       class="w-7 h-7 rounded-xl bg-[#18235a]/90 hover:bg-[#ff4757]/20 text-[#8ea0dc] hover:text-[#ff4757] border border-[#8999e2]/25 flex items-center justify-center transition-all cursor-pointer shadow-sm hover:scale-105"

@@ -7,7 +7,7 @@
         <p>نظّم بيانات العملاء ووسائل التواصل والتفاصيل المالية في مكان واحد.</p>
       </div>
       <button
-        v-if="canManageAccounts(currentUser)"
+        v-if="can('clients.create')"
         class="primary-btn"
         type="button"
         @click="openModal()"
@@ -203,7 +203,7 @@
                     ⌁
                   </button>
                   <button
-                    v-if="canManageAccounts(currentUser)"
+                    v-if="can('clients.edit')"
                     class="action edit"
                     type="button"
                     title="تعديل"
@@ -213,7 +213,7 @@
                     ✎
                   </button>
                   <button
-                    v-if="canManageAccounts(currentUser)"
+                    v-if="can('clients.delete')"
                     class="action delete"
                     type="button"
                     title="حذف العميل"
@@ -911,7 +911,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import api from '../axios'
-import { canManageAccounts } from '@/utils/permissions'
+import { canManageAccounts, can } from '@/utils/permissions'
 import ClientAvatar from '@/components/ClientAvatar.vue'
 import alertService from '@/services/alertService'
 

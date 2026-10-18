@@ -1,10 +1,11 @@
-import { validateDriveLink, validatePostDriveLink } from '../utils/driveValidation';
+import { validateDriveLink, validatePostDriveLink, isFolderAllowedForPostType } from '../utils/driveValidation';
 
 export function useDriveValidation() {
   return {
     validateDriveLink,
-    validatePostDriveLink
+    validatePostDriveLink,
+    isFolderAllowedForPostType
   };
 }
 
-export { validateDriveLink, validatePostDriveLink };
+export { validateDriveLink, validatePostDriveLink, isFolderAllowedForPostType };

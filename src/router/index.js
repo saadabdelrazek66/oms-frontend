@@ -11,7 +11,7 @@ import ClientVault from '../views/ClientVault.vue'
 import PlanBoardsList from '../views/PlanBoardsList.vue'
 import SpreadsheetBoard from '../views/SpreadsheetBoard.vue'
 import SystemLogs from '../views/SystemLogs.vue'
-import { canManageAccounts, canManagePlans } from '../utils/permissions'
+import { canManageAccounts, canManagePlans, can } from '../utils/permissions'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -36,13 +36,13 @@ const router = createRouter({
           path: '/manager/departments',
           name: 'manager-departments',
           component: DepartmentsManager,
-          meta: { role: 'manager' },
+          meta: { permission: 'departments.view' },
         },
         {
           path: '/manager/users',
           name: 'manager-users',
           component: UsersManagement,
-          meta: { role: 'manager' },
+          meta: { permission: 'users.view' },
         },
         {
           path: '/employee/dashboard',
@@ -55,35 +55,37 @@ const router = createRouter({
           alias: '/clients',
           name: 'manager-clients',
           component: ClientsManager,
-          meta: { canManageAccounts: true },
+          meta: { permission: 'clients.view' },
         },
         {
           path: '/content-plans',
           name: 'content-plans',
           component: ContentPlans,
-          meta: { canManagePlans: true },
+          meta: { permission: 'plans.view' },
         },
         {
           path: '/app/client-vault',
           name: 'ClientVault',
           component: ClientVault,
-          meta: { requiresAuth: true, role: 'manager' },
+          meta: { requiresAuth: true, permission: 'vault.view' },
         },
         {
           path: '/plan-contents',
           name: 'PlanContents',
           component: PlanBoardsList,
+          meta: { permission: 'posts.view' },
         },
         {
           path: '/plan-board/:id',
           name: 'PlanBoard',
           component: SpreadsheetBoard,
+          meta: { permission: 'posts.view' },
         },
         {
           path: '/today-board',
           name: 'TodayBoard',
           component: () => import('@/views/TodayBoard.vue'),
-          meta: { title: 'لوحة اليوم / الشريط الزمني' },
+          meta: { title: 'لوحة اليوم / الشريط الزمني', permission: 'workload.view' },
         },
         {
           path: '/my-tasks',
@@ -95,19 +97,20 @@ const router = createRouter({
           path: '/projects',
           name: 'Projects',
           component: () => import('@/views/Projects.vue'),
-          meta: { title: 'المشاريع' },
+          meta: { title: 'المشاريع', permission: 'projects.view' },
         },
         {
           path: '/projects/:id',
           name: 'ProjectDetails',
           component: () => import('../views/ProjectDetails.vue'),
           props: true,
+          meta: { permission: 'projects.view' },
         },
         {
           path: '/quick-tasks',
           name: 'QuickTasksBoard',
           component: () => import('../views/QuickTasksBoard.vue'),
-          meta: { title: 'المهام السريعة' },
+          meta: { title: 'المهام السريعة', permission: 'quick_tasks.view' },
         },
         {
           path: '/system-logs',
@@ -115,7 +118,7 @@ const router = createRouter({
           component: SystemLogs,
           meta: {
             requiresAuth: true,
-            role: 'manager',
+            permission: 'logs.view',
           },
         },
         {
@@ -134,7 +137,7 @@ const router = createRouter({
           component: () => import('@/views/TrashBin.vue'),
           meta: {
             requiresAuth: true,
-            role: 'manager',
+            permission: 'trash.view',
             title: 'سلة المهملات',
           },
         },
@@ -192,7 +195,7 @@ const router = createRouter({
 // Navigation Guard
 router.beforeEach((to, from) => {
   const token = localStorage.getItem('token')
-  const role = localStorage.getItem('role')
+  let role = localStorage.getItem('role')
 
   let user = null
   try {
@@ -203,14 +206,31 @@ router.beforeEach((to, from) => {
   } catch (e) {
     console.error('Error parsing stored user in router:', e)
   }
+
+  // مزامنة الدور إذا كان موجوداً داخل كائن المستخدم
+  if (!role && user?.role) {
+    role = user.role
+  }
   if (!user && role) {
     user = { role }
   }
 
+  // إذا كان هناك توكن لكن بيانات المستخدم والدور غير صالحة إطلاقاً
+  if (token && !role) {
+    localStorage.removeItem('token')
+    localStorage.removeItem('role')
+    localStorage.removeItem('user')
+    if (to.path !== '/') return '/'
+    return
+  }
+
+  const defaultDashboard = role === 'manager' ? '/manager/dashboard' : '/employee/dashboard'
+
   // التحقق إذا كان المسار أو أي من آبائه يحتاج تسجيل دخول
   if (to.matched.some((record) => record.meta.requiresAuth)) {
     if (!token) {
-      return '/' // طرده لصفحة الدخول
+      if (to.path !== '/') return '/'
+      return
     }
 
     // فحص مسار العملاء: السماح للمدير أو Account Manager أو Sales
@@ -219,7 +239,8 @@ router.beforeEach((to, from) => {
       if (allowed) {
         return
       } else {
-        return role === 'manager' ? '/manager/dashboard' : '/employee/dashboard'
+        if (to.path !== defaultDashboard) return defaultDashboard
+        return
       }
     }
 
@@ -229,19 +250,33 @@ router.beforeEach((to, from) => {
       if (allowed) {
         return
       } else {
-        return role === 'manager' ? '/manager/dashboard' : '/my-tasks'
+        const plansFallback = role === 'manager' ? '/manager/dashboard' : '/my-tasks'
+        if (to.path !== plansFallback) return plansFallback
+        return
       }
     }
 
-    // التحقق من الصلاحيات بناءً على الدور
-    if (to.meta.role && to.meta.role !== role) {
-      // توجيهه للوحة المناسبة لدوره
-      return role === 'manager' ? '/manager/dashboard' : '/employee/dashboard'
+    // فحص الصلاحية الدقيقة للمسار (Fine-grained permission check) أولاً
+    const requiredPermission = to.meta.permission || to.matched.find((r) => r.meta.permission)?.meta.permission
+    if (requiredPermission) {
+      if (!can(requiredPermission, user)) {
+        if (to.path !== defaultDashboard) return defaultDashboard
+        return
+      }
+    } else if (to.meta.role && to.meta.role !== role) {
+      // التحقق من الدور فقط للمسارات العامة التي لم تُحدد لها صلاحية دقيقة
+      if (to.path !== defaultDashboard) {
+        return defaultDashboard
+      }
+      return '/'
     }
   } else {
     // لو رايح لصفحة تسجيل الدخول وهو مسجل دخول بالفعل
     if (token && to.path === '/') {
-      return role === 'manager' ? '/manager/dashboard' : '/employee/dashboard'
+      if (to.path !== defaultDashboard) {
+        return defaultDashboard
+      }
+      return
     }
   }
 })

@@ -7,7 +7,7 @@
         <h2>{{ isManager ? 'جميع المشاريع' : 'مشاريعي الحالية' }}</h2>
         <p>نظرة عامة على المشاريع، حالتها، وفرق العمل المسندة إليها.</p>
       </div>
-      <button v-if="isManager" class="primary-btn" type="button" @click="openModal()">
+      <button v-permission="'projects.create'" class="primary-btn" type="button" @click="openModal()">
         <span>＋</span> مشروع جديد
       </button>
     </div>
@@ -161,8 +161,9 @@
 
           <!-- أدوات التعديل والحذف وسهم الفتح -->
           <div class="card-header-actions">
-            <div v-if="isManager" class="card-actions" @click.stop>
+            <div class="card-actions" @click.stop>
               <button
+                v-permission="'projects.edit'"
                 type="button"
                 class="action edit"
                 @click.stop="openModal(project)"
@@ -172,6 +173,7 @@
                 ✎
               </button>
               <button
+                v-permission="'projects.delete'"
                 type="button"
                 class="action delete"
                 @click.stop="deleteProject(project.id)"

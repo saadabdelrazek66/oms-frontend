@@ -7,7 +7,7 @@
         <p>تابع مراحل العمل، دورات المراجعة، ومواعيد التسليم من مكان واحد.</p>
       </div>
       <button
-        v-if="user && (user.role === 'manager' || user.job_title === 'Account Manager')"
+        v-permission="'plans.create'"
         class="primary-btn"
         type="button"
         @click="openManagerModal()"
@@ -179,18 +179,11 @@
                   class="client-avatar-badge"
                 />
                 <div class="client-title-block">
-                  <div class="client-title-line">
-                    <h3 class="client-heading" :title="plan.client?.name">{{ plan.client?.name || 'عميل محذوف' }}</h3>
-                    <span class="plan-type-tag">{{ plan.plan_type }}</span>
-                    <span v-if="isManager && Number(plan.total_estimated_hours) > 0" class="plan-hours-badge" :title="'إجمالي ساعات العمل التقديرية: ' + formatHours(plan.total_estimated_hours) + ' ساعة'">
-                      ⏱️ {{ formatHours(plan.total_estimated_hours) }}س
-                    </span>
-                  </div>
+                  <h3 class="client-heading" :title="plan.client?.name">{{ plan.client?.name || 'عميل محذوف' }}</h3>
                   <div class="plan-date-range" v-if="plan.start_date || plan.end_date">
                     <span class="range-icon">📅</span>
                     <span class="range-text">{{ formatShortDate(plan.start_date) }} ⭢ {{ formatShortDate(plan.end_date) }}</span>
                   </div>
-
                 </div>
               </div>
 
@@ -215,6 +208,7 @@
                       <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
                     </button>
                     <button 
+                      v-permission="'plans.duplicate'"
                       class="quick-icon-btn duplicate" 
                       type="button" 
                       title="استنساخ كقالب" 
@@ -226,11 +220,26 @@
                         <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                       </svg>
                     </button>
-                    <button class="quick-icon-btn edit" type="button" title="تعديل الخطة" aria-label="تعديل الخطة" @click="openManagerModal(plan)">✎</button>
-                    <button class="quick-icon-btn delete" type="button" title="حذف الخطة" aria-label="حذف الخطة" @click="deletePlan(plan.id)">🗑️</button>
+                    <button v-permission="'plans.edit'" class="quick-icon-btn edit" type="button" title="تعديل الخطة" aria-label="تعديل الخطة" @click="openManagerModal(plan)">✎</button>
+                    <button v-permission="'plans.delete'" class="quick-icon-btn delete" type="button" title="حذف الخطة" aria-label="حذف الخطة" @click="deletePlan(plan.id)">🗑️</button>
                   </div>
                 </div>
               </div>
+            </div>
+
+            <!-- سطر شارة نوع الخطة وساعات العمل المستقل بكامل عرض الكارت -->
+            <div class="card-plan-type-row">
+              <span 
+                :class="['plan-type-tag', getPlanTypeInfo(plan.plan_type).class]"
+                :title="'نوع الخطة: ' + (plan.plan_type || 'غير محدد')"
+              >
+                <span class="plan-type-icon" aria-hidden="true">{{ getPlanTypeInfo(plan.plan_type).icon }}</span>
+                <span class="plan-type-text">{{ plan.plan_type || 'عامة' }}</span>
+              </span>
+
+              <span v-if="isManager && Number(plan.total_estimated_hours) > 0" class="plan-hours-badge" :title="'إجمالي ساعات العمل التقديرية: ' + formatHours(plan.total_estimated_hours) + ' ساعة'">
+                ⏱️ {{ formatHours(plan.total_estimated_hours) }}س
+              </span>
             </div>
 
             <!-- مخرجات وعناصر الخطة تظهر أفقياً جنب بعض لتوفير مساحة رأسية -->
@@ -505,10 +514,10 @@
                       <div class="drawer-actions-row">
                         <!-- أزرار الاعتماد والرفض للمراجع أو المدير -->
                         <div v-if="isUserReviewer(plan) && plan.status === 'under_review'" class="duo-action-btns">
-                          <button class="drawer-action-btn accept-btn" :disabled="actionLoading === `approve-${plan.id}`" @click="approvePlan(plan)">
+                          <button v-permission="'plans.approve'" class="drawer-action-btn accept-btn" :disabled="actionLoading === `approve-${plan.id}`" @click="approvePlan(plan)">
                             اعتماد الخطة ✅
                           </button>
-                          <button class="drawer-action-btn reject-btn" :disabled="actionLoading === `reject-${plan.id}`" @click="openRejectModal(plan)">
+                          <button v-permission="'plans.reject'" class="drawer-action-btn reject-btn" :disabled="actionLoading === `reject-${plan.id}`" @click="openRejectModal(plan)">
                             طلب تعديلات ❌
                           </button>
                         </div>
@@ -1496,7 +1505,13 @@
             <div class="summary-top-row">
               <div class="summary-client-info">
                 <span class="summary-client-title">{{ currentDetailsPlan.client?.name || 'عميل محذوف' }}</span>
-                <span class="summary-plan-tag">{{ currentDetailsPlan.plan_type }}</span>
+                <span 
+                  :class="['summary-plan-tag', 'plan-type-tag', getPlanTypeInfo(currentDetailsPlan.plan_type).class]"
+                  :title="'نوع الخطة: ' + (currentDetailsPlan.plan_type || 'غير محدد')"
+                >
+                  <span class="plan-type-icon" aria-hidden="true">{{ getPlanTypeInfo(currentDetailsPlan.plan_type).icon }}</span>
+                  <span class="plan-type-text">{{ currentDetailsPlan.plan_type }}</span>
+                </span>
               </div>
 
               <div :class="['status-badge', getPlanStatusInfo(currentDetailsPlan.status).class]">
@@ -2058,6 +2073,7 @@ import ClientAvatar from '@/components/ClientAvatar.vue';
 // استيراد المحرك الذكي للتواريخ
 import { getDeadlineStatus } from '../utils/timeHelper';
 import { validateDriveLink } from '../utils/driveValidation';
+import { getPlanTypeInfo } from '@/utils/planTheme';
 
 // القائمة المرجعية للحقول الإلزامية للمنشورات
 const availableBriefFields = {
@@ -4380,17 +4396,231 @@ onBeforeUnmount(() => {
   font-weight: 800;
   color: #f1f4ff;
   line-height: 1.3;
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-plan-type-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 3px;
+  margin-bottom: 2px;
+  width: 100%;
 }
 
 .plan-type-tag {
-  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
   font-weight: 700;
-  color: #7de8dc;
-  background: rgba(125, 232, 220, 0.12);
-  border: 1px solid rgba(125, 232, 220, 0.25);
-  padding: 2px 7px;
-  border-radius: 6px;
+  line-height: 1.2;
+  padding: 4px 10px 4px 8px;
+  border-radius: 8px;
   white-space: nowrap;
+  letter-spacing: 0.2px;
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  cursor: default;
+  position: relative;
+  max-width: 100%;
+}
+
+.plan-type-tag:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.12);
+}
+
+.plan-type-icon {
+  font-size: 11px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
+}
+
+.plan-type-text {
+  line-height: 1.2;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-hours-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #fcd34d;
+  background: rgba(245, 158, 11, 0.14);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  padding: 3px 8px;
+  border-radius: 7px;
+  white-space: nowrap;
+  letter-spacing: 0.2px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* 1. صناعة المحتوى / Content */
+.plan-type-tag.type-content {
+  color: #34d399;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.22) 0%, rgba(5, 150, 105, 0.10) 100%);
+  border: 1px solid rgba(52, 211, 153, 0.42);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+.plan-type-tag.type-content:hover {
+  border-color: rgba(52, 211, 153, 0.7);
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.35);
+}
+
+/* 2. تسويق بالمحتوى / Content Marketing */
+.plan-type-tag.type-content-marketing {
+  color: #22d3ee;
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.24) 0%, rgba(14, 116, 144, 0.12) 100%);
+  border: 1px solid rgba(34, 211, 238, 0.45);
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+.plan-type-tag.type-content-marketing:hover {
+  border-color: rgba(34, 211, 238, 0.75);
+  box-shadow: 0 0 15px rgba(6, 182, 212, 0.4);
+}
+
+/* 3. إعلانات ممولة / Media Buying */
+.plan-type-tag.type-media-buying {
+  color: #fbbf24;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.24) 0%, rgba(180, 83, 9, 0.12) 100%);
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+.plan-type-tag.type-media-buying:hover {
+  border-color: rgba(251, 191, 36, 0.75);
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
+}
+
+/* 4. تسويق عبر السوشيال ميديا / Social Media */
+.plan-type-tag.type-social-media {
+  color: #c084fc;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.24) 0%, rgba(126, 34, 206, 0.12) 100%);
+  border: 1px solid rgba(192, 132, 252, 0.45);
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+.plan-type-tag.type-social-media:hover {
+  border-color: rgba(192, 132, 252, 0.75);
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
+}
+
+/* 5. إنتاج مرئي وتصوير ومونتاج / Media Production */
+.plan-type-tag.type-media-production {
+  color: #fb7185;
+  background: linear-gradient(135deg, rgba(244, 63, 94, 0.24) 0%, rgba(190, 18, 60, 0.12) 100%);
+  border: 1px solid rgba(251, 113, 133, 0.45);
+  box-shadow: 0 0 10px rgba(244, 63, 94, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+.plan-type-tag.type-media-production:hover {
+  border-color: rgba(251, 113, 133, 0.75);
+  box-shadow: 0 0 15px rgba(244, 63, 94, 0.4);
+}
+
+/* 6. تحسين محركات البحث / SEO */
+.plan-type-tag.type-seo {
+  color: #38bdf8;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.24) 0%, rgba(3, 105, 161, 0.12) 100%);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  box-shadow: 0 0 10px rgba(14, 165, 233, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+.plan-type-tag.type-seo:hover {
+  border-color: rgba(56, 189, 248, 0.75);
+  box-shadow: 0 0 15px rgba(14, 165, 233, 0.4);
+}
+
+/* 7. استراتيجية وتسويق شامل / Strategy */
+.plan-type-tag.type-strategy {
+  color: #818cf8;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.24) 0%, rgba(67, 56, 202, 0.12) 100%);
+  border: 1px solid rgba(129, 140, 248, 0.45);
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+.plan-type-tag.type-strategy:hover {
+  border-color: rgba(129, 140, 248, 0.75);
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+}
+
+/* 8. تقارير وتحليلات / Analytics */
+.plan-type-tag.type-analytics {
+  color: #a3e635;
+  background: linear-gradient(135deg, rgba(132, 204, 22, 0.24) 0%, rgba(77, 124, 15, 0.12) 100%);
+  border: 1px solid rgba(163, 230, 53, 0.45);
+  box-shadow: 0 0 10px rgba(132, 204, 22, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+.plan-type-tag.type-analytics:hover {
+  border-color: rgba(163, 230, 53, 0.75);
+  box-shadow: 0 0 15px rgba(132, 204, 22, 0.4);
+}
+
+/* 9. تصاميم وهوية / Design */
+.plan-type-tag.type-design {
+  color: #f472b6;
+  background: linear-gradient(135deg, rgba(236, 72, 153, 0.24) 0%, rgba(190, 24, 93, 0.12) 100%);
+  border: 1px solid rgba(244, 114, 182, 0.45);
+  box-shadow: 0 0 10px rgba(236, 72, 153, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+.plan-type-tag.type-design:hover {
+  border-color: rgba(244, 114, 182, 0.75);
+  box-shadow: 0 0 15px rgba(236, 72, 153, 0.4);
+}
+
+/* 10. خطة شهرية / Monthly */
+.plan-type-tag.type-monthly {
+  color: #2dd4bf;
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.24) 0%, rgba(15, 118, 110, 0.12) 100%);
+  border: 1px solid rgba(45, 212, 191, 0.45);
+  box-shadow: 0 0 10px rgba(20, 184, 166, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+.plan-type-tag.type-monthly:hover {
+  border-color: rgba(45, 212, 191, 0.75);
+  box-shadow: 0 0 15px rgba(20, 184, 166, 0.4);
+}
+
+/* Fallback & Custom themes */
+.plan-type-tag.type-general,
+.plan-type-tag.type-teal {
+  color: #7de8dc;
+  background: rgba(125, 232, 220, 0.14);
+  border: 1px solid rgba(125, 232, 220, 0.35);
+  box-shadow: 0 0 10px rgba(125, 232, 220, 0.15);
+}
+.plan-type-tag.type-amber {
+  color: #fcd34d;
+  background: rgba(245, 158, 11, 0.18);
+  border: 1px solid rgba(245, 158, 11, 0.42);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.18);
+}
+.plan-type-tag.type-indigo {
+  color: #a5b4fc;
+  background: rgba(99, 102, 241, 0.18);
+  border: 1px solid rgba(99, 102, 241, 0.42);
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.18);
+}
+.plan-type-tag.type-rose {
+  color: #fda4af;
+  background: rgba(244, 63, 94, 0.18);
+  border: 1px solid rgba(244, 63, 94, 0.42);
+  box-shadow: 0 0 10px rgba(244, 63, 94, 0.18);
+}
+.plan-type-tag.type-sky {
+  color: #7dd3fc;
+  background: rgba(14, 165, 233, 0.18);
+  border: 1px solid rgba(14, 165, 233, 0.42);
+  box-shadow: 0 0 10px rgba(14, 165, 233, 0.18);
 }
 
 .plan-date-range {
@@ -4975,12 +5205,7 @@ onBeforeUnmount(() => {
 }
 
 .summary-plan-tag {
-  font-size: 10px;
-  background: rgba(125, 232, 220, 0.12);
-  color: #7de8dc;
-  border: 1px solid rgba(125, 232, 220, 0.25);
-  padding: 2px 7px;
-  border-radius: 6px;
+  font-size: 11px;
 }
 
 .deadlines-timeline-grid {

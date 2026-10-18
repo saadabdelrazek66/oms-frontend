@@ -1,58 +1,102 @@
 /**
- * دالة أساسية للتحقق مما إذا كان المستخدم مديراً
- * المدير يمتلك صلاحيات مطلقة ويتخطى كل القيود
+ * نظام الصلاحيات المتقدم (RBAC Permission Engine)
  */
-export const isManager = (user) => {
-    return user && user.role === 'manager';
+
+export const getCurrentUser = () => {
+  try {
+    const raw = localStorage.getItem('user');
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
+  }
+};
+
+const isObjectRole = (role) => typeof role === 'object' && role !== null && 'value' in role;
+
+/**
+ * فحص ما إذا كان المستخدم مديراً
+ */
+export const isManager = (user = null) => {
+  const u = user || getCurrentUser();
+  if (!u) return false;
+  const role = isObjectRole(u.role) ? u.role.value : u.role;
+  return role === 'manager';
 };
 
 /**
- * دالة للتحقق من وظيفة معينة
+ * فحص ما إذا كان المستخدم يملك صلاحية معينة
+ * @param {string} permissionCode كود الصلاحية مثل 'clients.delete'
+ * @param {object|null} user كائن المستخدم (اختياري)
+ * @returns {boolean}
  */
+export const can = (permissionCode, user = null) => {
+  const u = user || getCurrentUser();
+  if (!u) return false;
+
+  // المدير يمتلك كل الصلاحيات دائماً
+  if (isManager(u)) return true;
+
+  const permissions = Array.isArray(u.permission_codes) ? u.permission_codes : [];
+  return permissions.includes(permissionCode);
+};
+
+/**
+ * فحص ما إذا كان المستخدم يملك أي صلاحية من قائمة
+ * @param {string[]} permissionCodes مصفوفة أكواد الصلاحيات
+ * @param {object|null} user 
+ * @returns {boolean}
+ */
+export const canAny = (permissionCodes = [], user = null) => {
+  const u = user || getCurrentUser();
+  if (!u) return false;
+  if (isManager(u)) return true;
+
+  if (!Array.isArray(permissionCodes) || permissionCodes.length === 0) return true;
+  const permissions = Array.isArray(u.permission_codes) ? u.permission_codes : [];
+  return permissionCodes.some((code) => permissions.includes(code));
+};
+
+/**
+ * فحص ما إذا كان المستخدم يملك جميع الصلاحيات في القائمة
+ * @param {string[]} permissionCodes مصفوفة أكواد الصلاحيات
+ * @param {object|null} user 
+ * @returns {boolean}
+ */
+export const canAll = (permissionCodes = [], user = null) => {
+  const u = user || getCurrentUser();
+  if (!u) return false;
+  if (isManager(u)) return true;
+
+  if (!Array.isArray(permissionCodes) || permissionCodes.length === 0) return true;
+  const permissions = Array.isArray(u.permission_codes) ? u.permission_codes : [];
+  return permissionCodes.every((code) => permissions.includes(code));
+};
+
+// ==========================================
+// 🛡️ دوال التوافق للخلف (Backward Compatibility)
+// ==========================================
+
 export const isJobTitle = (user, jobTitle) => {
-    return user && user.job_title === jobTitle;
+  return user && user.job_title === jobTitle;
 };
 
-// ==========================================
-// 🛡️ مجموعات الصلاحيات (Permission Groups)
-// ==========================================
-
-/**
- * صلاحية تعديل التصميمات والفيديوهات (للمصممين والمونتير والمدير)
- */
 export const canEditDesigns = (user) => {
-    if (isManager(user)) return true;
-    return isJobTitle(user, 'Graphic Designer') || isJobTitle(user, 'Video Editor');
+  return can('posts.edit_media', user);
 };
 
-/**
- * صلاحية إدارة الحملات الإعلانية وتعديل ميزانية التمويل
- */
 export const canManageAds = (user) => {
-    if (isManager(user)) return true;
-    return isJobTitle(user, 'Media Buyer');
+  return can('posts.edit_ads', user);
 };
 
-/**
- * صلاحية التواصل مع العملاء ومتابعة الحسابات
- */
 export const canManageAccounts = (user) => {
-    if (isManager(user)) return true;
-    return isJobTitle(user, 'Account Manager') || isJobTitle(user, 'Sales');
+  return can('clients.view', user) || can('plans.view', user);
 };
 
-/**
- * صلاحية إدارة وإنشاء خطط المحتوى (للمدير أو Account Manager)
- */
 export const canManagePlans = (user) => {
-    if (isManager(user)) return true;
-    return isJobTitle(user, 'Account Manager');
+  return can('plans.view', user);
 };
 
-/**
- * صلاحية المطورين (للوصول لبيانات الـ API أو الأكواد لو لزم الأمر)
- */
 export const isDeveloper = (user) => {
-    if (isManager(user)) return true;
-    return isJobTitle(user, 'Developer');
+  if (isManager(user)) return true;
+  return isJobTitle(user, 'Developer');
 };

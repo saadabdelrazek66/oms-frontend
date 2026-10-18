@@ -1,12 +1,41 @@
 <template>
+  <!-- شريط الإنذار الإداري العام لتجميد المنظومة -->
+  <div v-if="isSystemFrozen" class="global-system-freeze-strip" dir="rtl">
+    <div class="freeze-strip-inner">
+      <div class="freeze-left-wrap">
+        <span class="freeze-strip-icon">❄️</span>
+        <div class="freeze-strip-text">
+          <strong>وضع تجميد المنظومة والصيانة مفعّل حالياً (System Freeze Active)</strong>
+          <span>المنظومة في وضع القراءة فقط للموظفين. يُمنع إجراء أي إنشاء أو تعديل لحين إلغاء التفعيل من قِبل الإدارة.</span>
+        </div>
+      </div>
+      <router-link v-if="userRole === 'manager'" to="/settings" class="freeze-settings-link">
+        إلغاء التجميد من الإعدادات ⚙️
+      </router-link>
+    </div>
+  </div>
+
   <RouterView />
   <GlobalAlertsProvider />
 </template>
 
 <script setup>
+import { onMounted, computed } from 'vue';
 import { RouterView } from 'vue-router';
 import GlobalAlertsProvider from './components/GlobalAlertsProvider.vue';
+import { useSystemSettings } from './composables/useSystemSettings';
+
+const { isSystemFrozen, fetchSettings } = useSystemSettings();
+
+const userRole = computed(() => {
+  return localStorage.getItem('role') || '';
+});
+
+onMounted(() => {
+  fetchSettings();
+});
 </script>
+
 <style>
 /* ==========================================================================
    Theme-Preserving Sticky Columns for System Tables (RTL)
@@ -256,5 +285,80 @@ html, body {
   .nav-item {
     touch-action: manipulation;
   }
+}
+
+/* ==========================================================================
+   Global System Freeze Strip Styles
+   ========================================================================== */
+.global-system-freeze-strip {
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 99999;
+  background: linear-gradient(135deg, #7f1d1d, #b91c1c);
+  border-bottom: 2px solid #ef4444;
+  color: #ffffff;
+  padding: 10px 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+  font-family: inherit;
+  animation: freezeGlow 2.5s infinite alternate;
+}
+@keyframes freezeGlow {
+  0% { box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); }
+  100% { box-shadow: 0 4px 25px rgba(239, 68, 68, 0.65); }
+}
+.freeze-strip-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.freeze-left-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+.freeze-strip-icon {
+  font-size: 22px;
+  animation: spinSlow 8s linear infinite;
+}
+@keyframes spinSlow {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.freeze-strip-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.freeze-strip-text strong {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fef2f2;
+}
+.freeze-strip-text span {
+  font-size: 11px;
+  color: #fecaca;
+}
+.freeze-settings-link {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  padding: 6px 14px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 700;
+  transition: all 0.2s ease;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  white-space: nowrap;
+}
+.freeze-settings-link:hover {
+  background: #ffffff;
+  color: #991b1b;
 }
 </style>

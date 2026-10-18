@@ -18,6 +18,44 @@ window.$toast = alertService.toast
 window.$confirm = alertService.confirm
 window.$alert = alertService.alert
 
+// التوجيه العالمي للصلاحيات (v-permission)
+import { can, canAny } from './utils/permissions'
+
+app.directive('permission', {
+  mounted(el, binding) {
+    const value = binding.value
+    let hasAccess = false
+
+    if (Array.isArray(value)) {
+      hasAccess = canAny(value)
+    } else if (typeof value === 'string') {
+      hasAccess = can(value)
+    } else {
+      hasAccess = true
+    }
+
+    if (!hasAccess) {
+      el.parentNode?.removeChild(el)
+    }
+  },
+  updated(el, binding) {
+    const value = binding.value
+    let hasAccess = false
+
+    if (Array.isArray(value)) {
+      hasAccess = canAny(value)
+    } else if (typeof value === 'string') {
+      hasAccess = can(value)
+    } else {
+      hasAccess = true
+    }
+
+    if (!hasAccess) {
+      el.parentNode?.removeChild(el)
+    }
+  }
+})
+
 // استبدال window.alert الافتراضي بتنبيه المنظومة الفاخر والاحترافي
 window.alert = (message) => {
   if (typeof message === 'object' && message !== null) {

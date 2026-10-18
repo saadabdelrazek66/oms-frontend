@@ -41,6 +41,15 @@ api.interceptors.response.use(
         window.location.href = '/'
       }
     }
+
+    // اصطياد وضع تجميد المنظومة (423 Locked) وعرض تنبيه واضح ومفهوم
+    if (error.response && (error.response.status === 423 || error.response.data?.code === 'SYSTEM_FROZEN')) {
+      const msg = error.response.data?.message || 'المنظومة في وضع الصيانة والتجميد المؤقت (للقراءة فقط).';
+      import('./services/alertService').then(m => {
+        m.default.warning(msg);
+      }).catch(() => {});
+    }
+
     return Promise.reject(error)
   },
 )

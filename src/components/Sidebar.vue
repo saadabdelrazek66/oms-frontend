@@ -15,8 +15,8 @@
             <img src="/logo.png" alt="Octo Media" class="brand-logo-img" />
           </div>
           <div class="brand-copy">
-            <strong>OCTO<span>SPACE</span></strong>
-            <small>مساحة فريقك الذكية</small>
+            <strong class="brand-title">{{ agencyName }}</strong>
+            <small class="brand-tagline">{{ agencyTagline || 'مساحة فريقك الذكية' }}</small>
           </div>
         </router-link>
         <button class="close-btn" type="button" aria-label="إغلاق القائمة" @click="$emit('close')">
@@ -76,7 +76,7 @@
             </router-link>
 
             <!-- لوحة اليوم (الشريط الزمني الاستعراضي) -->
-            <router-link to="/today-board" class="nav-item">
+            <router-link v-if="can('workload.view')" to="/today-board" class="nav-item">
               <span class="nav-icon-box">
                 <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <circle cx="12" cy="12" r="10"></circle>
@@ -99,7 +99,7 @@
             </router-link>
 
             <!-- المهام السريعة -->
-            <router-link to="/quick-tasks" class="nav-item">
+            <router-link v-if="can('quick_tasks.view')" to="/quick-tasks" class="nav-item">
               <span class="nav-icon-box">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
@@ -122,7 +122,7 @@
 
           <div class="nav-group-items">
             <!-- المشاريع -->
-            <router-link class="nav-item" to="/projects">
+            <router-link v-if="can('projects.view')" class="nav-item" to="/projects">
               <span class="nav-icon-box">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
@@ -132,9 +132,9 @@
               <em class="nav-shortcut">P</em>
             </router-link>
 
-            <!-- خطط المحتوى (للمدير و Account Manager) -->
+            <!-- خطط المحتوى -->
             <router-link
-              v-if="user && (user.role === 'manager' || user.job_title === 'Account Manager')"
+              v-if="can('plans.view')"
               class="nav-item"
               to="/content-plans"
             >
@@ -156,7 +156,7 @@
             </router-link>
 
             <!-- جداول خطط المحتوى (شيت المنشورات) -->
-            <router-link class="nav-item" to="/plan-contents">
+            <router-link v-if="can('posts.view')" class="nav-item" to="/plan-contents">
               <span class="nav-icon-box">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <rect x="3" y="3" width="18" height="18" rx="2"></rect>
@@ -173,7 +173,7 @@
         </div>
 
         <!-- ================= 3. مجموعة العملاء والأصول ================= -->
-        <template v-if="canManageAccounts(currentUser) || role === 'manager'">
+        <template v-if="can('clients.view') || can('vault.view')">
           <div class="nav-divider"></div>
           <div class="nav-group">
             <div class="nav-group-header">
@@ -183,7 +183,7 @@
 
             <div class="nav-group-items">
               <!-- العملاء والشركات -->
-              <router-link v-if="canManageAccounts(currentUser)" class="nav-item" to="/manager/clients">
+              <router-link v-if="can('clients.view')" class="nav-item" to="/manager/clients">
                 <span class="nav-icon-box">
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
@@ -195,7 +195,7 @@
               </router-link>
 
               <!-- خزنة العملاء -->
-              <router-link v-if="role === 'manager'" class="nav-item" to="/app/client-vault">
+              <router-link v-if="can('vault.view')" class="nav-item" to="/app/client-vault">
                 <span class="nav-icon-box">
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
@@ -210,8 +210,8 @@
           </div>
         </template>
 
-        <!-- ================= 4. مجموعة الفريق والمنظومة (للمدير فقط) ================= -->
-        <template v-if="role === 'manager'">
+        <!-- ================= 4. مجموعة الفريق والمنظومة ================= -->
+        <template v-if="role === 'manager' || canAny(['departments.view', 'users.view'])">
           <div class="nav-divider"></div>
           <div class="nav-group">
             <div class="nav-group-header">
@@ -221,7 +221,7 @@
 
             <div class="nav-group-items">
               <!-- إدارة الأقسام -->
-              <router-link class="nav-item" to="/manager/departments">
+              <router-link v-if="can('departments.view')" class="nav-item" to="/manager/departments">
                 <span class="nav-icon-box">
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
@@ -234,7 +234,7 @@
               </router-link>
 
               <!-- إدارة المستخدمين -->
-              <router-link class="nav-item" to="/manager/users">
+              <router-link v-if="can('users.view')" class="nav-item" to="/manager/users">
                 <span class="nav-icon-box">
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -250,8 +250,8 @@
           </div>
         </template>
 
-        <!-- ================= 5. مجموعة النظام والمحفوظات (للمدير فقط) ================= -->
-        <template v-if="role === 'manager'">
+        <!-- ================= 5. مجموعة النظام والمحفوظات ================= -->
+        <template v-if="role === 'manager' || canAny(['logs.view', 'trash.view'])">
           <div class="nav-divider"></div>
           <div class="nav-group">
             <div class="nav-group-header">
@@ -261,7 +261,7 @@
 
             <div class="nav-group-items">
               <!-- سجل النظام -->
-              <router-link class="nav-item" to="/system-logs">
+              <router-link v-if="can('logs.view')" class="nav-item" to="/system-logs">
                 <span class="nav-icon-box">
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
@@ -271,7 +271,7 @@
               </router-link>
 
               <!-- سلة المهملات -->
-              <router-link class="nav-item trash-item" to="/trash">
+              <router-link v-if="can('trash.view')" class="nav-item trash-item" to="/trash">
                 <span class="nav-icon-box">
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <polyline points="3 6 5 6 21 6"></polyline>
@@ -285,7 +285,7 @@
               </router-link>
 
               <!-- إعدادات النظام -->
-              <router-link class="nav-item" to="/settings">
+              <router-link v-if="role === 'manager'" class="nav-item" to="/settings">
                 <span class="nav-icon-box">
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <circle cx="12" cy="12" r="3"></circle>
@@ -317,8 +317,10 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { canManageAccounts } from '@/utils/permissions'
+import { canManageAccounts, can, canAny } from '@/utils/permissions'
+import { useSystemSettings } from '@/composables/useSystemSettings'
 
+const { agencyName, agencyTagline } = useSystemSettings()
 const role = ref(localStorage.getItem('role') || 'employee')
 const router = useRouter()
 

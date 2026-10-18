@@ -467,7 +467,7 @@
 
             <td v-if="!isMediaBuyer">
               <div class="lock-wrapper">
-                <select v-model="post.post_type" @change="autoSave(post, 'post_type')" :disabled="!canEditFields(post) || isFieldDisabled(post, 'post_type')">
+                <select v-model="post.post_type" @change="onPostTypeChange(post)" :disabled="!canEditFields(post) || isFieldDisabled(post, 'post_type')">
                   <option value="">اختيار...</option>
                   <option v-for="type in availablePostTypes" :key="type" :value="type">
                     {{ type }}
@@ -560,7 +560,7 @@
                       v-model="post.delivery_links" 
                       @input="handleDeliveryInput(post)"
                       @blur="autoSave(post, 'delivery_links')" 
-                      placeholder="رابط ملف التسليم (Google Drive / Docs)..." 
+                      :placeholder="isFolderAllowedForPostType(post.post_type) ? 'رابط مجلد أو ملف التسليم (Google Drive)...' : 'رابط ملف التسليم (Google Drive / Docs)...'" 
                       dir="ltr" 
                       rows="2"
                       :class="{ 'input-invalid': isDeliveryInvalid(post) }"
@@ -1143,7 +1143,7 @@
                           v-model="selectedPostForView.delivery_links"
                           @input="handleDeliveryInput(selectedPostForView)"
                           @blur="autoSave(selectedPostForView, 'delivery_links')"
-                          placeholder="أدخل رابط ملف جوجل درايف أو دوكس للتسليم..." 
+                          :placeholder="isFolderAllowedForPostType(selectedPostForView?.post_type) ? 'أدخل رابط مجلد أو ملف جوجل درايف للتسليم...' : 'أدخل رابط ملف جوجل درايف أو دوكس للتسليم...'" 
                           dir="ltr"
                           class="modal-delivery-input"
                           :class="{ 'border-red-500': isDeliveryInvalid(selectedPostForView) }"
@@ -1275,7 +1275,7 @@ import alertService from '../services/alertService';
 // استيراد المحرك الذكي
 import { getDeadlineStatus } from '../utils/timeHelper';
 // استيراد دالة التحقق من روابط درايف للبوست
-import { validatePostDriveLink, validateDriveFolderLink } from '../utils/driveValidation';
+import { validatePostDriveLink, validateDriveFolderLink, isFolderAllowedForPostType } from '../utils/driveValidation';
 // استيراد دالة التحقق من روابط منصات النشر
 import { validatePlatformLink, detectPlatformFromUrl } from '../utils/platformValidation';
 
@@ -1283,7 +1283,7 @@ import { validatePlatformLink, detectPlatformFromUrl } from '../utils/platformVa
 const isPostDeliveryValid = (post) => {
   if (!post || !post.delivery_links || !String(post.delivery_links).trim()) return false;
   if (post._isDeliveryValid !== undefined) return post._isDeliveryValid;
-  return validatePostDriveLink(post.delivery_links).valid;
+  return validatePostDriveLink(post.delivery_links, post.post_type).valid;
 };
 
 const isDeliveryInvalid = (post) => {
@@ -1297,7 +1297,7 @@ const isDeliveryInvalid = (post) => {
 const getDeliveryError = (post) => {
   if (!post) return '';
   if (post._deliveryError !== undefined) return post._deliveryError || '';
-  const res = validatePostDriveLink(post.delivery_links);
+  const res = validatePostDriveLink(post.delivery_links, post.post_type);
   return res.valid ? '' : res.message;
 };
 
@@ -1305,9 +1305,19 @@ const handleDeliveryInput = (post) => {
   if (!post) return;
   post._deliveryTouched = true;
   post._extractedDelUrls = undefined;
-  const res = validatePostDriveLink(post.delivery_links);
+  const res = validatePostDriveLink(post.delivery_links, post.post_type);
   post._isDeliveryValid = res.valid;
   post._deliveryError = res.valid ? null : res.message;
+};
+
+const onPostTypeChange = (post) => {
+  if (!post) return;
+  if (post.delivery_links && String(post.delivery_links).trim()) {
+    const res = validatePostDriveLink(post.delivery_links, post.post_type);
+    post._isDeliveryValid = res.valid;
+    post._deliveryError = res.valid ? null : res.message;
+  }
+  autoSave(post, 'post_type');
 };
 
 const getExtractedRefUrls = (post) => {
@@ -2168,7 +2178,7 @@ const canEditDelivery = (post) => {
 const enrichPost = (post) => {
   if (!post) return post;
   post._lockedFieldsSet = new Set(Array.isArray(post.locked_fields) ? post.locked_fields : []);
-  post._isDeliveryValid = (post.delivery_links && String(post.delivery_links).trim()) ? validatePostDriveLink(post.delivery_links).valid : false;
+  post._isDeliveryValid = (post.delivery_links && String(post.delivery_links).trim()) ? validatePostDriveLink(post.delivery_links, post.post_type).valid : false;
   post._isFinalDeliveryValid = (post.final_delivery_link && String(post.final_delivery_link).trim()) ? validateDriveFolderLink(post.final_delivery_link).valid : false;
   post._finalDeliveryInput = post.final_delivery_link || '';
   post._editingFinalLink = false;
@@ -2233,7 +2243,7 @@ const formatDeliveryDate = (dateString) => {
 
 const markAsDelivered = (post) => {
   post._deliveryTouched = true;
-  const valResult = validatePostDriveLink(post.delivery_links);
+  const valResult = validatePostDriveLink(post.delivery_links, post.post_type);
   if (!valResult.valid) {
     showToast(valResult.message || 'رابط البوست غير صالح ولن يتم حفظه');
     return;
@@ -2257,7 +2267,7 @@ const markAsDelivered = (post) => {
 
 const resubmitPost = async (post) => {
   post._deliveryTouched = true;
-  const valResult = validatePostDriveLink(post.delivery_links);
+  const valResult = validatePostDriveLink(post.delivery_links, post.post_type);
   if (!valResult.valid) {
     showToast(valResult.message || 'رابط البوست غير صالح ولن يتم حفظه');
     return;
@@ -2577,16 +2587,24 @@ const deletePost = async (post, index) => {
 const autoSave = async (post, field) => {
   if (field === 'delivery_links') {
     // التحقق الصارم من رابط تسليم البوست (Google Drive / Docs)
-    const valResult = validatePostDriveLink(post.delivery_links);
+    const valResult = validatePostDriveLink(post.delivery_links, post.post_type);
     if (!valResult.valid) {
       post._deliveryTouched = true;
       post._deliveryError = valResult.message;
       post._isDeliveryValid = false;
-      showToast('رابط البوست غير صالح ولن يتم حفظه');
+      showToast(valResult.message || 'رابط البوست غير صالح ولن يتم حفظه');
       return; // منع إرسال طلب الـ API
     }
     post._deliveryError = null;
     post._isDeliveryValid = true;
+  }
+
+  if (field === 'post_type') {
+    if (post.delivery_links && String(post.delivery_links).trim()) {
+      const valResult = validatePostDriveLink(post.delivery_links, post.post_type);
+      post._isDeliveryValid = valResult.valid;
+      post._deliveryError = valResult.valid ? null : valResult.message;
+    }
   }
 
   if (field === 'final_delivery_link') {

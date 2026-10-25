@@ -186,6 +186,7 @@ const getModuleIcon = (module) => {
     quick_tasks: '⚡',
     workload: '⏱️',
     departments: '🏢',
+    users: '👤',
     logs: '📜',
     trash: '🗑️',
   };

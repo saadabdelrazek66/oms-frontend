@@ -6,7 +6,7 @@
         <h2>إدارة المستخدمين</h2>
         <p>تحكم في أعضاء فريقك وصلاحيات الوصول وتوزيع الأقسام من مكان واحد.</p>
       </div>
-      <button class="primary-btn" type="button" @click="openModal()">
+      <button v-if="isManager() || can('users.create')" class="primary-btn" type="button" @click="openModal()">
         <span aria-hidden="true">＋</span>
         إضافة مستخدم جديد
       </button>
@@ -147,8 +147,8 @@
                   >
                     <span aria-hidden="true">🔐</span>
                   </button>
-                  <button class="action edit" type="button" title="تعديل" aria-label="تعديل بيانات المستخدم" @click="openModal(user)"><span aria-hidden="true">✎</span></button>
-                  <button class="action delete" type="button" title="حذف" aria-label="حذف المستخدم" @click="deleteUser(user.id)"><span aria-hidden="true">🗑️</span></button>
+                  <button v-if="isManager() || can('users.edit')" class="action edit" type="button" title="تعديل" aria-label="تعديل بيانات المستخدم" @click="openModal(user)"><span aria-hidden="true">✎</span></button>
+                  <button v-if="isManager() || can('users.delete')" class="action delete" type="button" title="حذف" aria-label="حذف المستخدم" @click="deleteUser(user.id)"><span aria-hidden="true">🗑️</span></button>
                 </div>
               </td>
             </tr>
@@ -539,6 +539,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } 
 import api from '../axios'
 import alertService from '../services/alertService'
 import UserPermissionsModal from '../components/UserPermissionsModal.vue'
+import { can, isManager } from '../utils/permissions'
 
 const showPermissionsModal = ref(false)
 const selectedUserForPermissions = ref(null)

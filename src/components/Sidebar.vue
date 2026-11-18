@@ -210,6 +210,31 @@
           </div>
         </template>
 
+        <!-- ================= 3.5 مجموعة المالية والخزينة ================= -->
+        <template v-if="can('finance.view')">
+          <div class="nav-divider"></div>
+          <div class="nav-group">
+            <div class="nav-group-header">
+              <span class="group-dot dot-emerald"></span>
+              <span class="group-title">المالية والحسابات</span>
+            </div>
+
+            <div class="nav-group-items">
+              <router-link class="nav-item" to="/finance">
+                <span class="nav-icon-box">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                    <line x1="12" y1="8" x2="12" y2="16"></line>
+                    <line x1="8" y1="12" x2="16" y2="12"></line>
+                  </svg>
+                </span>
+                <span class="nav-label">الخزينة والحسابات</span>
+                <em class="nav-shortcut">F</em>
+              </router-link>
+            </div>
+          </div>
+        </template>
+
         <!-- ================= 4. مجموعة الفريق والمنظومة ================= -->
         <template v-if="role === 'manager' || canAny(['departments.view', 'users.view'])">
           <div class="nav-divider"></div>
@@ -698,6 +723,11 @@ const logout = () => {
 .dot-amber {
   background: #fbbf24;
   box-shadow: 0 0 7px rgba(251, 191, 36, 0.7);
+}
+
+.dot-emerald {
+  background: #10b981;
+  box-shadow: 0 0 7px rgba(16, 185, 129, 0.7);
 }
 
 .group-title {

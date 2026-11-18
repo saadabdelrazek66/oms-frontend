@@ -82,12 +82,12 @@
             <tr v-for="(user, index) in users" v-else :key="user.id">
               <td class="row-num-cell">{{ ((pagination.current_page - 1) * (pagination.per_page || 10)) + index + 1 }}</td>
               <td>
-                <div class="user-cell">
+                <div class="user-cell clickable-user-cell" @click="openViewModal(user)" title="انقر لعرض الملف الوظيفي وبيانات الموظف">
                   <div class="table-avatar" aria-hidden="true">{{ getInitials(user.name) }}</div>
                   <div class="user-copy">
                     <strong>{{ user.name }}</strong>
                     <span class="user-job-title" v-if="user.job_title">{{ user.job_title }}</span>
-                    <span><a :href="'mailto:' + user.email" class="email-link" title="إرسال بريد إلكتروني">{{ user.email }}</a></span>
+                    <span><a :href="'mailto:' + user.email" class="email-link" title="إرسال بريد إلكتروني" @click.stop>{{ user.email }}</a></span>
                   </div>
                 </div>
               </td>
@@ -128,6 +128,15 @@
               <td><span :class="['badge', getWorkTypeInfo(user.work_type).class]">{{ getWorkTypeInfo(user.work_type).text }}</span></td>
               <td>
                 <div class="actions-cell">
+                  <button 
+                    class="action view" 
+                    type="button" 
+                    title="عرض بيانات الموظف والراتب" 
+                    aria-label="عرض بيانات الموظف" 
+                    @click="openViewModal(user)"
+                  >
+                    <span aria-hidden="true">👁️</span>
+                  </button>
                   <button 
                     v-if="user.role !== 'manager'"
                     class="action permissions-btn" 
@@ -246,6 +255,42 @@
           <div class="form-group full"><label for="user-phone">رقم الهاتف <span class="text-red">*</span></label><input id="user-phone" v-model="form.phone" type="text" placeholder="01xxxxxxxx" required /></div>
           <div class="form-group full"><label for="user-work-type">نظام العمل <span class="text-red">*</span></label><select id="user-work-type" v-model="form.work_type" required><option value="remote">عن بعد</option><option value="onsite">من الشركة</option><option value="per_task">بالتاسك</option><option value="commission">بالعمولة</option></select></div>
 
+          <!-- الراتب والمستحقات المالية -->
+          <div class="form-group-card full salary-card-wrap">
+            <div class="card-mini-header">
+              <span class="header-icon">💰</span>
+              <div>
+                <strong>الراتب الأساسي / الشهري</strong>
+              </div>
+            </div>
+
+            <div class="form-group full">
+              <div class="form-label-row">
+                <label for="user-salary">قيمة الراتب الشهري <small class="text-hint">(اختياري - من 1,000 إلى 1,000,000 ج.م)</small></label>
+              </div>
+              <div class="salary-input-container">
+                <span class="salary-currency-tag">ج.م</span>
+                <input
+                  id="user-salary"
+                  v-model="form.salary"
+                  type="text"
+                  inputmode="decimal"
+                  placeholder="1000.00"
+                  class="salary-input-field"
+                  :class="{ 'field-error': salaryError }"
+                  @input="onSalaryInput"
+                  @blur="formatSalaryOnBlur"
+                />
+              </div>
+              <div v-if="salaryError" class="salary-error-msg" role="alert">
+                ⚠️ {{ salaryError }}
+              </div>
+              <div v-else-if="salaryPreview" class="salary-preview-badge">
+                💵 المبلغ المعتمد: <strong>{{ salaryPreview }}</strong>
+              </div>
+            </div>
+          </div>
+
           <!-- مواعيد وأيام العمل اليومية والاستنتاج التلقائي -->
           <div class="form-group-card full">
             <div class="card-mini-header">
@@ -336,6 +381,146 @@
     </div>
     </Teleport>
 
+    <!-- ================= نافذة عرض ملف وتفاصيل الموظف والراتب ================= -->
+    <Teleport to="body">
+      <div v-if="showViewModal && selectedUserForView" class="modal-overlay" role="presentation" @click.self="closeViewModal">
+        <div class="modal-content view-profile-modal" role="dialog" aria-modal="true" tabindex="-1" @keydown.esc="closeViewModal">
+          <button class="modal-close" type="button" aria-label="إغلاق النافذة" @click="closeViewModal"><span aria-hidden="true">×</span></button>
+          
+          <div class="profile-header-card">
+            <div class="profile-avatar">{{ getInitials(selectedUserForView.name) }}</div>
+            <div class="profile-title-block">
+              <div class="profile-name-row">
+                <h3>{{ selectedUserForView.name }}</h3>
+                <span :class="['badge', selectedUserForView.role === 'manager' ? 'manager' : 'employee']">
+                  <i aria-hidden="true"></i>{{ selectedUserForView.role === 'manager' ? 'مدير' : 'موظف' }}
+                </span>
+                <span :class="['badge', getWorkTypeInfo(selectedUserForView.work_type).class]">
+                  {{ getWorkTypeInfo(selectedUserForView.work_type).text }}
+                </span>
+              </div>
+              <p class="profile-job" v-if="selectedUserForView.job_title">💼 {{ selectedUserForView.job_title }}</p>
+              <p class="profile-email">✉️ {{ selectedUserForView.email }}</p>
+            </div>
+          </div>
+
+          <div class="profile-sections-grid">
+            <!-- كارت الراتب والمستحقات المالية -->
+            <div class="profile-info-card salary-feature-card">
+              <div class="info-card-header">
+                <div class="header-title-box">
+                  <span class="info-icon">💰</span>
+                  <h4>الراتب الأساسي / الشهري</h4>
+                </div>
+                <button
+                  type="button"
+                  class="privacy-toggle-btn"
+                  @click="showSalaryValue = !showSalaryValue"
+                  :title="showSalaryValue ? 'إخفاء الراتب' : 'إظهار الراتب'"
+                >
+                  <span v-if="showSalaryValue">👁️ إخفاء</span>
+                  <span v-else>🔒 كشف</span>
+                </button>
+              </div>
+              <div class="salary-value-wrap">
+                <template v-if="selectedUserForView.salary && Number(selectedUserForView.salary) > 0">
+                  <div v-if="showSalaryValue" class="salary-display-number">
+                    <strong>{{ Number(selectedUserForView.salary).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</strong>
+                    <span class="salary-currency">جنيه مصري (EGP)</span>
+                  </div>
+                  <div v-else class="salary-masked">
+                    •••••••• <small>ج.م (محمي)</small>
+                  </div>
+                </template>
+                <div v-else class="salary-not-set">
+                  <span>لم يتم تسجيل راتب لهذا الموظف حتى الآن</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- كارت الأقسام -->
+            <div class="profile-info-card">
+              <div class="info-card-header">
+                <div class="header-title-box">
+                  <span class="info-icon">🏢</span>
+                  <h4>الأقسام والتوزيع</h4>
+                </div>
+              </div>
+              <div class="info-row">
+                <span class="info-label">القسم الأساسي:</span>
+                <strong class="info-val primary-text">{{ getPrimaryDepartmentName(selectedUserForView) }}</strong>
+              </div>
+              <div class="info-row" v-if="getAdditionalDepartments(selectedUserForView).length">
+                <span class="info-label">الأقسام الفرعية:</span>
+                <div class="sub-depts-wrap">
+                  <span v-for="d in getAdditionalDepartments(selectedUserForView)" :key="d.id" class="badge sub-dept">{{ d.name }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- كارت مواعيد ونظام العمل -->
+            <div class="profile-info-card">
+              <div class="info-card-header">
+                <div class="header-title-box">
+                  <span class="info-icon">⏰</span>
+                  <h4>مواعيد وجدول العمل</h4>
+                </div>
+              </div>
+              <div class="info-row">
+                <span class="info-label">أيام أسبوع العمل:</span>
+                <span class="info-val">{{ formatDaysRange(selectedUserForView.work_start_day, selectedUserForView.work_end_day) || '—' }}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">ساعات العمل اليومية:</span>
+                <span class="info-val">{{ selectedUserForView.daily_work_hours || 8 }} ساعات / يومياً</span>
+              </div>
+              <div class="info-row" v-if="selectedUserForView.work_start_time && selectedUserForView.work_end_time">
+                <span class="info-label">أوقات الدوام:</span>
+                <span class="info-val" dir="ltr">{{ formatTimeLabel(selectedUserForView.work_start_time) }} - {{ formatTimeLabel(selectedUserForView.work_end_time) }}</span>
+              </div>
+            </div>
+
+            <!-- كارت معلومات الاتصال -->
+            <div class="profile-info-card">
+              <div class="info-card-header">
+                <div class="header-title-box">
+                  <span class="info-icon">📞</span>
+                  <h4>معلومات التواصل</h4>
+                </div>
+              </div>
+              <div class="info-row">
+                <span class="info-label">رقم الهاتف:</span>
+                <div class="phone-contact-box" v-if="selectedUserForView.phone">
+                  <span class="info-val" dir="ltr">{{ selectedUserForView.phone }}</span>
+                  <div class="contact-actions">
+                    <a :href="getWaLink(selectedUserForView.phone)" target="_blank" rel="noopener noreferrer" title="مراسلة واتساب" aria-label="مراسلة الموظف عبر واتساب" class="contact-btn wa">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                    </a>
+                    <a :href="'tel:' + selectedUserForView.phone" title="اتصال هاتفي" aria-label="الاتصال بالموظف" class="contact-btn call">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                    </a>
+                  </div>
+                </div>
+                <span v-else class="info-val muted">—</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">البريد الإلكتروني:</span>
+                <a v-if="selectedUserForView.email" :href="'mailto:' + selectedUserForView.email" class="info-val email-link" title="إرسال بريد إلكتروني">{{ selectedUserForView.email }}</a>
+                <span v-else class="info-val muted">—</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-actions profile-modal-actions">
+            <button type="button" class="secondary-btn" @click="closeViewModal">إغلاق</button>
+            <button type="button" class="primary-btn" @click="editFromViewModal">
+              <span>✎</span> تعديل بيانات الموظف
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
 
     <!-- نافذة إدارة الصلاحيات للموظف -->
     <UserPermissionsModal 
@@ -422,6 +607,7 @@ const form = reactive({
   password: '', 
   phone: '', 
   role: 'employee', 
+  salary: '',
   work_type: 'onsite', 
   work_start_day: 'saturday',
   work_end_day: 'thursday',
@@ -432,6 +618,136 @@ const form = reactive({
   primary_department_id: '', 
   additional_department_ids: [] 
 })
+
+// متغيرات التحقق والتحكم في الراتب
+const salaryError = ref('')
+
+const cleanAndNormalizeSalary = (val) => {
+  if (val === null || val === undefined || val === '') return ''
+  let s = String(val).trim()
+  const arabicEastern = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩', '٫']
+  const latinWestern  = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.']
+  for (let i = 0; i < arabicEastern.length; i++) {
+    s = s.replaceAll(arabicEastern[i], latinWestern[i])
+  }
+  // إزالة فواصل الآلاف (العربية والإنجليزية) والمسافات ورموز العملات - مع الحفاظ الصارم على النقطة العشرية '.'
+  s = s.replace(/[,\s٬،]/g, '')
+  s = s.replace(/EGP|egp|L\.?E\.?|ج\.?م\.?|جنيه/gi, '')
+  return s
+}
+
+const onSalaryInput = () => {
+  if (!form.salary) {
+    salaryError.value = ''
+    return
+  }
+
+  const raw = form.salary
+  const normalized = cleanAndNormalizeSalary(raw)
+  if (raw !== normalized) {
+    form.salary = normalized
+  }
+
+  if (normalized.includes('-')) {
+    salaryError.value = 'لا يمكن إدخال راتب بقيمة سالبة.'
+    return
+  }
+
+  // إذا كان المستخدم يكتب حالياً علامة عشرية في النهاية مثل "5000."
+  if (/^\d+\.$/.test(normalized)) {
+    salaryError.value = ''
+    return
+  }
+
+  if (!/^\d*(\.\d*)?$/.test(normalized)) {
+    salaryError.value = 'يرجى إدخال أرقام صحيحة أو عشرية صالحة فقط.'
+    return
+  }
+
+  if (normalized.includes('.')) {
+    const parts = normalized.split('.')
+    if (parts.length > 2) {
+      salaryError.value = 'صيغة الرقم غير صحيحة (تكرار العلامة العشرية).'
+      return
+    }
+    if (parts[1] && parts[1].length > 2) {
+      salaryError.value = 'الحد الأقصى للمنازل العشرية هو خانتان فقط (قروش).'
+      return
+    }
+  }
+
+  const num = parseFloat(normalized)
+  if (isNaN(num)) {
+    salaryError.value = 'القيمة المدخلة غير صالحة.'
+    return
+  }
+  if (num > 1000000) {
+    salaryError.value = 'الحد الأقصى المسموح به للراتب هو 1,000,000 ج.م.'
+    return
+  }
+
+  // لا نطلق تحذير الحد الأدنى أثناء الكتابة حتى لا يزعج المستخدم أثناء إدخال الأرقام الأولى
+  salaryError.value = ''
+}
+
+const formatSalaryOnBlur = () => {
+  if (!form.salary) {
+    salaryError.value = ''
+    return
+  }
+  const normalized = cleanAndNormalizeSalary(form.salary)
+  if (!normalized) {
+    form.salary = ''
+    salaryError.value = ''
+    return
+  }
+  const num = parseFloat(normalized)
+  if (isNaN(num)) {
+    salaryError.value = 'القيمة المدخلة غير صالحة.'
+    return
+  }
+  if (num < 1000) {
+    salaryError.value = 'الحد الأدنى لقيمة الراتب هو 1,000 ج.م.'
+    return
+  }
+  if (num > 1000000) {
+    salaryError.value = 'الحد الأقصى المسموح به للراتب هو 1,000,000 ج.م.'
+    return
+  }
+  salaryError.value = ''
+  form.salary = num.toFixed(2)
+}
+
+const salaryPreview = computed(() => {
+  if (!form.salary || salaryError.value) return ''
+  const cleaned = cleanAndNormalizeSalary(form.salary)
+  if (!cleaned) return ''
+  const num = parseFloat(cleaned)
+  if (isNaN(num) || num < 1000 || num > 1000000) return ''
+  return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ج.م'
+})
+
+// نافذة عرض ملف وتفاصيل الموظف والراتب
+const showViewModal = ref(false)
+const selectedUserForView = ref(null)
+const showSalaryValue = ref(true)
+
+const openViewModal = (user) => {
+  selectedUserForView.value = user
+  showSalaryValue.value = true
+  showViewModal.value = true
+}
+
+const closeViewModal = () => {
+  showViewModal.value = false
+  selectedUserForView.value = null
+}
+
+const editFromViewModal = () => {
+  const u = selectedUserForView.value
+  closeViewModal()
+  openModal(u)
+}
 
 // دالة احتساب أيام العمل أسبوعياً
 const recalculateWorkingDays = () => {
@@ -592,26 +908,31 @@ const fetchDepartmentsList = async () => {
 }
 
 // تصفير النموذج
-const resetForm = () => Object.assign(form, { 
-  name: '', 
-  job_title: '', 
-  email: '', 
-  password: '', 
-  phone: '', 
-  role: 'employee', 
-  work_type: 'onsite', 
-  work_start_day: 'saturday',
-  work_end_day: 'thursday',
-  working_days: ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday'],
-  work_start_time: '09:00',
-  work_end_time: '17:00',
-  daily_work_hours: 8,
-  primary_department_id: '', 
-  additional_department_ids: [] 
-})
+const resetForm = () => {
+  salaryError.value = ''
+  Object.assign(form, { 
+    name: '', 
+    job_title: '', 
+    email: '', 
+    password: '', 
+    phone: '', 
+    role: 'employee', 
+    salary: '',
+    work_type: 'onsite', 
+    work_start_day: 'saturday', 
+    work_end_day: 'thursday',
+    working_days: ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday'],
+    work_start_time: '09:00',
+    work_end_time: '17:00',
+    daily_work_hours: 8,
+    primary_department_id: '', 
+    additional_department_ids: [] 
+  })
+}
 
 const openModal = (user = null) => {
   showPassword.value = false
+  salaryError.value = ''
   isEditing.value = Boolean(user)
   editId.value = user?.id || null
 
@@ -626,6 +947,7 @@ const openModal = (user = null) => {
       matchedTitle = found || user.job_title
     }
 
+    salaryError.value = ''
     Object.assign(form, {
       name: user.name,
       job_title: matchedTitle,
@@ -633,6 +955,7 @@ const openModal = (user = null) => {
       password: '',
       phone: user.phone,
       role: user.role,
+      salary: (user.salary !== null && user.salary !== undefined && user.salary !== '') ? Number(user.salary).toFixed(2) : '',
       work_type: user.work_type,
       work_start_day: user.work_start_day || 'saturday',
       work_end_day: user.work_end_day || 'thursday',
@@ -658,6 +981,26 @@ const closeModal = () => {
 }
 
 const saveUser = async () => {
+  if (salaryError.value) {
+    showToast(salaryError.value)
+    return
+  }
+
+  // فحص النطاق المالي للراتب (من 1000 إلى 1,000,000 ج.م) إذا تم إدخاله
+  let finalSalary = null
+  if (form.salary !== '' && form.salary !== null && form.salary !== undefined) {
+    const cleaned = cleanAndNormalizeSalary(form.salary)
+    if (cleaned !== '') {
+      const num = parseFloat(cleaned)
+      if (isNaN(num) || num < 1000 || num > 1000000) {
+        salaryError.value = num < 1000 ? 'الحد الأدنى لقيمة الراتب هو 1,000 ج.م.' : 'الحد الأقصى المسموح به للراتب هو 1,000,000 ج.م.'
+        showToast(salaryError.value)
+        return
+      }
+      finalSalary = num.toFixed(2)
+    }
+  }
+
   saving.value = true
   try {
     const payload = { ...form }
@@ -665,15 +1008,24 @@ const saveUser = async () => {
       payload.job_title = ''
     }
     payload.daily_work_hours = Number(form.daily_work_hours || 8)
+    payload.salary = finalSalary
+
     if (isEditing.value) await api.put(`/users/${editId.value}`, payload)
     else await api.post('/users', payload)
-    const successMessage = isEditing.value ? 'تم تحديث بيانات المستخدم' : 'تم إنشاء المستخدم بنجاح'
+    const successMessage = isEditing.value ? 'تم تحديث بيانات المستخدم بنجاح' : 'تم إنشاء المستخدم بنجاح'
     closeModal()
     showToast(successMessage)
     await fetchUsers(pagination.value.current_page)
   } catch (error) {
-    // عرض تفاصيل الخطأ القادمة من الـ Validation
-    const errorMessage = error.response?.data?.message || 'حدث خطأ أثناء الحفظ'
+    // عرض تفاصيل الخطأ القادمة من الـ Validation بدقة
+    const errorsObj = error.response?.data?.errors
+    let errorMessage = error.response?.data?.message || 'حدث خطأ أثناء الحفظ'
+    if (errorsObj && typeof errorsObj === 'object') {
+      const allErrors = Object.values(errorsObj).flat()
+      if (allErrors.length) {
+        errorMessage = allErrors.join(' | ')
+      }
+    }
     showToast(errorMessage)
   } finally {
     saving.value = false
@@ -699,9 +1051,9 @@ const deleteUser = async (id) => {
   }
 }
 
-watch(showModal, async (open) => {
-  document.body.classList.toggle('modal-is-open', open)
-  if (open) {
+watch([showModal, showViewModal], async ([mOpen, vOpen]) => {
+  document.body.classList.toggle('modal-is-open', mOpen || vOpen)
+  if (mOpen) {
     await nextTick()
     modalCloseButton.value?.focus({ preventScroll: true })
   }
@@ -785,8 +1137,8 @@ onBeforeUnmount(() => {
 
 .phone-wrapper { display: flex; flex-direction: column; align-items: flex-start; gap: 7px; white-space: nowrap; }
 .contact-actions { display: flex; gap: 7px; }
-.contact-btn { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 8px; transition: transform .2s ease, filter .2s ease; }
-.contact-btn svg { width: 16px; height: 16px; }
+.contact-btn { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 8px; transition: transform .2s ease, filter .2s ease; }
+.contact-btn svg { width: 15px; height: 15px; }
 .contact-btn.wa { color: #25d366; background: rgba(37,211,102,.15); }
 .contact-btn.call { color: #3b82f6; background: rgba(59,130,246,.15); }
 .contact-btn:hover { transform: translateY(-2px); filter: brightness(1.2); }
@@ -1048,6 +1400,273 @@ onBeforeUnmount(() => {
   color: #ffffff;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+}
+
+.action.view {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.25);
+}
+.action.view:hover {
+  background: rgba(56, 189, 248, 0.25);
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(56, 189, 248, 0.35);
+}
+
+.clickable-user-cell {
+  cursor: pointer;
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+.clickable-user-cell:hover {
+  filter: brightness(1.15);
+}
+.clickable-user-cell strong {
+  transition: color 0.2s ease;
+}
+.clickable-user-cell:hover strong {
+  color: #7de8dc;
+}
+
+/* تنسيقات حقل الراتب داخل نموذج التعديل */
+.salary-card-wrap {
+  border: 1px solid rgba(245, 158, 11, 0.25) !important;
+  background: rgba(245, 158, 11, 0.04) !important;
+  margin-top: 10px;
+}
+.salary-card-wrap .card-mini-header .header-icon {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+.salary-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+.salary-currency-tag {
+  position: absolute;
+  left: 12px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  padding: 3px 10px;
+  border-radius: 6px;
+  pointer-events: none;
+}
+.salary-input-field {
+  padding-left: 68px !important;
+  font-weight: 700;
+  font-size: 15px;
+  color: #ffffff !important;
+}
+.salary-input-field.field-error {
+  border-color: #f43f5e !important;
+  box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.2) !important;
+}
+.salary-error-msg {
+  margin-top: 6px;
+  color: #fb7185;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.salary-preview-badge {
+  margin-top: 6px;
+  color: #34d399;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* تنسيقات نافذة عرض ملف الموظف */
+.view-profile-modal {
+  width: min(620px, 100%) !important;
+}
+.profile-header-card {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 18px;
+  border-radius: 16px;
+  background: rgba(8, 14, 40, 0.55);
+  border: 1px solid rgba(135, 155, 230, 0.18);
+  margin-bottom: 20px;
+}
+.profile-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00f2fe, #4facfe);
+  color: #0c1236;
+  font-weight: 900;
+  font-size: 24px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 15px rgba(0, 242, 254, 0.3);
+}
+.profile-title-block {
+  flex: 1;
+  min-width: 0;
+}
+.profile-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.profile-name-row h3 {
+  margin: 0;
+  font-size: 20px;
+  color: #ffffff;
+}
+.profile-job {
+  margin: 0 0 2px;
+  font-size: 13px;
+  color: #7de8dc;
+  font-weight: 600;
+}
+.profile-email {
+  margin: 0;
+  font-size: 12px;
+  color: #94a3b8;
+}
+.profile-sections-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.profile-info-card {
+  background: rgba(14, 22, 60, 0.5);
+  border: 1px solid rgba(135, 155, 230, 0.14);
+  border-radius: 14px;
+  padding: 16px;
+}
+.salary-feature-card {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(217, 119, 6, 0.04));
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.08);
+}
+.info-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.header-title-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.header-title-box h4 {
+  margin: 0;
+  font-size: 15px;
+  color: #ffffff;
+}
+.info-icon {
+  font-size: 18px;
+}
+.privacy-toggle-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #cbd5e1;
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.privacy-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+.salary-value-wrap {
+  margin: 8px 0;
+}
+.salary-display-number {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.salary-display-number strong {
+  font-size: 28px;
+  font-weight: 900;
+  color: #fbbf24;
+  letter-spacing: -0.5px;
+}
+.salary-currency {
+  font-size: 13px;
+  color: #fde68a;
+  font-weight: 700;
+}
+.salary-masked {
+  font-size: 24px;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 2px;
+}
+.salary-masked small {
+  font-size: 12px;
+  color: #64748b;
+  letter-spacing: 0;
+}
+.salary-not-set {
+  color: #94a3b8;
+  font-size: 13px;
+  font-style: italic;
+}
+.salary-protection-hint {
+  display: block;
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+.info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 13px;
+}
+.info-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.info-label {
+  color: #94a3b8;
+  font-weight: 600;
+}
+.info-val {
+  color: #f1f5f9;
+  font-weight: 700;
+}
+.primary-text {
+  color: #7de8dc !important;
+}
+.sub-depts-wrap {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.phone-contact-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.profile-modal-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
 }
 
 @media (prefers-reduced-motion: reduce) {

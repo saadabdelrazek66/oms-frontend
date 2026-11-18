@@ -110,18 +110,32 @@ export const resolveAlert = () => {
  */
 export const toast = (message, type = 'info', duration = 3500) => {
   if (!message) return;
+
+  let msg = message;
+  let toastType = type;
+  let toastDuration = duration;
+
+  // دعم التمرير ككائن { message, type, duration } أو كسلسلة نصية
+  if (typeof message === 'object' && message !== null) {
+    msg = message.message || message.text || message.msg || '';
+    toastType = message.type || type || 'info';
+    toastDuration = message.duration || duration || 3500;
+  }
+
+  if (!msg) return;
+
   const id = ++toastCounter;
   
   // تحويل الأنماط الشائعة
-  let mappedType = type;
-  if (type === 'danger') mappedType = 'error';
+  let mappedType = toastType;
+  if (toastType === 'danger') mappedType = 'error';
 
   const toastItem = reactive({
     id,
-    message,
+    message: msg,
     type: mappedType,
-    duration,
-    remaining: duration,
+    duration: toastDuration,
+    remaining: toastDuration,
     timer: null,
     isPaused: false
   });

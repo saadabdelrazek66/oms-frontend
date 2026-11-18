@@ -70,6 +70,12 @@ const router = createRouter({
           meta: { requiresAuth: true, permission: 'vault.view' },
         },
         {
+          path: '/finance',
+          name: 'finance-manager',
+          component: () => import('@/views/FinanceManager.vue'),
+          meta: { title: 'الخزينة والحسابات المركزية', permission: 'finance.view' },
+        },
+        {
           path: '/plan-contents',
           name: 'PlanContents',
           component: PlanBoardsList,

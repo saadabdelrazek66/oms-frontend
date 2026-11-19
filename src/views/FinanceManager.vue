@@ -56,7 +56,7 @@
         @click="switchTab('salaries')"
       >
         <span class="tab-icon">👥</span>
-        <span> الرواتب والأجور</span>
+        <span>الرواتب والمستحقات</span>
       </button>
 
       <button
@@ -332,13 +332,24 @@
                 </td>
                 <td>
                   <div class="actions-cell">
-                    <!-- عرض وتنزيل سند الراتب الرسمي والفاتورة -->
+                    <!-- عرض وتنزيل سند الراتب الرسمي لمصروفات الرواتب فقط -->
                     <button
-                      v-if="trx.salary_month || trx.category?.slug === 'salaries'"
+                      v-if="trx.type === 'expense' && (trx.salary_month || trx.category?.slug === 'salaries')"
                       class="action-btn payslip-action-btn"
                       type="button"
-                      title="عرض وسند صرف الراتب (PDF) والمشاركة عبر واتساب"
+                      title="عرض وتنزيل سند صرف الراتب الرسمي (PDF / طباعة)"
                       @click="openPayslipModal(trx.id)"
+                    >
+                      🧾
+                    </button>
+
+                    <!-- عرض وتنزيل سند قبض إيراد العميل المعتمد (PDF / واتساب) -->
+                    <button
+                      v-else-if="trx.type === 'income'"
+                      class="action-btn receipt-action-btn"
+                      type="button"
+                      title="عرض وتنزيل سند قبض إيراد العميل المعتمد (PDF / طباعة)"
+                      @click="openClientReceiptModal(trx.id)"
                     >
                       🧾
                     </button>
@@ -394,8 +405,44 @@
       </div>
     </div>
 
-    <!-- ================= 2. تبويب مسير الرواتب والأجور ================= -->
+    <!-- ================= 2. تبويب الرواتب والمستحقات ================= -->
     <div v-else-if="activeTab === 'salaries'" class="tab-content-pane">
+      <!-- شريط التنقل الفرعي لأنظمة العمل والمستحقات (رواتب / تاسكات / عمولات) -->
+      <div class="compensations-sub-nav">
+        <button
+          type="button"
+          class="sub-tab-pill"
+          :class="{ active: compensationSubTab === 'salaries' }"
+          @click="switchCompensationSubTab('salaries')"
+        >
+          👔 مسير الرواتب الشهرية
+        </button>
+        <button
+          type="button"
+          class="sub-tab-pill pill-tasks"
+          :class="{ active: compensationSubTab === 'tasks' }"
+          @click="switchCompensationSubTab('tasks')"
+        >
+          ⚡ مستحقات العمل بالتاسك
+          <span v-if="freelancersSheet.summary?.total_unpaid_tasks > 0" class="sub-tab-count orange-count">
+            {{ freelancersSheet.summary.total_unpaid_tasks }} معلقة
+          </span>
+        </button>
+        <button
+          type="button"
+          class="sub-tab-pill pill-commissions"
+          :class="{ active: compensationSubTab === 'commissions' }"
+          @click="switchCompensationSubTab('commissions')"
+        >
+          🎯 مستحقات العمولات والأرباح
+          <span v-if="commissionsSheet.summary?.pending_count > 0" class="sub-tab-count green-count">
+            {{ commissionsSheet.summary.pending_count }} معلقة
+          </span>
+        </button>
+      </div>
+
+      <!-- 1. تفريع مسير الرواتب الشهرية -->
+      <div v-if="compensationSubTab === 'salaries'">
       <div class="payroll-header-card">
         <div class="month-picker-wrap">
           <button class="month-nav-btn" @click="shiftPayrollMonth(-1)">◀ الشهر السابق</button>
@@ -563,7 +610,11 @@
                   <div v-if="emp.is_paid && emp.payment_details" class="payment-detail-box">
                     <span class="trx-code">{{ emp.payment_details.transaction_number }}</span>
                     <span>{{ Number(emp.payment_details.amount).toLocaleString() }} ج.م</span>
-                    <small>تاريخ: {{ emp.payment_details.transaction_date }} ({{ emp.payment_details.account_name }})</small>
+                    <small class="pay-meta-row">
+                      <span class="pay-date-lbl">تاريخ:</span>
+                      <bdi class="date-bdi">{{ formatDisplayDate(emp.payment_details.transaction_date) }}</bdi>
+                      <span v-if="emp.payment_details.account_name" class="account-tag">({{ emp.payment_details.account_name }})</span>
+                    </small>
                   </div>
                   <span v-else class="text-muted">لم يُسجل صرف بعد</span>
                 </td>
@@ -581,7 +632,7 @@
                     <button
                       type="button"
                       class="payslip-btn"
-                      title="عرض وتنزيل سند الصرف الرسمي (PDF) ومشاركته عبر واتساب"
+                      title="عرض وتنزيل سند صرف الراتب الرسمي (PDF / طباعة)"
                       @click="openPayslipModal(emp.transaction_id, emp.user_id, payrollMonth)"
                     >
                       🧾 سند الصرف
@@ -591,6 +642,332 @@
               </tr>
             </tbody>
           </table>
+        </div>
+      </div>
+      </div>
+
+      <!-- 2. تفريع مستحقات العمل بالتاسك (الفريلانسرز) -->
+      <div v-else-if="compensationSubTab === 'tasks'" class="tasks-compensation-pane">
+        <!-- كروت إحصائيات مستحقات التاسك -->
+        <div class="payroll-header-card">
+          <div class="payroll-summary-grid">
+            <div class="payroll-stat-card amber">
+              <div class="stat-card-title">
+                <span>⚡ إجمالي الفريلانسرز</span>
+              </div>
+              <strong>{{ freelancersSheet.summary?.total_freelancers || 0 }}</strong>
+              <small class="stat-subhint">موظفو نظام العمل بالتاسك</small>
+            </div>
+
+            <div class="payroll-stat-card orange">
+              <div class="stat-card-title">
+                <span>⏳ مهام بانتظار الصرف</span>
+              </div>
+              <strong>{{ freelancersSheet.summary?.total_unpaid_tasks || 0 }}</strong>
+              <small class="stat-subhint">مهمة مكتملة معتمدة</small>
+            </div>
+
+            <div class="payroll-stat-card purple">
+              <div class="stat-card-title">
+                <span>💵 إجمالي المستحق للصرف</span>
+              </div>
+              <strong>{{ Number(freelancersSheet.summary?.total_unpaid_amount || 0).toLocaleString() }} ج.م</strong>
+              <small class="stat-subhint">مستحقات معلقة قابلة للصرف فوراً</small>
+            </div>
+
+            <div class="payroll-stat-card green">
+              <div class="stat-card-title">
+                <span>✅ إجمالي ما تم صرفه</span>
+              </div>
+              <strong>{{ Number(freelancersSheet.summary?.total_paid_amount || 0).toLocaleString() }} ج.م</strong>
+              <small class="stat-subhint">أتعاب مسددة تاريخياً</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- جدول الفريلانسرز ومستحقات المهام -->
+        <div class="finance-table-card">
+          <div class="card-heading">
+            <div>
+              <h3>قائمة الفريلانسرز وحسابات المهام</h3>
+              <p>صرف مستحقات المهام أول بأول أو تصفية مجمعة للمهام المنجزة</p>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="finance-table">
+              <thead>
+                <tr>
+                  <th style="width: 45px;">#</th>
+                  <th>الموظف / الفريلانسر</th>
+                  <th>المسمى الوظيفي</th>
+                  <th>سعر المهمة الافتراضي</th>
+                  <th>المهام المعلقة القابلة للصرف</th>
+                  <th>إجمالي المستحق</th>
+                  <th>المهام المسددة سابقاً</th>
+                  <th style="text-align: center;">إجراءات الصرف</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="loadingFreelancers">
+                  <td colspan="8" class="state-cell">جاري تحميل بيانات مستحقات الفريلانسرز...</td>
+                </tr>
+                <tr v-else-if="freelancersSheet.freelancers.length === 0">
+                  <td colspan="8" class="state-cell">لا يوجد موظفون مسجلون بنظام العمل بالتاسك حالياً</td>
+                </tr>
+                <tr v-for="(fl, idx) in freelancersSheet.freelancers" v-else :key="fl.user_id">
+                  <td>{{ idx + 1 }}</td>
+                  <td>
+                    <div class="user-cell">
+                      <strong>{{ fl.name }}</strong>
+                      <small class="user-sub">{{ fl.phone || fl.email }}</small>
+                    </div>
+                  </td>
+                  <td>{{ fl.job_title || 'فريلانسر' }}</td>
+                  <td>
+                    <span class="rate-badge">{{ Number(fl.default_task_rate).toLocaleString() }} ج.م / مهمة</span>
+                  </td>
+                  <td>
+                    <span v-if="fl.pending_tasks_count > 0" class="status-pill pill-pending">
+                      ⏳ {{ fl.pending_tasks_count }} مهام مكتملة معلقة
+                    </span>
+                    <span v-else-if="fl.active_tasks_count > 0" class="status-pill" style="background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3);">
+                      📝 {{ fl.active_tasks_count }} مهام قيد التنفيذ
+                    </span>
+                    <span v-else class="status-pill pill-completed">
+                      ✅ لا توجد مهام معلقة
+                    </span>
+                  </td>
+                  <td>
+                    <strong :class="fl.pending_tasks_count > 0 ? 'text-amber' : 'text-muted'">
+                      {{ Number(fl.pending_amount).toLocaleString() }} ج.م
+                    </strong>
+                  </td>
+                  <td>
+                    <span class="paid-sub-count">{{ fl.paid_tasks_count }} مهمة ({{ Number(fl.total_paid_amount).toLocaleString() }} ج.م)</span>
+                  </td>
+                  <td style="text-align: center;">
+                    <button
+                      v-if="fl.pending_tasks_count > 0 || fl.active_tasks_count > 0"
+                      class="pay-salary-btn pay-tasks-btn"
+                      type="button"
+                      @click="openTaskSettlementModal(fl)"
+                    >
+                      صرف وتسوية المهام ⚡
+                    </button>
+                    <button
+                      v-else
+                      type="button"
+                      class="payslip-btn"
+                      style="border-color: rgba(245, 158, 11, 0.35); color: #fbbf24; background: rgba(245, 158, 11, 0.1);"
+                      @click="openTaskSettlementModal(fl)"
+                    >
+                      تسوية ومراجعة المهام 📋
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. تفريع مستحقات العمولات والأرباح -->
+      <div v-else-if="compensationSubTab === 'commissions'" class="commissions-compensation-pane">
+        <!-- كروت إحصائيات العمولات -->
+        <div class="payroll-header-card">
+          <div class="payroll-summary-grid">
+            <div class="payroll-stat-card amber">
+              <div class="stat-card-title">
+                <span>🎯 مسؤولو المبيعات والشركاء</span>
+              </div>
+              <strong>{{ commissionsSheet.summary?.total_sales_reps || 0 }}</strong>
+              <small class="stat-subhint">موظفون بنظام العمل بالعمولة</small>
+            </div>
+
+            <div class="payroll-stat-card orange">
+              <div class="stat-card-title">
+                <span>⏳ عمولات بانتظار الصرف</span>
+              </div>
+              <strong>{{ commissionsSheet.summary?.pending_count || 0 }}</strong>
+              <small class="stat-subhint">عمولات معلقة غير مسددة</small>
+            </div>
+
+            <div class="payroll-stat-card purple">
+              <div class="stat-card-title">
+                <span>💵 إجمالي المستحق للصرف</span>
+              </div>
+              <strong>{{ Number(commissionsSheet.summary?.total_pending_amount || 0).toLocaleString() }} ج.م</strong>
+              <small class="stat-subhint">مستحقات عمولات جاهزة للصرف</small>
+            </div>
+
+            <div class="payroll-stat-card green">
+              <div class="stat-card-title">
+                <span>✅ إجمالي العمولات المصروفة</span>
+              </div>
+              <strong>{{ Number(commissionsSheet.summary?.total_paid_amount || 0).toLocaleString() }} ج.م</strong>
+              <small class="stat-subhint">مسددة بالدفاتر المالية</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- 1. جدول مسؤولي المبيعات والشركاء بنظام العمولة -->
+        <div class="finance-table-card mb-20">
+          <div class="card-heading">
+            <div>
+              <h3>قائمة مسؤولي المبيعات والشركاء بالعمولة</h3>
+              <p>الموظفون المسجلون بنظام العمل بالعمولة، معدلات أرباحهم، والعملاء المرتبطين بهم</p>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="finance-table">
+              <thead>
+                <tr>
+                  <th style="width: 45px;">#</th>
+                  <th>الموظف / شريك المبيعات</th>
+                  <th>المسمى الوظيفي</th>
+                  <th>نظام ونسبة العمولة</th>
+                  <th>العملاء المرتبطون</th>
+                  <th>العمولات المعلقة القابلة للصرف</th>
+                  <th>إجمالي ما تم صرفه</th>
+                  <th style="text-align: center;">الحالة</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="loadingCommissions">
+                  <td colspan="8" class="state-cell">جاري تحميل بيانات مسؤولي المبيعات...</td>
+                </tr>
+                <tr v-else-if="!commissionsSheet.sales_reps || commissionsSheet.sales_reps.length === 0">
+                  <td colspan="8" class="state-cell">لا يوجد موظفون مسجلون بنظام العمل بالعمولة حالياً</td>
+                </tr>
+                <tr v-for="(rep, idx) in commissionsSheet.sales_reps" v-else :key="rep.user_id">
+                  <td>{{ idx + 1 }}</td>
+                  <td>
+                    <div class="user-cell">
+                      <strong>{{ rep.name }}</strong>
+                      <small class="user-sub">{{ rep.phone || rep.email }}</small>
+                    </div>
+                  </td>
+                  <td>{{ rep.job_title || 'مسؤول مبيعات' }}</td>
+                  <td>
+                    <span class="rate-badge">
+                      {{ rep.commission_label }}
+                    </span>
+                  </td>
+                  <td>
+                    <div v-if="rep.clients && rep.clients.length > 0" class="clients-tags-wrap">
+                      <span v-for="c in rep.clients" :key="c.id" class="client-mini-tag">
+                        {{ c.name }}
+                      </span>
+                    </div>
+                    <span v-else class="text-muted" style="font-size: 11.5px;">
+                      لا يوجد عملاء مرتبطين بعد
+                    </span>
+                  </td>
+                  <td>
+                    <span v-if="rep.pending_commissions_count > 0" class="status-pill pill-pending">
+                      ⏳ {{ rep.pending_commissions_count }} عمولة ({{ Number(rep.pending_amount).toLocaleString() }} ج.م)
+                    </span>
+                    <span v-else class="status-pill pill-completed">
+                      ✅ لا توجد عمولات معلقة
+                    </span>
+                  </td>
+                  <td>
+                    <span class="paid-sub-count">
+                      {{ Number(rep.total_paid_amount).toLocaleString() }} ج.م
+                    </span>
+                  </td>
+                  <td style="text-align: center;">
+                    <span v-if="rep.pending_commissions_count > 0" class="status-pill pill-pending">
+                      مستحق صرف 💵
+                    </span>
+                    <span v-else class="paid-pill">خالص ومسدد بالكامل ✨</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 2. جدول سجل تفاصيل استحقاقات العمولات -->
+        <div class="finance-table-card">
+          <div class="card-heading">
+            <div>
+              <h3>سجل استحقاقات وصرف عمولات المبيعات</h3>
+              <p>احتساب آلي لعمولات المبيعات الناتجة عن إيرادات وتحصيلات العملاء</p>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="finance-table">
+              <thead>
+                <tr>
+                  <th style="width: 45px;">#</th>
+                  <th>مسؤول المبيعات</th>
+                  <th>العميل المتعاقد</th>
+                  <th>إيراد العميل</th>
+                  <th>نوع ونسبة العمولة</th>
+                  <th>المبلغ المستحق</th>
+                  <th>الحالة</th>
+                  <th style="text-align: center;">الإجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="loadingCommissions">
+                  <td colspan="8" class="state-cell">جاري تحميل كشف العمولات...</td>
+                </tr>
+                <tr v-else-if="commissionsSheet.commissions.length === 0">
+                  <td colspan="8" class="state-cell">لا توجد سجلات عمولات مسجلة حتى الآن</td>
+                </tr>
+                <tr v-for="(comm, idx) in commissionsSheet.commissions" v-else :key="comm.id">
+                  <td>{{ idx + 1 }}</td>
+                  <td>
+                    <strong>{{ comm.user_name }}</strong>
+                  </td>
+                  <td>
+                    <span class="client-badge">{{ comm.client_name }}</span>
+                    <small v-if="comm.source_transaction_number" class="trx-ref-tag">
+                      (إيراد: {{ comm.source_transaction_number }})
+                    </small>
+                  </td>
+                  <td>{{ Number(comm.revenue_amount).toLocaleString() }} ج.م</td>
+                  <td>
+                    <span class="rate-badge">
+                      {{ comm.commission_type === 'percentage' ? (comm.commission_rate + '% من الإيراد') : (Number(comm.commission_rate).toLocaleString() + ' ج.م ثابت') }}
+                    </span>
+                  </td>
+                  <td>
+                    <strong class="text-emerald">{{ Number(comm.commission_amount).toLocaleString() }} ج.م</strong>
+                  </td>
+                  <td>
+                    <span class="status-pill" :class="comm.status === 'paid' ? 'pill-completed' : 'pill-pending'">
+                      {{ comm.status_label }}
+                    </span>
+                  </td>
+                  <td style="text-align: center;">
+                    <button
+                      v-if="comm.status === 'pending'"
+                      class="pay-salary-btn pay-comm-btn"
+                      type="button"
+                      @click="openCommissionPayoutModal(comm)"
+                    >
+                      صرف العمولة الآن 💵
+                    </button>
+                    <button
+                      v-else-if="comm.status === 'paid'"
+                      type="button"
+                      class="payslip-btn"
+                      @click="openCommissionVoucherModal(comm.id)"
+                    >
+                      🧾 سند العمولة
+                    </button>
+                    <span v-else class="text-muted">—</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -737,7 +1114,18 @@
                 </td>
                 <td>
                   <div v-if="cl.last_payment_date" class="last-payment-box">
-                    <strong>{{ cl.last_payment_date }}</strong>
+                    <div class="last-payment-head-row">
+                      <strong>{{ cl.last_payment_date }}</strong>
+                      <button
+                        v-if="cl.last_payment_transaction_id"
+                        type="button"
+                        class="receipt-mini-badge-btn"
+                        title="عرض وتنزيل سند قبض آخر دفعة (PDF / طباعة)"
+                        @click="openClientReceiptModal(cl.last_payment_transaction_id)"
+                      >
+                        🧾 السند
+                      </button>
+                    </div>
                     <small v-if="cl.last_payment_amount">
                       {{ Number(cl.last_payment_amount).toLocaleString() }} ج.م ({{ cl.last_payment_method || 'مسدد' }})
                     </small>
@@ -800,6 +1188,7 @@
 
           <div class="account-card-body">
             <h4>{{ acc.name }}</h4>
+            <span v-if="acc.bank_name" class="acc-bank" style="font-size: 12px; color: #7de8dc; font-weight: 600; display: block; margin-bottom: 4px;">🏦 {{ acc.bank_name }}</span>
             <span v-if="acc.account_number" class="acc-number">{{ acc.account_number }}</span>
             <div class="account-balance">
               <small>الرصيد اللحظي الحالي:</small>
@@ -891,10 +1280,19 @@
             <div v-for="item in pnlReport.expense_breakdown" :key="item.category_id" class="breakdown-item">
               <div class="item-head">
                 <span class="item-name">{{ item.icon }} {{ item.category_name }}</span>
-                <strong>{{ Number(item.total).toLocaleString() }} ج.م ({{ item.percentage }}%)</strong>
+                <div class="item-stat">
+                  <strong class="item-amount">{{ Number(item.total).toLocaleString() }} ج.م</strong>
+                  <span class="item-percentage text-expense font-mono">({{ getItemPercentage(item, pnlReport.summary?.total_expense) }}%)</span>
+                </div>
               </div>
               <div class="progress-bar-bg">
-                <div class="progress-fill" :style="{ width: item.percentage + '%', backgroundColor: item.color || '#f43f5e' }"></div>
+                <div
+                  class="progress-fill"
+                  :style="{
+                    width: Math.min(100, Math.max(0, Number(getItemPercentage(item, pnlReport.summary?.total_expense)))) + '%',
+                    backgroundColor: item.color || '#f43f5e'
+                  }"
+                ></div>
               </div>
             </div>
           </div>
@@ -910,10 +1308,19 @@
             <div v-for="item in pnlReport.income_breakdown" :key="item.category_id" class="breakdown-item">
               <div class="item-head">
                 <span class="item-name">{{ item.icon }} {{ item.category_name }}</span>
-                <strong>{{ Number(item.total).toLocaleString() }} ج.م ({{ item.percentage }}%)</strong>
+                <div class="item-stat">
+                  <strong class="item-amount">{{ Number(item.total).toLocaleString() }} ج.م</strong>
+                  <span class="item-percentage text-income font-mono">({{ getItemPercentage(item, pnlReport.summary?.total_income) }}%)</span>
+                </div>
               </div>
               <div class="progress-bar-bg">
-                <div class="progress-fill" :style="{ width: item.percentage + '%', backgroundColor: item.color || '#10b981' }"></div>
+                <div
+                  class="progress-fill"
+                  :style="{
+                    width: Math.min(100, Math.max(0, Number(getItemPercentage(item, pnlReport.summary?.total_income)))) + '%',
+                    backgroundColor: item.color || '#10b981'
+                  }"
+                ></div>
               </div>
             </div>
           </div>
@@ -933,29 +1340,96 @@
         </button>
       </div>
 
-      <div class="categories-grid">
-        <div v-for="cat in categories" :key="cat.id" class="category-card" :style="{ borderTopColor: cat.color || '#38bdf8' }">
+      <!-- فلتر تصنيف الأقسام (مصروفات / إيرادات / الكل والبحث السريع) -->
+      <div class="filter-card categories-filter-bar">
+        <div class="categories-filter-content">
+          <!-- أزرار التصفية السريعة بالنوع -->
+          <div class="categories-filter-pills">
+            <button
+              type="button"
+              class="pill-filter-btn"
+              :class="{ active: categoryTypeFilter === 'all' }"
+              @click="categoryTypeFilter = 'all'"
+            >
+              جميع الأقسام ({{ categories.length }})
+            </button>
+            <button
+              type="button"
+              class="pill-filter-btn pill-expense"
+              :class="{ active: categoryTypeFilter === 'expense' }"
+              @click="categoryTypeFilter = 'expense'"
+            >
+              📉 أقسام المصروفات ({{ expenseCategoriesCount }})
+            </button>
+            <button
+              type="button"
+              class="pill-filter-btn pill-income"
+              :class="{ active: categoryTypeFilter === 'income' }"
+              @click="categoryTypeFilter = 'income'"
+            >
+              📈 أقسام الإيرادات ({{ incomeCategoriesCount }})
+            </button>
+          </div>
+
+          <!-- البحث والفرز السريع -->
+          <div class="categories-search-box">
+            <span class="search-icon">🔍</span>
+            <input
+              v-model="categorySearchQuery"
+              type="text"
+              class="filter-input search-input"
+              placeholder="بحث باسم القسم أو الوصف..."
+            />
+            <button
+              v-if="categorySearchQuery || categoryTypeFilter !== 'all'"
+              type="button"
+              class="reset-filter-btn"
+              title="إعادة ضبط الفلتر"
+              @click="categorySearchQuery = ''; categoryTypeFilter = 'all'"
+            >
+              ↺ تصفير
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- شبكة بطاقات الأقسام المفلترة -->
+      <div v-if="filteredCategories.length > 0" class="categories-grid">
+        <div v-for="cat in filteredCategories" :key="cat.id" class="category-card" :style="{ borderTopColor: cat.color || '#38bdf8' }">
           <div class="cat-card-header">
             <span class="cat-big-icon">{{ cat.icon || '📁' }}</span>
-            <span class="type-pill" :class="cat.type === 'income' ? 'type-income' : 'type-expense'">
-              {{ cat.type === 'income' ? 'إيراد' : 'مصروف' }}
-            </span>
+            <div class="cat-badges-wrap">
+              <span v-if="cat.cost_type === 'fixed' || cat.slug === 'office_rent'" class="cost-type-pill">مصروف ثابت</span>
+              <span class="type-pill" :class="cat.type === 'income' ? 'type-income' : 'type-expense'">
+                {{ cat.type === 'income' ? 'إيراد' : 'مصروف' }}
+              </span>
+            </div>
           </div>
 
           <div class="cat-card-body">
             <h4>{{ cat.name }}</h4>
             <p>{{ cat.description || 'لا يوجد وصف مضاف' }}</p>
+            <div v-if="(cat.cost_type === 'fixed' || cat.slug === 'office_rent') && Number(cat.fixed_amount) > 0" class="cat-fixed-amount-box">
+              <span class="fixed-label">المبلغ المحدد:</span>
+              <strong class="fixed-val">{{ formatCurrency(cat.fixed_amount) }}</strong>
+            </div>
             <small class="trx-count">{{ cat.transactions_count || 0 }} معاملة مسجلة</small>
           </div>
 
           <div class="cat-card-footer">
-            <span v-if="cat.is_system" class="system-badge">قسم أساسي للنظام 🔒</span>
+            <template v-if="cat.is_system">
+              <span class="system-badge">قسم أساسي للنظام 🔒</span>
+              <button class="edit-btn" @click="openEditCategoryModal(cat)" title="تعديل بيانات أو قيمة القسم">تعديل ✏️</button>
+            </template>
             <div v-else class="custom-actions">
               <button class="edit-btn" @click="openEditCategoryModal(cat)">تعديل</button>
               <button class="delete-btn" @click="deleteCategory(cat)">حذف</button>
             </div>
           </div>
         </div>
+      </div>
+      <div v-else class="empty-state">
+        لا توجد أقسام مطابقة للفلتر المحدد
       </div>
     </div>
 
@@ -1000,6 +1474,7 @@
     <CategoryModal
       :show="showCategoryModal"
       :category="selectedCategory"
+      :default-type="categoryTypeFilter === 'income' ? 'income' : 'expense'"
       @close="showCategoryModal = false"
       @saved="onCategorySaved"
     />
@@ -1012,11 +1487,39 @@
       :month="selectedPayslipMonth"
       @close="closePayslipModal"
     />
+
+    <!-- مودال تسوية وصرف مستحقات المهام (بالتاسك) والسند المعتمد -->
+    <TaskSettlementModal
+      :show="showTaskSettlementModal"
+      :user="selectedFreelancerForSettlement"
+      :accounts="accounts"
+      :view-transaction-id="selectedTaskVoucherTrxId"
+      @close="showTaskSettlementModal = false; selectedTaskVoucherTrxId = null"
+      @settled="onTasksSettled"
+    />
+
+    <!-- مودال صرف عمولات المبيعات والسند المعتمد -->
+    <CommissionPayoutModal
+      :show="showCommissionModal"
+      :commission="selectedCommissionForPayout"
+      :accounts="accounts"
+      :view-commission-id="selectedCommissionVoucherId"
+      @close="showCommissionModal = false; selectedCommissionVoucherId = null"
+      @paid="onCommissionPaid"
+    />
+
+    <!-- مودال سند قبض إيراد العميل المعتمد (PDF + واتساب) -->
+    <ClientReceiptModal
+      :show="showClientReceiptModal"
+      :transaction-id="selectedReceiptTrxId"
+      @close="closeClientReceiptModal"
+    />
   </section>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import api from '@/axios'
 import { can } from '@/utils/permissions'
 import alertService from '@/services/alertService'
@@ -1027,9 +1530,60 @@ import ClientStatementModal from '@/components/finance/ClientStatementModal.vue'
 import AccountModal from '@/components/finance/AccountModal.vue'
 import CategoryModal from '@/components/finance/CategoryModal.vue'
 import SalaryPayslipModal from '@/components/finance/SalaryPayslipModal.vue'
+import TaskSettlementModal from '@/components/finance/TaskSettlementModal.vue'
+import CommissionPayoutModal from '@/components/finance/CommissionPayoutModal.vue'
+import ClientReceiptModal from '@/components/finance/ClientReceiptModal.vue'
+
+const route = useRoute()
+const router = useRouter()
+
+// الثوابت وصلاحيات التبويبات
+const VALID_TABS = ['transactions', 'salaries', 'clients', 'accounts', 'reports', 'categories']
+const VALID_SUB_TABS = ['salaries', 'tasks', 'commissions']
+
+const isTabAllowed = (tab) => {
+  if (!VALID_TABS.includes(tab)) return false
+  if (tab === 'salaries' && !can('finance.salaries')) return false
+  if (tab === 'reports' && !can('finance.reports')) return false
+  if (tab === 'categories' && !can('finance.categories')) return false
+  return true
+}
+
+// استنتاج التبويب والفرع الأولي مع أولوية للرابط URL ثم التخزين المحلي
+const resolveInitialTab = () => {
+  const queryTab = route.query?.tab
+  if (queryTab && isTabAllowed(queryTab)) {
+    return queryTab
+  }
+  try {
+    const savedTab = localStorage.getItem('oms_finance_active_tab')
+    if (savedTab && isTabAllowed(savedTab)) {
+      return savedTab
+    }
+  } catch (e) {
+    console.error('Storage access error:', e)
+  }
+  return 'transactions'
+}
+
+const resolveInitialSubTab = () => {
+  const querySubTab = route.query?.subtab
+  if (querySubTab && VALID_SUB_TABS.includes(querySubTab)) {
+    return querySubTab
+  }
+  try {
+    const savedSubTab = localStorage.getItem('oms_finance_compensation_subtab')
+    if (savedSubTab && VALID_SUB_TABS.includes(savedSubTab)) {
+      return savedSubTab
+    }
+  } catch (e) {
+    console.error('Storage access error:', e)
+  }
+  return 'salaries'
+}
 
 // التبويب النشط
-const activeTab = ref('transactions')
+const activeTab = ref(resolveInitialTab())
 
 // بيانات المنظومة
 const transactions = ref([])
@@ -1060,12 +1614,52 @@ const filteredClientsSummary = computed(() => {
   })
 })
 
+// فلترة أقسام وتصنيفات الحسابات (إيرادات / مصروفات / الكل والبحث)
+const categoryTypeFilter = ref('all') // 'all' | 'expense' | 'income'
+const categorySearchQuery = ref('')
+
+const expenseCategoriesCount = computed(() => {
+  return categories.value.filter(c => c.type === 'expense').length
+})
+
+const incomeCategoriesCount = computed(() => {
+  return categories.value.filter(c => c.type === 'income').length
+})
+
+const filteredCategories = computed(() => {
+  return categories.value.filter(cat => {
+    if (categoryTypeFilter.value !== 'all' && cat.type !== categoryTypeFilter.value) {
+      return false
+    }
+    if (categorySearchQuery.value && categorySearchQuery.value.trim()) {
+      const q = categorySearchQuery.value.trim().toLowerCase()
+      const matchName = cat.name && cat.name.toLowerCase().includes(q)
+      const matchDesc = cat.description && cat.description.toLowerCase().includes(q)
+      if (!matchName && !matchDesc) {
+        return false
+      }
+    }
+    return true
+  })
+})
+
 // دوال مساعدة لتواريخ محلية دقيقة وتجنب مشاكل الـ Timezone في toISOString()
 const formatLocalDate = (d = new Date()) => {
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
   return `${y}-${m}-${day}`
+}
+
+const formatDisplayDate = (d) => {
+  if (!d) return '—'
+  if (typeof d === 'string') {
+    return d.split('T')[0]
+  }
+  if (d instanceof Date) {
+    return formatLocalDate(d)
+  }
+  return String(d)
 }
 
 const formatLocalMonth = (d = new Date()) => {
@@ -1133,10 +1727,44 @@ const totalAvailableLiquidity = computed(() => {
   return total
 })
 
-// مسير الرواتب
+// مسير الرواتب والمستحقات
+const compensationSubTab = ref(resolveInitialSubTab()) // 'salaries' | 'tasks' | 'commissions'
 const payrollMonth = ref(formatLocalMonth())
 const payrollSheet = ref({ summary: {}, employees: [] })
 const salaryRoleFilter = ref('all')
+
+// بيانات الفريلانسرز ومستحقات المهام
+const freelancersSheet = reactive({
+  freelancers: [],
+  summary: {
+    total_freelancers: 0,
+    total_unpaid_tasks: 0,
+    total_unpaid_amount: '0.00',
+    total_paid_amount: '0.00',
+  }
+})
+const loadingFreelancers = ref(false)
+const showTaskSettlementModal = ref(false)
+const selectedFreelancerForSettlement = ref(null)
+const selectedTaskVoucherTrxId = ref(null)
+
+// بيانات العمولات ومسؤولي المبيعات
+const commissionsSheet = reactive({
+  sales_reps: [],
+  commissions: [],
+  summary: {
+    total_sales_reps: 0,
+    total_commissions_count: 0,
+    pending_count: 0,
+    total_pending_amount: '0.00',
+    paid_count: 0,
+    total_paid_amount: '0.00',
+  }
+})
+const loadingCommissions = ref(false)
+const showCommissionModal = ref(false)
+const selectedCommissionForPayout = ref(null)
+const selectedCommissionVoucherId = ref(null)
 
 const filteredPayrollEmployees = computed(() => {
   const items = payrollSheet.value.employees || payrollSheet.value.payroll_items || []
@@ -1186,6 +1814,20 @@ const closePayslipModal = () => {
   selectedPayslipTrxId.value = null
   selectedPayslipUserId.value = null
   selectedPayslipMonth.value = null
+}
+
+// نافذة سند قبض إيراد العميل المعتمد (PDF + واتساب)
+const showClientReceiptModal = ref(false)
+const selectedReceiptTrxId = ref(null)
+
+const openClientReceiptModal = (trxId) => {
+  selectedReceiptTrxId.value = trxId
+  showClientReceiptModal.value = true
+}
+
+const closeClientReceiptModal = () => {
+  showClientReceiptModal.value = false
+  selectedReceiptTrxId.value = null
 }
 
 let debounceTimer = null
@@ -1314,22 +1956,32 @@ const fetchCategories = async () => {
   }
 }
 
-// 4. جلب العملاء والمستخدمين
+// 4. جلب العملاء والمستخدمين عند الحاجة فقط (Lazy Loading لتسريع تحميل الصفحة)
+let usersClientsPromise = null
 const fetchUsersAndClients = async () => {
-  try {
-    const [usersRes, clientsRes] = await Promise.allSettled([
-      api.get('/users', { params: { per_page: 100 } }),
-      api.get('/clients', { params: { per_page: 100 } }),
-    ])
-    if (usersRes.status === 'fulfilled') {
-      users.value = usersRes.value.data?.data || usersRes.value.data || []
+  if (users.value.length > 0 && clients.value.length > 0) return
+  if (usersClientsPromise) return usersClientsPromise
+
+  usersClientsPromise = (async () => {
+    try {
+      const [usersRes, clientsRes] = await Promise.allSettled([
+        api.get('/users', { params: { per_page: 150 } }),
+        api.get('/clients', { params: { per_page: 150 } }),
+      ])
+      if (usersRes.status === 'fulfilled') {
+        users.value = usersRes.value.data?.data || usersRes.value.data || []
+      }
+      if (clientsRes.status === 'fulfilled') {
+        clients.value = clientsRes.value.data?.data || clientsRes.value.data || []
+      }
+    } catch (err) {
+      console.error('Error fetching users/clients:', err)
+    } finally {
+      usersClientsPromise = null
     }
-    if (clientsRes.status === 'fulfilled') {
-      clients.value = clientsRes.value.data?.data || clientsRes.value.data || []
-    }
-  } catch (err) {
-    console.error('Error fetching users/clients:', err)
-  }
+  })()
+
+  return usersClientsPromise
 }
 
 // 5. مسير الرواتب
@@ -1362,6 +2014,85 @@ const shiftPayrollMonth = (offset) => {
 const resetPayrollMonth = () => {
   payrollMonth.value = formatLocalMonth()
   fetchPayrollSheet()
+}
+
+// 5.1 مستحقات الفريلانسرز (نظام العمل بالتاسك)
+const fetchFreelancersSheet = async () => {
+  loadingFreelancers.value = true
+  try {
+    const res = await api.get('/finance/compensations/freelancers-sheet')
+    freelancersSheet.freelancers = res.data?.data?.freelancers || []
+    freelancersSheet.summary = res.data?.data?.summary || {
+      total_freelancers: 0,
+      total_unpaid_tasks: 0,
+      total_unpaid_amount: '0.00',
+      total_paid_amount: '0.00',
+    }
+  } catch (err) {
+    console.error('Error fetching freelancers sheet:', err)
+  } finally {
+    loadingFreelancers.value = false
+  }
+}
+
+const openTaskSettlementModal = (fl) => {
+  selectedFreelancerForSettlement.value = fl
+  selectedTaskVoucherTrxId.value = null
+  showTaskSettlementModal.value = true
+}
+
+const openTaskVoucherModal = (trxId) => {
+  selectedFreelancerForSettlement.value = null
+  selectedTaskVoucherTrxId.value = trxId
+  showTaskSettlementModal.value = true
+}
+
+const onTasksSettled = () => {
+  fetchFreelancersSheet()
+  fetchAccounts()
+  fetchTransactions(pagination.current_page)
+  fetchProfitAndLoss()
+}
+
+// 5.2 مستحقات العمولات والأرباح (مسؤولو المبيعات والعملاء)
+const fetchCommissionsSheet = async () => {
+  loadingCommissions.value = true
+  try {
+    const res = await api.get('/finance/compensations/commissions-sheet')
+    commissionsSheet.sales_reps = res.data?.data?.sales_reps || []
+    commissionsSheet.commissions = res.data?.data?.commissions || []
+    commissionsSheet.summary = res.data?.data?.summary || {
+      total_sales_reps: 0,
+      total_commissions_count: 0,
+      pending_count: 0,
+      total_pending_amount: '0.00',
+      paid_count: 0,
+      total_paid_amount: '0.00',
+    }
+  } catch (err) {
+    console.error('Error fetching commissions sheet:', err)
+  } finally {
+    loadingCommissions.value = false
+  }
+}
+
+const openCommissionPayoutModal = (comm) => {
+  selectedCommissionForPayout.value = comm
+  selectedCommissionVoucherId.value = null
+  showCommissionModal.value = true
+}
+
+const openCommissionVoucherModal = (commId) => {
+  selectedCommissionForPayout.value = null
+  selectedCommissionVoucherId.value = commId
+  showCommissionModal.value = true
+}
+
+const onCommissionPaid = () => {
+  fetchCommissionsSheet()
+  fetchAccounts()
+  fetchTransactions(pagination.current_page)
+  fetchProfitAndLoss()
 }
 
 // 6. ملخص العملاء (LTV)
@@ -1419,12 +2150,109 @@ const fetchProfitAndLoss = async () => {
   }
 }
 
-// التنقل بين التبويبات
+// حساب النسبة المئوية للقسم من إجمالي الإيرادات أو المصروفات
+const getItemPercentage = (item, totalGroup) => {
+  if (item && item.percentage !== undefined && item.percentage !== null && !isNaN(item.percentage)) {
+    const val = Number(item.percentage)
+    return val % 1 === 0 ? val.toFixed(0) : val.toFixed(1)
+  }
+  const total = Number(totalGroup || 0)
+  const itemTotal = Number(item?.total || 0)
+  if (total > 0 && itemTotal > 0) {
+    const val = (itemTotal / total) * 100
+    return val % 1 === 0 ? val.toFixed(0) : val.toFixed(1)
+  }
+  return '0.0'
+}
+
+// مزامنة حالة التبويب مع رابط الصفحة والتخزين المحلي
+const syncTabStateToUrl = () => {
+  try {
+    localStorage.setItem('oms_finance_active_tab', activeTab.value)
+    if (activeTab.value === 'salaries') {
+      localStorage.setItem('oms_finance_compensation_subtab', compensationSubTab.value)
+    }
+
+    const currentQuery = { ...route.query }
+    const newQuery = { ...currentQuery, tab: activeTab.value }
+
+    if (activeTab.value === 'salaries') {
+      newQuery.subtab = compensationSubTab.value
+    } else {
+      delete newQuery.subtab
+    }
+
+    if (currentQuery.tab !== newQuery.tab || currentQuery.subtab !== newQuery.subtab) {
+      router.replace({ query: newQuery }).catch(() => {})
+    }
+  } catch (e) {
+    console.error('Failed to sync tab state to URL:', e)
+  }
+}
+
+// آلية جلب ذكية حسب التبويب النشط فقط مع كاش محلي فوري (Lazy Loading & Smart Caching)
+const loadActiveTabData = (force = false) => {
+  if (activeTab.value === 'transactions') {
+    if (force || transactions.value.length === 0) fetchTransactions(pagination.current_page)
+  } else if (activeTab.value === 'salaries') {
+    if (compensationSubTab.value === 'salaries') {
+      if (force || !payrollSheet.value.employees || payrollSheet.value.employees.length === 0) fetchPayrollSheet()
+    } else if (compensationSubTab.value === 'tasks') {
+      if (force || !freelancersSheet.freelancers || freelancersSheet.freelancers.length === 0) fetchFreelancersSheet()
+    } else if (compensationSubTab.value === 'commissions') {
+      if (force || !commissionsSheet.sales_reps || commissionsSheet.sales_reps.length === 0) fetchCommissionsSheet()
+    }
+  } else if (activeTab.value === 'clients') {
+    if (force || clientsSummary.value.length === 0) fetchClientsSummary()
+  } else if (activeTab.value === 'reports') {
+    if (force || !pnlReport.value.summary || Object.keys(pnlReport.value.summary).length === 0) {
+      setReportPeriod('this_month')
+    }
+  } else if (activeTab.value === 'accounts') {
+    if (force || accounts.value.length === 0) fetchAccounts()
+  } else if (activeTab.value === 'categories') {
+    if (force || categories.value.length === 0) fetchCategories()
+  }
+}
+
+// التنقل فائق السرعة بين التبويبات الرئيسية دون إبطاء
+let isInternalTabSwitch = false
+
 const switchTab = (tab) => {
+  if (!isTabAllowed(tab)) return
+  if (activeTab.value === tab) return
+
   activeTab.value = tab
-  if (tab === 'salaries') fetchPayrollSheet()
-  else if (tab === 'clients') fetchClientsSummary()
-  else if (tab === 'reports') fetchProfitAndLoss()
+  isInternalTabSwitch = true
+  syncTabStateToUrl()
+
+  loadActiveTabData(false)
+
+  setTimeout(() => {
+    isInternalTabSwitch = false
+  }, 120)
+}
+
+// التنقل بين التبويبات الفرعية للرواتب والمستحقات
+const switchCompensationSubTab = (subTab) => {
+  if (!VALID_SUB_TABS.includes(subTab)) return
+  if (compensationSubTab.value === subTab) return
+
+  compensationSubTab.value = subTab
+  isInternalTabSwitch = true
+  syncTabStateToUrl()
+
+  if (subTab === 'salaries') {
+    if (!payrollSheet.value.employees || payrollSheet.value.employees.length === 0) fetchPayrollSheet()
+  } else if (subTab === 'tasks') {
+    if (!freelancersSheet.freelancers || freelancersSheet.freelancers.length === 0) fetchFreelancersSheet()
+  } else if (subTab === 'commissions') {
+    if (!commissionsSheet.sales_reps || commissionsSheet.sales_reps.length === 0) fetchCommissionsSheet()
+  }
+
+  setTimeout(() => {
+    isInternalTabSwitch = false
+  }, 120)
 }
 
 // فتح وإغلاق المودالات
@@ -1458,10 +2286,17 @@ const openQuickPettyCashModal = () => {
 }
 
 const openIncomeModalForClient = (client) => {
+  fetchUsersAndClients()
   selectedTransaction.value = null
   transactionDefaultType.value = 'income'
   prefilledUser.value = null
-  prefilledCategory.value = null
+
+  // تحديد تصنيف إيرادات العقود الشهرية المستمرة افتراضياً عند قبض دفعة العميل
+  const retainerCat = categories.value.find(c =>
+    c.type === 'income' &&
+    (c.slug === 'client_monthly_retainers' || (c.name || '').includes('عقود') || (c.name || '').toLowerCase().includes('retainer'))
+  )
+  prefilledCategory.value = retainerCat ? retainerCat.id : null
   prefilledAccount.value = null
   prefilledClient.value = { id: client.client_id, name: client.client_name }
   showTransactionModal.value = true
@@ -1564,20 +2399,42 @@ const onTransactionSaved = (savedTrx) => {
   fetchTransactions(pagination.current_page)
   fetchAccounts()
   fetchProfitAndLoss()
-  if (activeTab.value === 'salaries') fetchPayrollSheet()
+  if (activeTab.value === 'salaries') {
+    if (compensationSubTab.value === 'salaries') fetchPayrollSheet()
+    else if (compensationSubTab.value === 'tasks') fetchFreelancersSheet()
+    else if (compensationSubTab.value === 'commissions') fetchCommissionsSheet()
+  } else {
+    fetchFreelancersSheet()
+    fetchCommissionsSheet()
+  }
 
-  // إذا كانت المعاملة المحفوظة خاصة براتب موظف، نعرض إشعاراً لفتح الفاتورة الرسمية والمشاركة عبر واتساب
-  if (savedTrx && (savedTrx.salary_month || savedTrx.category?.slug === 'salaries')) {
+  // 1. إذا كانت المعاملة المحفوظة خاصة بمصروف راتب موظف (وليس إيراد عميل)
+  if (savedTrx && savedTrx.type === 'expense' && (savedTrx.salary_month || savedTrx.category?.slug === 'salaries')) {
     setTimeout(async () => {
       const wantPayslip = await alertService.confirm({
         title: 'تم تسجيل وصرف الراتب بنجاح! 💵✨',
-        message: `تم قيد عملية الصرف بالدفاتر برقم سند [${savedTrx.transaction_number || ''}].\nهل ترغب في فتح الفاتورة الرسمية وسند الصرف (PDF) أو إرساله للموظف عبر واتساب الآن؟`,
+        message: `تم قيد عملية الصرف بالدفاتر برقم سند [${savedTrx.transaction_number || ''}].\nهل ترغب في فتح الفاتورة الرسمية وسند الصرف المعتمد (PDF) الآن؟`,
         confirmText: 'عرض سند الصرف والفاتورة 🧾',
         cancelText: 'إغلاق',
         type: 'success',
       })
       if (wantPayslip) {
         openPayslipModal(savedTrx.id)
+      }
+    }, 350)
+  } else if (savedTrx && savedTrx.type === 'income') {
+    // 2. إذا كانت المعاملة المحفوظة خاصة بقبض إيراد (عميل / دفعة)
+    setTimeout(async () => {
+      const clientName = savedTrx.beneficiary_name || savedTrx.entity?.name || 'العميل'
+      const wantReceipt = await alertService.confirm({
+        title: 'تم تسجيل وقبض الإيراد بنجاح! 📥✨',
+        message: `تم قيد عملية القبض بحساب [${clientName}] بالدفاتر برقم سند [${savedTrx.transaction_number || ''}].\nهل ترغب في فتح سند وإيصال القبض المعتمد للعميل (PDF) الآن؟`,
+        confirmText: 'عرض سند القبض المعتمد 🧾',
+        cancelText: 'إغلاق',
+        type: 'success',
+      })
+      if (wantReceipt) {
+        openClientReceiptModal(savedTrx.id)
       }
     }, 350)
   }
@@ -1587,7 +2444,13 @@ const onTransactionVoided = () => {
   fetchTransactions(pagination.current_page)
   fetchAccounts()
   fetchProfitAndLoss()
-  if (activeTab.value === 'salaries') fetchPayrollSheet()
+  if (activeTab.value === 'salaries') {
+    if (compensationSubTab.value === 'salaries') fetchPayrollSheet()
+    else if (compensationSubTab.value === 'tasks') fetchFreelancersSheet()
+    else if (compensationSubTab.value === 'commissions') fetchCommissionsSheet()
+  }
+  fetchFreelancersSheet()
+  fetchCommissionsSheet()
 }
 
 const onAccountSaved = () => {
@@ -1599,12 +2462,41 @@ const onCategorySaved = () => {
 }
 
 onMounted(() => {
+  // 1. مزامنة الرابط لضمان بقاء المستخدم في نفس التبويب عند الريفريش
+  syncTabStateToUrl()
+
+  // 2. جلب الحسابات والأقسام بشكل فوري كبيانات أساسية مشتركة وخفيفة جداً
   fetchAccounts()
   fetchCategories()
-  fetchUsersAndClients()
-  fetchTransactions()
-  setReportPeriod('this_month')
+
+  // 3. جلب بيانات التبويب النشط فقط دون إغراق المتصفح بطلبات متوازية غير مطلوبة
+  loadActiveTabData(true)
 })
+
+// مراقبة التنقل عبر أزرار المتصفح (رجوع / تقدم) دون تكرار للطلبات
+watch(
+  () => [route.query?.tab, route.query?.subtab],
+  ([newTab, newSubTab]) => {
+    if (isInternalTabSwitch) return
+
+    if (newTab && isTabAllowed(newTab) && newTab !== activeTab.value) {
+      activeTab.value = newTab
+      try { localStorage.setItem('oms_finance_active_tab', newTab) } catch (e) {}
+
+      if (newTab === 'salaries') {
+        if (newSubTab && VALID_SUB_TABS.includes(newSubTab)) {
+          compensationSubTab.value = newSubTab
+          try { localStorage.setItem('oms_finance_compensation_subtab', newSubTab) } catch (e) {}
+        }
+      }
+      loadActiveTabData(false)
+    } else if (activeTab.value === 'salaries' && newSubTab && VALID_SUB_TABS.includes(newSubTab) && newSubTab !== compensationSubTab.value) {
+      compensationSubTab.value = newSubTab
+      try { localStorage.setItem('oms_finance_compensation_subtab', newSubTab) } catch (e) {}
+      loadActiveTabData(false)
+    }
+  }
+)
 </script>
 
 <style scoped>
@@ -2356,11 +3248,241 @@ onMounted(() => {
   color: #0f172a;
 }
 
+.receipt-action-btn {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.28);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.receipt-action-btn:hover {
+  background: #10b981;
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(16, 185, 129, 0.3);
+}
+
+.last-payment-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.receipt-mini-badge-btn {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.receipt-mini-badge-btn:hover {
+  background: #10b981;
+  color: #020617;
+}
+
 .payment-detail-box {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   font-size: 11px;
+}
+
+.payment-detail-box .pay-meta-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.payment-detail-box .date-bdi {
+  direction: ltr;
+  unicode-bidi: isolate;
+  font-family: monospace, sans-serif;
+  font-weight: 700;
+  color: #cbd5e1;
+}
+
+.payment-detail-box .account-tag {
+  color: #38bdf8;
+  font-size: 10.5px;
+}
+
+/* شريط التنقل لأنظمة العمل والمستحقات */
+.compensations-sub-nav {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  background: rgba(8, 14, 40, 0.4);
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(135, 155, 230, 0.12);
+}
+
+.sub-tab-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: #94a3b8;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sub-tab-pill:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+}
+
+.sub-tab-pill.active {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(14, 165, 233, 0.25));
+  border-color: #38bdf8;
+  color: #38bdf8;
+  box-shadow: 0 4px 12px rgba(56, 189, 248, 0.15);
+}
+
+.sub-tab-pill.pill-tasks.active {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.25));
+  border-color: #f59e0b;
+  color: #fbbf24;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.15);
+}
+
+.sub-tab-pill.pill-commissions.active {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.25));
+  border-color: #10b981;
+  color: #34d399;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+}
+
+.sub-tab-count {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.orange-count {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.green-count {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.pay-tasks-btn {
+  background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+  color: #0f172a !important;
+  font-weight: 800 !important;
+}
+
+.pay-tasks-btn:hover {
+  filter: brightness(1.1);
+}
+
+.pay-comm-btn {
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+}
+
+.pay-comm-btn:hover {
+  filter: brightness(1.1);
+}
+
+.rate-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 6px;
+  color: #38bdf8;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.client-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  background: rgba(168, 85, 247, 0.12);
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  border-radius: 6px;
+  color: #c084fc;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.trx-ref-tag {
+  display: block;
+  font-size: 10.5px;
+  color: #94a3b8;
+  margin-top: 2px;
+  font-family: monospace, sans-serif;
+}
+
+.paid-sub-count {
+  font-size: 11.5px;
+  color: #94a3b8;
+}
+
+.text-emerald {
+  color: #10b981;
+}
+
+.text-amber {
+  color: #f59e0b;
+}
+
+.user-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.user-sub {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.mb-20 {
+  margin-bottom: 20px;
+}
+
+.clients-tags-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+}
+
+.client-mini-tag {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(168, 85, 247, 0.12);
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  color: #c084fc;
+  font-size: 11px;
+  font-weight: 600;
 }
 
 /* حسابات العملاء */
@@ -2712,7 +3834,29 @@ onMounted(() => {
 .item-head {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   font-size: 13px;
+}
+
+.item-stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.item-amount {
+  color: #f1f5f9;
+  font-weight: 700;
+}
+
+.item-percentage {
+  font-weight: 800;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 1px 7px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  letter-spacing: 0.3px;
 }
 
 .progress-bar-bg {
@@ -2721,12 +3865,59 @@ onMounted(() => {
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.08);
   overflow: hidden;
+  position: relative;
 }
 
 .progress-fill {
   height: 100%;
   border-radius: 4px;
-  transition: width 0.3s ease;
+  transition: width 0.4s ease;
+  min-width: 0;
+}
+
+/* شريط فلترة الأقسام والتصنيفات */
+.categories-filter-bar {
+  margin-bottom: 20px;
+  padding: 14px 18px;
+}
+
+.categories-filter-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.categories-filter-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.categories-filter-pills .pill-expense.active {
+  background: linear-gradient(135deg, rgba(244, 63, 94, 0.22), rgba(225, 29, 72, 0.32));
+  border-color: #f43f5e;
+  color: #fb7185;
+}
+
+.categories-filter-pills .pill-income.active {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.22), rgba(5, 150, 105, 0.32));
+  border-color: #10b981;
+  color: #34d399;
+}
+
+.categories-search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  min-width: 250px;
+}
+
+.categories-search-box .search-input {
+  width: 100%;
 }
 
 /* تصنيفات */
@@ -2755,8 +3946,37 @@ onMounted(() => {
 
 .cat-big-icon { font-size: 26px; }
 
+.cat-badges-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cost-type-pill {
+  font-size: 10.5px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-weight: 700;
+  background: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
 .cat-card-body h4 { margin: 0 0 4px; font-size: 15px; color: #ffffff; }
 .cat-card-body p { margin: 0 0 6px; font-size: 12px; color: #94a3b8; }
+.cat-fixed-amount-box {
+  margin-bottom: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+}
+.cat-fixed-amount-box .fixed-label { color: #94a3b8; }
+.cat-fixed-amount-box .fixed-val { color: #38bdf8; font-weight: 700; }
 .trx-count { font-size: 11px; color: #64748b; }
 
 .cat-card-footer {
@@ -2768,6 +3988,22 @@ onMounted(() => {
 }
 
 .system-badge { font-size: 11px; color: #64748b; }
+
+.cat-card-footer .edit-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  color: #38bdf8;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.cat-card-footer .edit-btn:hover {
+  background: rgba(56, 189, 248, 0.12);
+}
 
 .custom-actions {
   display: flex;

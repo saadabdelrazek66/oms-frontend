@@ -226,6 +226,51 @@
               </select>
             </div>
           </div>
+
+          <!-- تنبيه سداد العقد الشهري المستمر وتأكيد الإضافة -->
+          <div v-if="hasRetainerDuplicate" class="alert-box alert-retainer-warning">
+            <div class="warning-header">
+              <span class="warning-icon">⚠️</span>
+              <div>
+                <strong>تنبيه: تم سداد العقد الشهري لهذا العميل مسبقاً!</strong>
+                <p class="warning-desc">{{ retainerDuplicateWarning }}</p>
+              </div>
+            </div>
+
+            <div v-if="retainerDuplicateDetails" class="duplicate-pills">
+              <span class="dup-pill dup-pill-amber">📄 رقم السند: <b>{{ retainerDuplicateDetails.transaction_number }}</b></span>
+              <span class="dup-pill dup-pill-amber">📅 التاريخ: <b>{{ retainerDuplicateDetails.transaction_date }}</b></span>
+              <span class="dup-pill dup-pill-amber">💰 المبلغ المسدد: <b>{{ Number(retainerDuplicateDetails.amount || 0).toLocaleString() }} ج.م</b></span>
+              <span v-if="retainerDuplicateDetails.account_name" class="dup-pill dup-pill-amber">🏦 الخزينة: <b>{{ retainerDuplicateDetails.account_name }}</b></span>
+            </div>
+
+            <!-- شريط اتخاذ القرار -->
+            <div class="retainer-decision-bar">
+              <div class="decision-text">
+                <span class="decision-prompt">❓ هل أنت متأكد من رغبتك في إضافة دفعة أخرى لهذا العميل عن نفس الشهر؟</span>
+                <small v-if="retainerConfirmedByUser" class="confirmed-tag">✓ تم التأكيد من قِبلك: مسموح لك بالمتابعة وحفظ الدفعة الثانية.</small>
+              </div>
+
+              <div class="decision-actions">
+                <button
+                  type="button"
+                  class="btn-decision btn-confirm"
+                  :class="{ 'btn-confirmed': retainerConfirmedByUser }"
+                  @click="confirmRetainerDuplicate"
+                >
+                  <span v-if="retainerConfirmedByUser">✓ نعم، متأكد (تم التأكيد)</span>
+                  <span v-else>نعم، متأكد وأرغب في الإضافة</span>
+                </button>
+                <button
+                  type="button"
+                  class="btn-decision btn-cancel-close"
+                  @click="cancelAndCloseModal"
+                >
+                  ✕ لا، تراجع وإغلاق
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- المستفيد لأي مصروف آخر غير الرواتب -->
@@ -249,6 +294,7 @@
           <div class="form-group amount-group">
             <div class="form-label-row">
               <label class="form-label required">المبلغ المالي</label>
+              <span v-if="isFixedCategory" class="locked-amount-badge">🔒 مصروف ثابت محدد</span>
             </div>
             <div class="input-with-currency">
               <input
@@ -258,13 +304,18 @@
                 min="0.01"
                 max="999999999.99"
                 required
+                :readonly="isFixedCategory"
+                :class="{ 'readonly-locked': isFixedCategory }"
                 class="form-input amount-input"
                 placeholder="0.00"
                 @input="validateAmount(true)"
               />
               <span class="currency-tag">{{ form.currency || 'EGP' }}</span>
             </div>
-            <small v-if="amountError" class="field-error">{{ amountError }}</small>
+            <small v-if="isFixedCategory" class="fixed-category-hint">
+              🔒 تم استدعاء المبلغ تلقائياً وفقاً لإعدادات قسم ({{ selectedCategory?.name }}). لتعديل القيمة الثابتة، يرجى التوجه لتبويب "أقسام وتصنيفات الحسابات".
+            </small>
+            <small v-else-if="amountError" class="field-error">{{ amountError }}</small>
           </div>
 
           <!-- تاريخ المعاملة (اليسار) -->
@@ -364,6 +415,7 @@
           >
             <span v-if="submitting" class="spinner"></span>
             <span v-else-if="isSalaryDuplicate">محظور: تم صرف الراتب مسبقاً ⛔</span>
+            <span v-else-if="form.type === 'income' && hasRetainerDuplicate && !retainerConfirmedByUser">تأكيد وتسجيل القبض ⚠️</span>
             <span v-else>{{ isEditing ? 'حفظ التعديلات 💾' : (form.type === 'income' ? 'تسجيل القبض 📥' : 'تسجيل الصرف 📤') }}</span>
           </button>
         </div>
@@ -408,6 +460,12 @@ const selectedClientId = ref('')
 const salaryDuplicateWarning = ref('')
 const isSalaryDuplicate = ref(false)
 const salaryDuplicateDetails = ref(null)
+
+const retainerDuplicateWarning = ref('')
+const hasRetainerDuplicate = ref(false)
+const retainerDuplicateDetails = ref(null)
+const retainerConfirmedByUser = ref(false)
+const isCheckingRetainer = ref(false)
 
 // دوال مساعدة لتواريخ محلية دقيقة وتجنب مشاكل الـ Timezone
 const getLocalDateString = (d = new Date()) => {
@@ -494,9 +552,30 @@ const filteredCategories = computed(() => {
   return props.categories.filter(c => c.type === form.type && c.is_active !== false)
 })
 
+const selectedCategory = computed(() => {
+  return props.categories.find(c => c.id == form.category_id)
+})
+
+const isFixedCategory = computed(() => {
+  if (form.type !== 'expense') return false
+  const cat = selectedCategory.value
+  if (!cat) return false
+  const isCostFixed = cat.cost_type === 'fixed' || cat.slug === 'office_rent'
+  const hasFixedAmt = cat.fixed_amount !== null && cat.fixed_amount !== undefined && Number(cat.fixed_amount) > 0
+  return isCostFixed && hasFixedAmt
+})
+
 const isSalaryCategory = computed(() => {
-  const cat = props.categories.find(c => c.id === form.category_id)
+  const cat = selectedCategory.value
   return cat && (cat.slug === 'salaries' || cat.name?.includes('رواتب') || cat.name?.includes('أجور'))
+})
+
+const isRetainerCategory = computed(() => {
+  const cat = selectedCategory.value
+  if (!cat) return false
+  const slug = (cat.slug || '').toLowerCase()
+  const name = (cat.name || '').toLowerCase()
+  return slug === 'client_monthly_retainers' || slug.includes('retainer') || name.includes('عقود شهرية') || name.includes('عقد شهري') || name.includes('retainer')
 })
 
 const setType = (type) => {
@@ -504,6 +583,10 @@ const setType = (type) => {
   // Reset category if not matching
   const matchingCat = props.categories.find(c => c.type === type && c.is_active !== false)
   form.category_id = matchingCat ? matchingCat.id : ''
+  if (isFixedCategory.value && selectedCategory.value?.fixed_amount) {
+    form.amount = String(selectedCategory.value.fixed_amount)
+    validateAmount(false)
+  }
 }
 
 const onCategoryChanged = () => {
@@ -512,7 +595,16 @@ const onCategoryChanged = () => {
       form.salary_month = getLocalMonthString()
     }
   }
+
+  if (isFixedCategory.value && selectedCategory.value?.fixed_amount) {
+    form.amount = String(selectedCategory.value.fixed_amount)
+    validateAmount(false)
+  }
 }
+
+watch(() => form.category_id, () => {
+  onCategoryChanged()
+})
 
 const selectedUserSalaryInfo = computed(() => {
   if (salaryEntityType.value !== 'system' || !selectedUserId.value) return null
@@ -545,15 +637,26 @@ const onUserSelected = () => {
 }
 
 const onClientSelected = () => {
-  const c = props.clients.find(cl => cl.id === selectedClientId.value)
+  if (!selectedClientId.value) {
+    form.entity_type = null
+    form.entity_id = null
+    form.beneficiary_name = ''
+    return
+  }
+  const c = props.clients.find(cl => Number(cl.id) === Number(selectedClientId.value))
   if (c) {
     form.entity_type = 'App\\Models\\Client'
     form.entity_id = c.id
     form.beneficiary_name = c.name
+  } else if (props.prefilledClient && Number(props.prefilledClient.id || props.prefilledClient.client_id) === Number(selectedClientId.value)) {
+    form.entity_type = 'App\\Models\\Client'
+    form.entity_id = props.prefilledClient.id || props.prefilledClient.client_id
+    form.beneficiary_name = props.prefilledClient.name || props.prefilledClient.client_name || ''
   }
 }
 
 const checkSalaryDuplicate = async () => {
+  if (!props.show) return
   if (form.type !== 'expense' || !isSalaryCategory.value || salaryEntityType.value !== 'system' || !selectedUserId.value || !form.salary_month) {
     salaryDuplicateWarning.value = ''
     isSalaryDuplicate.value = false
@@ -599,6 +702,81 @@ watch(() => form.salary_month, () => {
 
 watch(selectedUserId, () => {
   checkSalaryDuplicate()
+})
+
+const checkClientRetainer = async () => {
+  if (!props.show) return
+
+  if (form.type !== 'income' || clientEntityType.value !== 'system' || !selectedClientId.value) {
+    hasRetainerDuplicate.value = false
+    retainerDuplicateWarning.value = ''
+    retainerDuplicateDetails.value = null
+    retainerConfirmedByUser.value = false
+    return
+  }
+
+  const isRetainer = (form.revenue_nature === 'recurring_retainer' || isRetainerCategory.value)
+  if (!isRetainer || !form.transaction_date) {
+    hasRetainerDuplicate.value = false
+    retainerDuplicateWarning.value = ''
+    retainerDuplicateDetails.value = null
+    retainerConfirmedByUser.value = false
+    return
+  }
+
+  const month = form.transaction_date.slice(0, 7)
+  try {
+    isCheckingRetainer.value = true
+    const params = { month }
+    if (isEditing.value && props.transaction?.id) {
+      params.transaction_id = props.transaction.id
+    }
+
+    const res = await api.get(`/finance/clients/${selectedClientId.value}/check-retainer`, { params })
+    const data = res.data?.data
+
+    if (data?.has_paid_retainer && data?.existing_transaction) {
+      hasRetainerDuplicate.value = true
+      retainerDuplicateDetails.value = data.existing_transaction
+      const amt = Number(data.existing_transaction.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      retainerDuplicateWarning.value = `تم سداد إيراد العقد الشهري المستمر لهذا العميل مسبقاً لشهر (${month}) بموجب المعاملة رقم [${data.existing_transaction.transaction_number}] بمبلغ ${amt} ج.م بتاريخ ${data.existing_transaction.transaction_date}.`
+    } else {
+      hasRetainerDuplicate.value = false
+      retainerDuplicateWarning.value = ''
+      retainerDuplicateDetails.value = null
+      retainerConfirmedByUser.value = false
+    }
+  } catch (err) {
+    console.error('Error checking client retainer status:', err)
+  } finally {
+    isCheckingRetainer.value = false
+  }
+}
+
+const confirmRetainerDuplicate = () => {
+  retainerConfirmedByUser.value = true
+  alertService.toast('✓ تم تأكيد رغبتك في إضافة دفعة ثانية، يمكنك الآن حفظ المعاملة.', 'info')
+}
+
+const cancelAndCloseModal = () => {
+  hasRetainerDuplicate.value = false
+  retainerConfirmedByUser.value = false
+  retainerDuplicateWarning.value = ''
+  retainerDuplicateDetails.value = null
+  emit('close')
+}
+
+watch([
+  () => form.type,
+  clientEntityType,
+  selectedClientId,
+  () => form.revenue_nature,
+  () => form.category_id,
+  () => form.transaction_date,
+], () => {
+  if (!props.show) return
+  retainerConfirmedByUser.value = false
+  checkClientRetainer()
 })
 
 const validateAmount = (touched = false) => {
@@ -647,6 +825,15 @@ const initForm = () => {
   salaryDuplicateWarning.value = ''
   isSalaryDuplicate.value = false
   salaryDuplicateDetails.value = null
+  retainerDuplicateWarning.value = ''
+  hasRetainerDuplicate.value = false
+  retainerDuplicateDetails.value = null
+  retainerConfirmedByUser.value = false
+  isCheckingRetainer.value = false
+  selectedClientId.value = ''
+  clientEntityType.value = 'system'
+  selectedUserId.value = ''
+  salaryEntityType.value = 'system'
 
   if (props.transaction) {
     const t = props.transaction
@@ -738,8 +925,16 @@ const initForm = () => {
       checkSalaryDuplicate()
     } else if (props.prefilledClient) {
       clientEntityType.value = 'system'
-      selectedClientId.value = props.prefilledClient.id
-      onClientSelected()
+      const cId = props.prefilledClient.id || props.prefilledClient.client_id
+      selectedClientId.value = cId
+      form.entity_type = 'App\\Models\\Client'
+      form.entity_id = cId
+      form.beneficiary_name = props.prefilledClient.name || props.prefilledClient.client_name || ''
+      const matchedClient = props.clients.find(c => Number(c.id) === Number(cId))
+      if (matchedClient) {
+        form.beneficiary_name = matchedClient.name
+      }
+      checkClientRetainer()
     }
 
     onCategoryChanged()
@@ -760,6 +955,44 @@ const submitForm = async () => {
   if (isSalaryDuplicate.value) {
     alertService.toast(`❌ محظور: تم صرف راتب شهر (${form.salary_month}) لهذا الموظف مسبقاً، ويمنع النظام ازدواجية صرف الراتب!`, 'error')
     return
+  }
+
+  // إذا كان فحص العقد الشهري جارياً، انتظر حتى يكتمل الفحص لتفادي أي سباق برمجياً
+  if (isCheckingRetainer.value) {
+    let waitCount = 0
+    while (isCheckingRetainer.value && waitCount < 30) {
+      await new Promise(r => setTimeout(r, 100))
+      waitCount++
+    }
+  }
+
+  // التأكد من فحص العقد الشهري قبل المتابعة في حال لم يكن قد فُحص بعد
+  const isRetainer = (form.revenue_nature === 'recurring_retainer' || isRetainerCategory.value)
+  if (form.type === 'income' && clientEntityType.value === 'system' && selectedClientId.value && isRetainer && !retainerConfirmedByUser.value && !hasRetainerDuplicate.value) {
+    await checkClientRetainer()
+  }
+
+  // فحص تنبيه تكرار سداد العقد الشهري المستمر للعميل وتأكيده مع المستخدم
+  if (hasRetainerDuplicate.value && !retainerConfirmedByUser.value) {
+    const month = form.transaction_date ? form.transaction_date.slice(0, 7) : ''
+    const existingNum = retainerDuplicateDetails.value?.transaction_number || ''
+    const existingAmt = Number(retainerDuplicateDetails.value?.amount || 0).toLocaleString()
+    const existingDate = retainerDuplicateDetails.value?.transaction_date || ''
+
+    const confirmed = await alertService.confirm({
+      title: 'تنبيه مالي: سداد العقد الشهري مسبقاً',
+      message: `تم سداد إيراد العقد الشهري المستمر لهذا العميل مسبقاً لشهر (${month})${existingNum ? ` بموجب المعاملة رقم [${existingNum}]` : ''}${existingAmt ? ` بمبلغ ${existingAmt} ج.م` : ''}${existingDate ? ` بتاريخ ${existingDate}` : ''}.\n\nهل أنت متأكد من رغبتك في إضافة دفعة أخرى لهذا العميل عن نفس الشهر؟`,
+      type: 'warning',
+      confirmText: 'نعم، متأكد وأرغب في الإضافة',
+      cancelText: 'لا، تراجع وإغلاق'
+    })
+
+    if (confirmed) {
+      retainerConfirmedByUser.value = true
+    } else {
+      emit('close')
+      return
+    }
   }
 
   submitting.value = true
@@ -790,9 +1023,14 @@ const submitForm = async () => {
     } else if (form.type === 'income') {
       // Income specific
       formData.append('revenue_nature', form.revenue_nature)
+      if (retainerConfirmedByUser.value) {
+        formData.append('allow_duplicate_retainer', '1')
+      }
       if (clientEntityType.value === 'system' && selectedClientId.value) {
         formData.append('entity_type', 'App\\Models\\Client')
         formData.append('entity_id', selectedClientId.value)
+        formData.append('client_id', selectedClientId.value)
+        if (form.beneficiary_name) formData.append('beneficiary_name', form.beneficiary_name)
       } else {
         formData.append('beneficiary_name', form.beneficiary_name)
       }
@@ -821,13 +1059,51 @@ const submitForm = async () => {
     emit('close')
   } catch (err) {
     const errorData = err.response?.data
-    let msg = errorData?.message || 'حدث خطأ أثناء حفظ المعاملة'
-    if (errorData?.errors?.salary_month) {
-      msg = Array.isArray(errorData.errors.salary_month) ? errorData.errors.salary_month[0] : errorData.errors.salary_month
-    } else if (errorData?.errors?.amount) {
-      msg = Array.isArray(errorData.errors.amount) ? errorData.errors.amount[0] : errorData.errors.amount
+    let msg = ''
+
+    if (errorData?.errors && typeof errorData.errors === 'object') {
+      if (errorData.errors.revenue_nature) {
+        hasRetainerDuplicate.value = true
+        msg = Array.isArray(errorData.errors.revenue_nature) ? errorData.errors.revenue_nature[0] : errorData.errors.revenue_nature
+      } else if (errorData.errors.salary_month) {
+        msg = Array.isArray(errorData.errors.salary_month) ? errorData.errors.salary_month[0] : errorData.errors.salary_month
+      } else if (errorData.errors.amount) {
+        msg = Array.isArray(errorData.errors.amount) ? errorData.errors.amount[0] : errorData.errors.amount
+      } else if (errorData.errors.beneficiary_name) {
+        msg = Array.isArray(errorData.errors.beneficiary_name) ? errorData.errors.beneficiary_name[0] : errorData.errors.beneficiary_name
+      } else if (errorData.errors.category_id) {
+        msg = Array.isArray(errorData.errors.category_id) ? errorData.errors.category_id[0] : errorData.errors.category_id
+      } else if (errorData.errors.account_id) {
+        msg = Array.isArray(errorData.errors.account_id) ? errorData.errors.account_id[0] : errorData.errors.account_id
+      } else {
+        const firstErr = Object.values(errorData.errors).flat()[0]
+        if (firstErr) msg = firstErr
+      }
     }
-    alertService.toast(`❌ ${msg}`, 'error')
+
+    if (!msg && errorData?.message) {
+      msg = errorData.message
+    }
+
+    // تنقية الرسالة ومنع ظهور أي شفرات برمجية أو رسائل خطأ غير مفهومة للمستخدم نهائياً
+    const isTechnical = !msg ||
+      msg.includes('SQLSTATE') ||
+      msg.includes('QueryException') ||
+      msg.includes('syntax error') ||
+      msg.includes('The given data was invalid') ||
+      msg.includes('The selected revenue nature is invalid') ||
+      msg.includes('The revenue nature field is invalid') ||
+      msg.includes('App\\') ||
+      msg.includes('vendor/') ||
+      msg.includes('.php') ||
+      msg.includes('at line') ||
+      msg.includes('Stack trace')
+
+    if (isTechnical) {
+      msg = 'تعذر إتمام العملية المالية، يرجى مراجعة البيانات المدخلة والمحاولة مجدداً.'
+    }
+
+    alertService.toast(`❌ ${msg}`, 'error', 4500)
   } finally {
     submitting.value = false
   }
@@ -838,7 +1114,7 @@ const submitForm = async () => {
 .finance-modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 999999 !important;
+  z-index: 100000 !important;
   background: rgba(3, 7, 24, 0.82);
   backdrop-filter: blur(8px);
   display: flex;
@@ -1105,6 +1381,37 @@ input[type="month"]::-webkit-calendar-picker-indicator {
   height: 42px;
 }
 
+.amount-input.readonly-locked {
+  background: rgba(14, 22, 60, 0.75) !important;
+  border-color: rgba(56, 189, 248, 0.45) !important;
+  color: #38bdf8 !important;
+  cursor: not-allowed;
+  font-weight: 800;
+  box-shadow: inset 0 0 10px rgba(56, 189, 248, 0.05);
+}
+
+.locked-amount-badge {
+  font-size: 11px;
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-weight: 700;
+}
+
+.fixed-category-hint {
+  display: block;
+  font-size: 11.5px;
+  color: #38bdf8;
+  line-height: 1.5;
+  margin-top: 5px;
+  background: rgba(56, 189, 248, 0.06);
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px dashed rgba(56, 189, 248, 0.25);
+}
+
 .currency-tag {
   position: absolute;
   left: 12px;
@@ -1276,6 +1583,120 @@ input[type="month"]::-webkit-calendar-picker-indicator {
   color: #ffffff !important;
   opacity: 0.65;
   cursor: not-allowed !important;
+}
+
+.alert-retainer-warning {
+  margin-top: 14px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1.5px solid rgba(245, 158, 11, 0.55);
+  color: #fef3c7;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+}
+
+.alert-retainer-warning .warning-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.alert-retainer-warning .warning-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.alert-retainer-warning strong {
+  color: #fbbf24;
+  font-size: 13.5px;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.alert-retainer-warning .warning-desc {
+  margin: 0;
+  line-height: 1.5;
+  color: #fde68a;
+  font-size: 12px;
+}
+
+.dup-pill-amber {
+  background: rgba(15, 23, 42, 0.7) !important;
+  border: 1px solid rgba(245, 158, 11, 0.45) !important;
+  color: #fbbf24 !important;
+}
+
+.dup-pill-amber b {
+  color: #ffffff !important;
+}
+
+.retainer-decision-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(245, 158, 11, 0.35);
+}
+
+.retainer-decision-bar .decision-prompt {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.retainer-decision-bar .confirmed-tag {
+  display: block;
+  color: #34d399;
+  font-weight: 600;
+  margin-top: 3px;
+  font-size: 11.5px;
+}
+
+.retainer-decision-bar .decision-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn-decision {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.btn-decision.btn-confirm {
+  background: #f59e0b;
+  color: #0f172a;
+}
+
+.btn-decision.btn-confirm:hover {
+  background: #d97706;
+}
+
+.btn-decision.btn-confirm.btn-confirmed {
+  background: #10b981;
+  color: #ffffff;
+}
+
+.btn-decision.btn-cancel-close {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.btn-decision.btn-cancel-close:hover {
+  background: rgba(239, 68, 68, 0.35);
+  color: #ffffff;
 }
 
 .danger-icon {

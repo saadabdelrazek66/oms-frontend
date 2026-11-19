@@ -7,7 +7,7 @@
       <Transition name="modal-fade">
         <div
           v-if="confirmState.isOpen"
-          class="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-[#080d26]/85 backdrop-blur-md"
+          class="fixed inset-0 z-[1000000] flex items-center justify-center p-4 bg-[#080d26]/85 backdrop-blur-md"
           @click.self="handleConfirm(false)"
         >
           <div
@@ -102,7 +102,7 @@
       <Transition name="modal-fade">
         <div
           v-if="alertState.isOpen"
-          class="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-[#080d26]/85 backdrop-blur-md"
+          class="fixed inset-0 z-[1000000] flex items-center justify-center p-4 bg-[#080d26]/85 backdrop-blur-md"
           @click.self="handleAlertClose"
         >
           <div
@@ -180,7 +180,7 @@
     <!-- ========================================================================= -->
     <Teleport to="body">
       <div
-        class="fixed top-6 left-6 z-[100001] flex flex-col gap-3 pointer-events-none max-w-sm w-[calc(100vw-3rem)] sm:w-96"
+        class="fixed top-6 left-6 z-[1000001] flex flex-col gap-3 pointer-events-none max-w-sm w-[calc(100vw-3rem)] sm:w-96"
         dir="rtl"
       >
         <TransitionGroup name="toast-slide">
@@ -410,7 +410,7 @@ const getToastProgressColor = (type) => {
   position: fixed !important;
   top: 24px !important;
   left: 24px !important;
-  z-index: 999999 !important;
+  z-index: 1000001 !important;
   display: flex !important;
   flex-direction: column !important;
   gap: 10px !important;

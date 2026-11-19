@@ -1,5 +1,5 @@
 <template>
-  <div class="edit-quick-task-card bg-[#10163a] p-4 sm:p-8 rounded-2xl sm:rounded-[2rem] shadow-[0_20px_60px_rgba(0,0,0,0.6),0_0_30px_rgba(125,232,220,0.1)] max-w-2xl mx-auto border border-[#8999e2]/20 w-full text-[#f1f4ff]" dir="rtl">
+  <div class="edit-quick-task-card bg-[#10163a] p-4 sm:p-8 rounded-2xl sm:rounded-[2rem] shadow-[0_20px_60px_rgba(0,0,0,0.6),0_0_30px_rgba(125,232,220,0.1)] max-w-3xl mx-auto border border-[#8999e2]/20 w-full text-[#f1f4ff]" dir="rtl">
     <!-- رأس المودال -->
     <div class="mb-6 border-b border-[#8999e2]/15 pb-4 flex items-center justify-between">
       <div class="flex items-center gap-3">
@@ -35,26 +35,62 @@
         {{ errorMessage }}
       </div>
 
-      <!-- اختيار الموظف والديدلاين وساعات العمل التقديرية -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <!-- بيانات المهمة الأساسية: 2x2 شبكة أنيقة ومتجاوبة -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+        <!-- إسناد إلى الموظف -->
         <div>
           <label class="block text-sm font-bold text-[#8390be] mb-2">إسناد إلى (الموظف) <span class="text-[#ff4757]">*</span></label>
-          <select v-model="form.assigned_to" required class="w-full bg-[#0a102f]/80 text-[#f1f4ff] border-[#8999e2]/20 rounded-xl shadow-inner focus:ring-2 focus:ring-[#7de8dc]/30 focus:border-[#7de8dc] p-3 border outline-none transition-all">
+          <select v-model="form.assigned_to" required @change="onQuickTaskAssigneeChange" class="w-full bg-[#0a102f]/80 text-[#f1f4ff] border-[#8999e2]/20 rounded-xl shadow-inner focus:ring-2 focus:ring-[#7de8dc]/30 focus:border-[#7de8dc] p-3 border outline-none transition-all cursor-pointer">
             <option value="" disabled class="bg-[#10163a]">اختر الموظف...</option>
             <option v-for="user in users" :key="user.id" :value="user.id" class="bg-[#10163a]">
-              {{ user.name }} ({{ user.job_title }})
+              {{ user.name }} ({{ user.job_title }}) {{ (user.work_type === 'per_task' || user.work_type?.value === 'per_task') ? '⚡ بالقطعة' : '' }}
             </option>
           </select>
         </div>
 
+        <!-- وقت التسليم (الديدلاين) -->
         <div>
           <label class="block text-sm font-bold text-[#8390be] mb-2">وقت التسليم (الديدلاين) <span class="text-[#ff4757]">*</span></label>
           <input type="datetime-local" v-model="form.deadline" required class="w-full bg-[#0a102f]/80 text-[#f1f4ff] border-[#8999e2]/20 rounded-xl shadow-inner focus:ring-2 focus:ring-[#7de8dc]/30 focus:border-[#7de8dc] p-3 border outline-none transition-all [color-scheme:dark]">
         </div>
 
+        <!-- الساعات التقديرية -->
         <div>
-          <label class="block text-sm font-bold text-[#8390be] mb-2">الساعات التقديرية (س) <span class="text-[#7de8dc]">*</span></label>
-          <input type="number" step="0.5" min="0.5" max="24" v-model.number="form.estimated_hours" required placeholder="1.0" class="w-full bg-[#0a102f]/80 text-[#f1f4ff] border-[#8999e2]/20 rounded-xl shadow-inner focus:ring-2 focus:ring-[#7de8dc]/30 focus:border-[#7de8dc] p-3 border outline-none transition-all">
+          <label class="block text-sm font-bold text-[#8390be] mb-2">الساعات التقديرية <span class="text-[#7de8dc]">*</span></label>
+          <div class="relative">
+            <input type="number" step="0.5" min="0.5" max="48" v-model.number="form.estimated_hours" required placeholder="1.0" class="w-full bg-[#0a102f]/80 text-[#f1f4ff] border-[#8999e2]/20 rounded-xl shadow-inner focus:ring-2 focus:ring-[#7de8dc]/30 focus:border-[#7de8dc] p-3 pl-14 border outline-none transition-all">
+            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-[#8390be]">ساعة</span>
+          </div>
+        </div>
+
+        <!-- أتعاب المهمة المالية -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-sm font-bold" :class="isAssigneePerTask ? 'text-[#7de8dc]' : 'text-[#8390be]'">
+              أتعاب المهمة (ج.م)
+            </label>
+            <span v-if="isAssigneePerTask" class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-[#fbbf24]/15 text-[#fbbf24] border border-[#fbbf24]/30">
+              ⚡ نظام بالتاسك
+            </span>
+            <span v-else-if="selectedAssignee" class="text-[11px] text-[#8390be]/80 font-medium">
+              موظف براتب شهري (اختياري)
+            </span>
+          </div>
+          <div class="relative">
+            <input 
+              type="number" 
+              step="1" 
+              min="0" 
+              v-model.number="form.task_cost" 
+              :placeholder="isAssigneePerTask ? '0.00 (تلقائي من سعر الموظف)' : '0.00 (اختياري)'" 
+              :class="isAssigneePerTask ? 'border-[#7de8dc]/40 text-[#7de8dc] font-bold focus:border-[#7de8dc] focus:ring-[#7de8dc]/30' : 'border-[#8999e2]/20 text-[#f1f4ff] focus:border-[#7de8dc] focus:ring-[#7de8dc]/30'"
+              class="w-full bg-[#0a102f]/80 rounded-xl shadow-inner focus:ring-2 p-3 pl-12 border outline-none transition-all"
+            >
+            <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold" :class="isAssigneePerTask ? 'text-[#7de8dc]' : 'text-[#8390be]'">ج.م</span>
+          </div>
+          <p v-if="isAssigneePerTask && selectedAssignee?.default_task_rate" class="text-[11px] text-[#8390be] mt-1.5 flex items-center gap-1">
+            <span>💡 السعر الافتراضي للموظف: <b class="text-[#fbbf24]">{{ selectedAssignee.default_task_rate }} ج.م</b> (يمكنك تعديله لهذه المهمة)</span>
+          </p>
         </div>
       </div>
 
@@ -207,8 +243,28 @@ const form = ref({
   title: props.task.title || '',
   description: props.task.description || '',
   deadline: formatForInput(props.task.deadline),
-  estimated_hours: props.task.estimated_hours || 1.0
+  estimated_hours: props.task.estimated_hours || 1.0,
+  task_cost: props.task.task_cost !== null && props.task.task_cost !== undefined ? Number(props.task.task_cost) : null,
 });
+
+const selectedAssignee = computed(() => {
+  if (!form.value.assigned_to || !props.users) return null;
+  return props.users.find(u => Number(u.id) === Number(form.value.assigned_to));
+});
+
+const isAssigneePerTask = computed(() => {
+  const u = selectedAssignee.value;
+  return u && (u.work_type === 'per_task' || u.work_type?.value === 'per_task');
+});
+
+const onQuickTaskAssigneeChange = () => {
+  const u = selectedAssignee.value;
+  if (u && (u.work_type === 'per_task' || u.work_type?.value === 'per_task') && u.default_task_rate) {
+    if (!form.value.task_cost || form.value.task_cost === 0) {
+      form.value.task_cost = Number(u.default_task_rate);
+    }
+  }
+};
 
 const existingVoiceUrl = ref(props.task.voice_record_url || null);
 const isSubmitting = ref(false);
@@ -371,6 +427,9 @@ const submitUpdate = async () => {
   formData.append('assigned_to', form.value.assigned_to);
   formData.append('deadline', form.value.deadline);
   formData.append('estimated_hours', form.value.estimated_hours || 1.0);
+  if (form.value.task_cost !== null && form.value.task_cost !== undefined && form.value.task_cost !== '') {
+    formData.append('task_cost', form.value.task_cost);
+  }
   
   if (form.value.title) formData.append('title', form.value.title);
   if (form.value.description) formData.append('description', form.value.description);

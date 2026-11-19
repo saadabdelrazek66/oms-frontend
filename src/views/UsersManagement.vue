@@ -255,40 +255,130 @@
           <div class="form-group full"><label for="user-phone">رقم الهاتف <span class="text-red">*</span></label><input id="user-phone" v-model="form.phone" type="text" placeholder="01xxxxxxxx" required /></div>
           <div class="form-group full"><label for="user-work-type">نظام العمل <span class="text-red">*</span></label><select id="user-work-type" v-model="form.work_type" required><option value="remote">عن بعد</option><option value="onsite">من الشركة</option><option value="per_task">بالتاسك</option><option value="commission">بالعمولة</option></select></div>
 
-          <!-- الراتب والمستحقات المالية -->
+          <!-- الراتب والمستحقات المالية الديناميكية بحسب نظام العمل -->
           <div class="form-group-card full salary-card-wrap">
-            <div class="card-mini-header">
-              <span class="header-icon">💰</span>
-              <div>
-                <strong>الراتب الأساسي / الشهري</strong>
+            <!-- 1. في حالة العمل من الشركة أو عن بعد (راتب شهري) -->
+            <template v-if="form.work_type === 'onsite' || form.work_type === 'remote'">
+              <div class="card-mini-header">
+                <span class="header-icon">💰</span>
+                <div>
+                  <strong>الراتب الأساسي / الشهري</strong>
+                  <p>نظام الراتب الثابت للموظفين بدوام شهري (من الشركة أو عن بعد).</p>
+                </div>
               </div>
-            </div>
 
-            <div class="form-group full">
-              <div class="form-label-row">
-                <label for="user-salary">قيمة الراتب الشهري <small class="text-hint">(اختياري - من 1,000 إلى 1,000,000 ج.م)</small></label>
+              <div class="form-group full">
+                <div class="form-label-row">
+                  <label for="user-salary">قيمة الراتب الشهري <small class="text-hint">(اختياري - من 1,000 إلى 1,000,000 ج.م)</small></label>
+                </div>
+                <div class="salary-input-container">
+                  <span class="salary-currency-tag">ج.م</span>
+                  <input
+                    id="user-salary"
+                    v-model="form.salary"
+                    type="text"
+                    inputmode="decimal"
+                    placeholder="1000.00"
+                    class="salary-input-field"
+                    :class="{ 'field-error': salaryError }"
+                    @input="onSalaryInput"
+                    @blur="formatSalaryOnBlur"
+                  />
+                </div>
+                <div v-if="salaryError" class="salary-error-msg" role="alert">
+                  ⚠️ {{ salaryError }}
+                </div>
+                <div v-else-if="salaryPreview" class="salary-preview-badge">
+                  💵 المبلغ المعتمد: <strong>{{ salaryPreview }}</strong>
+                </div>
               </div>
-              <div class="salary-input-container">
-                <span class="salary-currency-tag">ج.م</span>
-                <input
-                  id="user-salary"
-                  v-model="form.salary"
-                  type="text"
-                  inputmode="decimal"
-                  placeholder="1000.00"
-                  class="salary-input-field"
-                  :class="{ 'field-error': salaryError }"
-                  @input="onSalaryInput"
-                  @blur="formatSalaryOnBlur"
-                />
+            </template>
+
+            <!-- 2. في حالة العمل بالتاسك (فريلانسر / محاسبة بالمهام) -->
+            <template v-else-if="form.work_type === 'per_task'">
+              <div class="card-mini-header">
+                <span class="header-icon">⚡</span>
+                <div>
+                  <strong>مستحقات العمل بالتاسك (Per-Task)</strong>
+                  <p>يتم احتساب مستحقات الموظف بناءً على عدد المهام المكتملة والمعتمدة.</p>
+                </div>
               </div>
-              <div v-if="salaryError" class="salary-error-msg" role="alert">
-                ⚠️ {{ salaryError }}
+
+              <div class="form-group full">
+                <div class="form-label-row">
+                  <label for="user-task-rate">سعر المهمة الافتراضي للموظف <span class="text-red">*</span> <small class="text-hint">(يُطبَّق آلياً عند تكليفه بأي مهمة)</small></label>
+                </div>
+                <div class="salary-input-container">
+                  <span class="salary-currency-tag">ج.م / مهمة</span>
+                  <input
+                    id="user-task-rate"
+                    v-model="form.default_task_rate"
+                    type="text"
+                    inputmode="decimal"
+                    placeholder="250.00"
+                    class="salary-input-field"
+                    required
+                  />
+                </div>
+                <small class="text-hint" style="margin-top: 6px; display: block; color: #94a3b8;">
+                  💡 يمكن للمدير تعديل سعر أي مهمة بشكل فردي واستثنائي عند تكليف الموظف بها في المشاريع.
+                </small>
               </div>
-              <div v-else-if="salaryPreview" class="salary-preview-badge">
-                💵 المبلغ المعتمد: <strong>{{ salaryPreview }}</strong>
+            </template>
+
+            <!-- 3. في حالة العمل بالعمولة (مبيعات / تسويق) -->
+            <template v-else-if="form.work_type === 'commission'">
+              <div class="card-mini-header">
+                <span class="header-icon">🎯</span>
+                <div>
+                  <strong>مستحقات العمل بالعمولة (Commissions)</strong>
+                  <p>حساب العمولة آلياً بناءً على إيرادات وعقود العملاء المحصلة.</p>
+                </div>
               </div>
-            </div>
+
+              <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                <div class="form-group">
+                  <label class="form-label required">طريقة احتساب العمولة</label>
+                  <select v-model="form.commission_type" class="form-select">
+                    <option value="percentage">نسبة مئوية من إيراد التعاقد (%)</option>
+                    <option value="fixed">مبلغ مقطوع ثابت لكل عميل (ج.م)</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label required">
+                    {{ form.commission_type === 'percentage' ? 'نسبة العمولة (%)' : 'قيمة العمولة الثابتة (ج.م)' }}
+                  </label>
+                  <div class="salary-input-container">
+                    <span class="salary-currency-tag">{{ form.commission_type === 'percentage' ? '%' : 'ج.م' }}</span>
+                    <input
+                      v-model="form.commission_rate"
+                      type="text"
+                      inputmode="decimal"
+                      :placeholder="form.commission_type === 'percentage' ? '10' : '1500'"
+                      class="salary-input-field"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <!-- خيار الراتب الأساسي الإضافي إن وجد -->
+              <div class="form-group full" style="margin-top: 10px;">
+                <label for="user-commission-base-salary">راتب أساسي إضافي <small class="text-hint">(اختياري - في حالة وجود راتب شهري ثابت بجانب العمولة)</small></label>
+                <div class="salary-input-container">
+                  <span class="salary-currency-tag">ج.م</span>
+                  <input
+                    id="user-commission-base-salary"
+                    v-model="form.salary"
+                    type="text"
+                    inputmode="decimal"
+                    placeholder="0.00"
+                    class="salary-input-field"
+                  />
+                </div>
+              </div>
+            </template>
           </div>
 
           <!-- مواعيد وأيام العمل اليومية والاستنتاج التلقائي -->
@@ -405,37 +495,85 @@
           </div>
 
           <div class="profile-sections-grid">
-            <!-- كارت الراتب والمستحقات المالية -->
+            <!-- كارت الراتب والمستحقات المالية المتخصص بحسب نظام العمل -->
             <div class="profile-info-card salary-feature-card">
-              <div class="info-card-header">
-                <div class="header-title-box">
-                  <span class="info-icon">💰</span>
-                  <h4>الراتب الأساسي / الشهري</h4>
-                </div>
-                <button
-                  type="button"
-                  class="privacy-toggle-btn"
-                  @click="showSalaryValue = !showSalaryValue"
-                  :title="showSalaryValue ? 'إخفاء الراتب' : 'إظهار الراتب'"
-                >
-                  <span v-if="showSalaryValue">👁️ إخفاء</span>
-                  <span v-else>🔒 كشف</span>
-                </button>
-              </div>
-              <div class="salary-value-wrap">
-                <template v-if="selectedUserForView.salary && Number(selectedUserForView.salary) > 0">
-                  <div v-if="showSalaryValue" class="salary-display-number">
-                    <strong>{{ Number(selectedUserForView.salary).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</strong>
-                    <span class="salary-currency">جنيه مصري (EGP)</span>
+              <!-- أ. العمل بالتاسك -->
+              <template v-if="selectedUserForView.work_type === 'per_task'">
+                <div class="info-card-header">
+                  <div class="header-title-box">
+                    <span class="info-icon">⚡</span>
+                    <h4>نظام العمل بالتاسك (Per-Task)</h4>
                   </div>
-                  <div v-else class="salary-masked">
-                    •••••••• <small>ج.م (محمي)</small>
-                  </div>
-                </template>
-                <div v-else class="salary-not-set">
-                  <span>لم يتم تسجيل راتب لهذا الموظف حتى الآن</span>
                 </div>
-              </div>
+                <div class="salary-value-wrap">
+                  <div v-if="selectedUserForView.default_task_rate && Number(selectedUserForView.default_task_rate) > 0" class="salary-display-number">
+                    <strong>{{ Number(selectedUserForView.default_task_rate).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</strong>
+                    <span class="salary-currency">ج.م / لكل مهمة معتمدة</span>
+                  </div>
+                  <div v-else class="salary-not-set">
+                    <span>لم يتم تحديد سعر افتراضي للمهام بعد</span>
+                  </div>
+                </div>
+              </template>
+
+              <!-- ب. العمل بالعمولة -->
+              <template v-else-if="selectedUserForView.work_type === 'commission'">
+                <div class="info-card-header">
+                  <div class="header-title-box">
+                    <span class="info-icon">🎯</span>
+                    <h4>نظام العمل بالعمولة (Commissions)</h4>
+                  </div>
+                </div>
+                <div class="salary-value-wrap">
+                  <div v-if="selectedUserForView.commission_rate && Number(selectedUserForView.commission_rate) > 0" class="salary-display-number">
+                    <strong>
+                      {{ selectedUserForView.commission_type === 'percentage' ? (selectedUserForView.commission_rate + '%') : (Number(selectedUserForView.commission_rate).toLocaleString('en-US') + ' ج.م') }}
+                    </strong>
+                    <span class="salary-currency">
+                      {{ selectedUserForView.commission_type === 'percentage' ? 'نسبة من إيرادات التعاقد' : 'مبلغ مقطوع لكل عميل جديد' }}
+                    </span>
+                  </div>
+                  <div v-if="selectedUserForView.salary && Number(selectedUserForView.salary) > 0" style="margin-top: 6px; font-size: 11px; color: #94a3b8;">
+                    + راتب أساسي إضافي: <strong>{{ Number(selectedUserForView.salary).toLocaleString() }} ج.م</strong>
+                  </div>
+                  <div v-else-if="!selectedUserForView.commission_rate" class="salary-not-set">
+                    <span>لم يتم تحديد نسبة أو قيمة العمولة بعد</span>
+                  </div>
+                </div>
+              </template>
+
+              <!-- ج. الراتب الشهري (من الشركة وعن بعد) -->
+              <template v-else>
+                <div class="info-card-header">
+                  <div class="header-title-box">
+                    <span class="info-icon">💰</span>
+                    <h4>الراتب الأساسي / الشهري</h4>
+                  </div>
+                  <button
+                    type="button"
+                    class="privacy-toggle-btn"
+                    @click="showSalaryValue = !showSalaryValue"
+                    :title="showSalaryValue ? 'إخفاء الراتب' : 'إظهار الراتب'"
+                  >
+                    <span v-if="showSalaryValue">👁️ إخفاء</span>
+                    <span v-else>🔒 كشف</span>
+                  </button>
+                </div>
+                <div class="salary-value-wrap">
+                  <template v-if="selectedUserForView.salary && Number(selectedUserForView.salary) > 0">
+                    <div v-if="showSalaryValue" class="salary-display-number">
+                      <strong>{{ Number(selectedUserForView.salary).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</strong>
+                      <span class="salary-currency">جنيه مصري (EGP)</span>
+                    </div>
+                    <div v-else class="salary-masked">
+                      •••••••• <small>ج.م (محمي)</small>
+                    </div>
+                  </template>
+                  <div v-else class="salary-not-set">
+                    <span>لم يتم تسجيل راتب لهذا الموظف حتى الآن</span>
+                  </div>
+                </div>
+              </template>
             </div>
 
             <!-- كارت الأقسام -->
@@ -609,6 +747,9 @@ const form = reactive({
   phone: '', 
   role: 'employee', 
   salary: '',
+  default_task_rate: '',
+  commission_type: 'percentage',
+  commission_rate: '',
   work_type: 'onsite', 
   work_start_day: 'saturday',
   work_end_day: 'thursday',
@@ -919,6 +1060,9 @@ const resetForm = () => {
     phone: '', 
     role: 'employee', 
     salary: '',
+    default_task_rate: '',
+    commission_type: 'percentage',
+    commission_rate: '',
     work_type: 'onsite', 
     work_start_day: 'saturday', 
     work_end_day: 'thursday',
@@ -957,6 +1101,9 @@ const openModal = (user = null) => {
       phone: user.phone,
       role: user.role,
       salary: (user.salary !== null && user.salary !== undefined && user.salary !== '') ? Number(user.salary).toFixed(2) : '',
+      default_task_rate: (user.default_task_rate !== null && user.default_task_rate !== undefined && user.default_task_rate !== '') ? Number(user.default_task_rate).toFixed(2) : '',
+      commission_type: user.commission_type || 'percentage',
+      commission_rate: (user.commission_rate !== null && user.commission_rate !== undefined && user.commission_rate !== '') ? Number(user.commission_rate).toFixed(2) : '',
       work_type: user.work_type,
       work_start_day: user.work_start_day || 'saturday',
       work_end_day: user.work_end_day || 'thursday',
@@ -987,18 +1134,59 @@ const saveUser = async () => {
     return
   }
 
-  // فحص النطاق المالي للراتب (من 1000 إلى 1,000,000 ج.م) إذا تم إدخاله
+  // فحص النطاق المالي بحسب نظام العمل
   let finalSalary = null
-  if (form.salary !== '' && form.salary !== null && form.salary !== undefined) {
-    const cleaned = cleanAndNormalizeSalary(form.salary)
-    if (cleaned !== '') {
-      const num = parseFloat(cleaned)
-      if (isNaN(num) || num < 1000 || num > 1000000) {
-        salaryError.value = num < 1000 ? 'الحد الأدنى لقيمة الراتب هو 1,000 ج.م.' : 'الحد الأقصى المسموح به للراتب هو 1,000,000 ج.م.'
-        showToast(salaryError.value)
-        return
+  let finalDefaultTaskRate = null
+  let finalCommissionType = null
+  let finalCommissionRate = null
+
+  if (form.work_type === 'onsite' || form.work_type === 'remote') {
+    if (form.salary !== '' && form.salary !== null && form.salary !== undefined) {
+      const cleaned = cleanAndNormalizeSalary(form.salary)
+      if (cleaned !== '') {
+        const num = parseFloat(cleaned)
+        if (isNaN(num) || num < 1000 || num > 1000000) {
+          salaryError.value = num < 1000 ? 'الحد الأدنى لقيمة الراتب هو 1,000 ج.م.' : 'الحد الأقصى المسموح به للراتب هو 1,000,000 ج.م.'
+          showToast(salaryError.value)
+          return
+        }
+        finalSalary = num.toFixed(2)
       }
-      finalSalary = num.toFixed(2)
+    }
+  } else if (form.work_type === 'per_task') {
+    if (form.default_task_rate !== '' && form.default_task_rate !== null && form.default_task_rate !== undefined) {
+      const cleaned = cleanAndNormalizeSalary(form.default_task_rate)
+      if (cleaned !== '') {
+        const num = parseFloat(cleaned)
+        if (isNaN(num) || num < 0) {
+          showToast('يرجى إدخال سعر مهمة افتراضي صالح')
+          return
+        }
+        finalDefaultTaskRate = num.toFixed(2)
+      }
+    }
+  } else if (form.work_type === 'commission') {
+    finalCommissionType = form.commission_type || 'percentage'
+    if (form.commission_rate !== '' && form.commission_rate !== null && form.commission_rate !== undefined) {
+      const cleaned = cleanAndNormalizeSalary(form.commission_rate)
+      if (cleaned !== '') {
+        const num = parseFloat(cleaned)
+        if (isNaN(num) || num < 0) {
+          showToast('يرجى إدخال قيمة أو نسبة عمولة صالحة')
+          return
+        }
+        finalCommissionRate = num.toFixed(2)
+      }
+    }
+    // فحص الراتب الإضافي إن وجد
+    if (form.salary !== '' && form.salary !== null && form.salary !== undefined) {
+      const cleaned = cleanAndNormalizeSalary(form.salary)
+      if (cleaned !== '') {
+        const num = parseFloat(cleaned)
+        if (!isNaN(num) && num > 0) {
+          finalSalary = num.toFixed(2)
+        }
+      }
     }
   }
 
@@ -1010,6 +1198,9 @@ const saveUser = async () => {
     }
     payload.daily_work_hours = Number(form.daily_work_hours || 8)
     payload.salary = finalSalary
+    payload.default_task_rate = finalDefaultTaskRate
+    payload.commission_type = finalCommissionType
+    payload.commission_rate = finalCommissionRate
 
     if (isEditing.value) await api.put(`/users/${editId.value}`, payload)
     else await api.post('/users', payload)

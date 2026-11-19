@@ -114,6 +114,7 @@
                     <span :class="['priority-badge', element.priority]">{{ getPriorityLabel(element.priority) }}</span>
                     <span v-if="element.is_urgent" class="urgent-task-badge" title="مهمة طارئة ذات أولوية قصوى">🔥 عاجل</span>
                     <span v-if="element.is_displaced" class="displaced-task-badge" :title="element.displaced_reason || 'تم الترحيل بقرار إداري'">🔄 مُرحّلة</span>
+                    <span v-if="element.task_cost" class="task-cost-badge" :title="'أتعاب المهمة: ' + element.task_cost + ' ج.م'">💵 {{ Number(element.task_cost).toLocaleString() }} ج.م</span>
                   </div>
                   <div class="task-actions">
                     <button v-if="canViewChat(element)" type="button" @click.stop="openChatModal(element)" class="t-btn" title="تفاصيل ومحادثة المهمة">💬</button>
@@ -215,10 +216,10 @@
               
               <div class="form-group" v-if="isManager">
                 <label>إسناد إلى <span class="text-red">*</span></label>
-                <select v-model="taskForm.assigned_to" required>
+                <select v-model="taskForm.assigned_to" required @change="onProjectTaskAssigneeChange">
                   <option value="" disabled>اختر عضو الفريق...</option>
                   <option v-for="user in project.users" :key="user.id" :value="user.id">
-                    {{ user.name }}
+                    {{ user.name }} {{ (user.work_type === 'per_task' || user.work_type?.value === 'per_task') ? '⚡ (بالتاسك)' : '' }}
                   </option>
                 </select>
               </div>
@@ -241,6 +242,32 @@
                   <input type="checkbox" v-model="taskForm.is_urgent" style="width: 18px; height: 18px; accent-color: #ef4444;" />
                   <span>🔥 مهمة طارئة (إزاحة الفائض تلقائياً)</span>
                 </label>
+              </div>
+            </div>
+
+            <!-- أتعاب / تكلفة المهمة (نظام العمل بالتاسك) -->
+            <div class="form-grid" v-if="isManager" style="margin-top: 10px;">
+              <div class="form-group" style="grid-column: 1 / -1;">
+                <label style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+                  <span>أتعاب / تكلفة المهمة (ج.م)</span>
+                  <span v-if="assignedUserIsPerTask" class="per-task-alert-tag">
+                    ⚡ موظف بنظام التاسك (السعر الافتراضي: {{ assignedUserDefaultRate }} ج.م)
+                  </span>
+                </label>
+                <div style="position: relative;">
+                  <input
+                    v-model.number="taskForm.task_cost"
+                    type="number"
+                    step="1"
+                    min="0"
+                    placeholder="مثال: 250 (أو اتركها فارغة للاستنتاج التلقائي من سعر الموظف)"
+                    style="padding-left: 50px;"
+                  />
+                  <span style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #8390be; font-weight: 700; font-size: 12px;">ج.م</span>
+                </div>
+                <small class="muted mt-1" style="display: block; font-size: 11px;">
+                  تظهر هذه القيمة كمستحق للمنفذ في شاشة الماليات فور اكتمال المهمة أو تسويتها بالخزينة.
+                </small>
               </div>
             </div>
 
@@ -479,8 +506,30 @@ const deleteCommentMessage = async (commentId) => {
 
 const taskForm = reactive({
   title: '', description: '', status: 'todo', priority: 'medium', due_date: '', assigned_to: '',
-  is_urgent: false, estimated_hours: 2.0
+  is_urgent: false, estimated_hours: 2.0, task_cost: null
 });
+
+const assignedUserObj = computed(() => {
+  if (!project.value?.users || !taskForm.assigned_to) return null;
+  return project.value.users.find(u => Number(u.id) === Number(taskForm.assigned_to));
+});
+
+const assignedUserIsPerTask = computed(() => {
+  const u = assignedUserObj.value;
+  return u && (u.work_type === 'per_task' || u.work_type?.value === 'per_task');
+});
+
+const assignedUserDefaultRate = computed(() => {
+  return assignedUserObj.value?.default_task_rate ? Number(assignedUserObj.value.default_task_rate) : 0;
+});
+
+const onProjectTaskAssigneeChange = () => {
+  if (assignedUserIsPerTask.value && assignedUserDefaultRate.value > 0) {
+    if (!taskForm.task_cost || taskForm.task_cost === 0) {
+      taskForm.task_cost = assignedUserDefaultRate.value;
+    }
+  }
+};
 
 const showToast = (msg, type = 'info') => { 
   if (!msg) return;
@@ -648,7 +697,8 @@ const openTaskModal = (task = null) => {
       title: task.title, description: task.description || '', status: task.status,
       priority: task.priority, due_date: '', assigned_to: task.assigned_to || '',
       is_urgent: !!task.is_urgent,
-      estimated_hours: task.estimated_hours ? Number(task.estimated_hours) : 2.0
+      estimated_hours: task.estimated_hours ? Number(task.estimated_hours) : 2.0,
+      task_cost: task.task_cost !== null && task.task_cost !== undefined ? Number(task.task_cost) : null,
     });
 
     if (task.due_date) {
@@ -659,7 +709,7 @@ const openTaskModal = (task = null) => {
     isEditingTask.value = false; editTaskId.value = null;
     Object.assign(taskForm, { 
       title: '', description: '', status: 'todo', priority: 'medium', due_date: '', assigned_to: '',
-      is_urgent: false, estimated_hours: 2.0
+      is_urgent: false, estimated_hours: 2.0, task_cost: null
     });
   }
   showTaskModal.value = true;
@@ -1018,4 +1068,28 @@ onUnmounted(() => {
 .edit-actions { display: flex; gap: 5px; justify-content: flex-end; }
 .save-btn { background: #7de8dc; color: #12183f; border: none; padding: 3px 10px; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer; }
 .cancel-btn { background: transparent; color: #ff9bad; border: 1px solid #ff9bad; padding: 3px 10px; border-radius: 4px; font-size: 10px; cursor: pointer; }
+
+.task-cost-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 6px;
+  color: #fbbf24;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.per-task-alert-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 6px;
+  color: #fbbf24;
+  font-size: 11px;
+  font-weight: 700;
+}
 </style>

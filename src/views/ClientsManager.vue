@@ -89,8 +89,11 @@
                     class="client-avatar"
                   />
                   <div>
-                    <strong>{{ client.name }}</strong
-                    ><span>عميل نشط</span>
+                    <strong>{{ client.name }}</strong>
+                    <span v-if="client.sales_rep" class="client-rep-badge" :title="`مسؤول المبيعات: ${client.sales_rep.name}`">
+                      🎯 {{ client.sales_rep.name }}
+                    </span>
+                    <span v-else>عميل نشط</span>
                   </div>
                 </div>
               </td>
@@ -442,6 +445,39 @@
             </div>
           </div>
 
+          <!-- مسؤول المبيعات ونظام العمولة -->
+          <div class="form-section">
+            <h4>مسؤول المبيعات ونظام العمولة 🎯</h4>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label>مسؤول المبيعات / الشريك بالعمولة</label>
+                <select v-model="form.sales_rep_id" class="platform-select">
+                  <option value="">بدون مسؤول مبيعات (عميل مباشر)</option>
+                  <option v-for="user in salesReps" :key="user.id" :value="user.id">
+                    {{ user.name }} {{ (user.work_type === 'commission' || user.work_type?.value === 'commission') ? '🎯 (بالعمولة: ' + (user.commission_type === 'percentage' ? user.commission_rate + '%' : Number(user.commission_rate).toLocaleString() + ' ج.م') + ')' : '' }}
+                  </option>
+                </select>
+                <small class="muted" style="font-size: 11px;">
+                  الموظف المستحق لعمولة تلقائية عند تسجيل إيرادات هذا العميل
+                </small>
+              </div>
+
+              <div class="form-group">
+                <label>نسبة عمولة مخصصة لهذا العميل (اختياري)</label>
+                <input
+                  v-model="form.custom_commission_rate"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="اتركها فارغة لاستخدام نسبة الموظف الافتراضية"
+                />
+                <small class="muted" style="font-size: 11px;">
+                  إذا تم تحديدها، سيتم احتساب العمولة بهذه القيمة بدلاً من النسبة الافتراضية للموظف
+                </small>
+              </div>
+            </div>
+          </div>
+
           <!-- روابط درايف -->
           <div class="form-section">
             <div class="section-head">
@@ -782,6 +818,24 @@
               >
             </div>
           </section>
+
+          <!-- مسؤول المبيعات والعمولة -->
+          <section class="details-section">
+            <h4><span class="section-symbol green-symbol">◎</span> مسؤول المبيعات والعمولة</h4>
+            <div class="finance-list">
+              <div v-if="selectedClient.sales_rep">
+                <small>المسؤول المباشر</small>
+                <strong>🎯 {{ selectedClient.sales_rep.name }}</strong>
+                <small v-if="selectedClient.custom_commission_rate" class="mt-1" style="color: #38bdf8; display: block;">
+                  نسبة خاصة: {{ selectedClient.custom_commission_rate }}%
+                </small>
+                <small v-else-if="selectedClient.sales_rep.commission_rate" class="mt-1" style="color: #38bdf8; display: block;">
+                  نسبة افتراضية: {{ selectedClient.sales_rep.commission_rate }}%
+                </small>
+              </div>
+              <span v-else class="empty-detail">عميل مباشر (بدون مسؤول مبيعات)</span>
+            </div>
+          </section>
         </div>
 
         <section class="details-section full-detail">
@@ -979,6 +1033,8 @@ const removeLogo = () => {
 
 const form = reactive({
   name: '',
+  sales_rep_id: '',
+  custom_commission_rate: '',
   phones: [], // مصفوفة { number, has_whatsapp }
   emails: [], // مصفوفة نصوص
   bank_name: '',
@@ -991,6 +1047,16 @@ const form = reactive({
   drive_links: [],
   contacts: [],
 })
+
+const salesReps = ref([])
+const fetchSalesReps = async () => {
+  try {
+    const res = await api.get('/users', { params: { per_page: 100 } })
+    salesReps.value = res.data?.data || []
+  } catch (err) {
+    console.error('Error fetching sales reps:', err)
+  }
+}
 
 const contactsTotal = computed(() =>
   clients.value.reduce((total, client) => total + (client.contacts?.length || 0), 0),
@@ -1322,6 +1388,8 @@ const resetForm = () => {
   }
   Object.assign(form, {
     name: '',
+    sales_rep_id: '',
+    custom_commission_rate: '',
     phones: [],
     emails: [],
     bank_name: '',
@@ -1351,6 +1419,8 @@ const openModal = (client) => {
   if (client) {
     Object.assign(form, {
       name: client.name,
+      sales_rep_id: client.sales_rep_id || '',
+      custom_commission_rate: client.custom_commission_rate || '',
       phones: client.phones ? JSON.parse(JSON.stringify(client.phones)) : [],
       emails: client.emails ? [...client.emails] : [],
       bank_name: client.bank_name || '',
@@ -1411,6 +1481,14 @@ const saveClient = async () => {
     const formData = new FormData()
 
     formData.append('name', form.name ? form.name.trim() : '')
+    if (form.sales_rep_id) {
+      formData.append('sales_rep_id', form.sales_rep_id)
+    } else {
+      formData.append('sales_rep_id', '')
+    }
+    if (form.custom_commission_rate !== '' && form.custom_commission_rate !== null && form.custom_commission_rate !== undefined) {
+      formData.append('custom_commission_rate', form.custom_commission_rate)
+    }
     if (form.bank_name) formData.append('bank_name', form.bank_name)
     if (form.bank_branch) formData.append('bank_branch', form.bank_branch)
     if (form.bank_account) formData.append('bank_account', form.bank_account)
@@ -1505,7 +1583,10 @@ const deleteClient = async (id) => {
   }
 }
 
-onMounted(fetchClients)
+onMounted(() => {
+  fetchClients()
+  fetchSalesReps()
+})
 
 onBeforeUnmount(() => {
   window.clearTimeout(toastTimer)
@@ -2192,6 +2273,27 @@ onBeforeUnmount(() => {
   display: grid;
   gap: 14px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.form-grid-2 {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (max-width: 720px) {
+  .form-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+.client-rep-badge {
+  display: inline-block;
+  padding: 1px 7px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 4px;
+  color: #34d399;
+  font-size: 10.5px;
+  font-weight: 700;
+  margin-top: 3px;
 }
 .form-group {
   min-width: 0;

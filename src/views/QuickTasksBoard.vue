@@ -179,6 +179,15 @@
                     </button>
                   </div>
 
+                  <!-- شارة تكلفة المهمة إن وجدت -->
+                  <div 
+                    v-if="task.task_cost" 
+                    class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-black bg-[#f59e0b]/15 text-[#fbbf24] border border-[#f59e0b]/30 shadow-xs shrink-0"
+                    :title="`أتعاب المهمة: ${task.task_cost} ج.م`"
+                  >
+                    <span>💵 {{ Number(task.task_cost).toLocaleString() }} ج.م</span>
+                  </div>
+
                   <!-- شارة الوقت والعداد التنازلي الفاخرة -->
                   <div 
                     class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-black border transition-all backdrop-blur-md shadow-xs shrink-0"

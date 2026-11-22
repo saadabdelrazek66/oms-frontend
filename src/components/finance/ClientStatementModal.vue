@@ -20,14 +20,14 @@
             <button
               v-if="statement"
               type="button"
-              class="action-btn-print"
-              title="طباعة وتنزيل كشف الحساب الرسمي المعتمد (PDF)"
-              @click="printStatement"
+              class="action-btn-excel"
+              title="تصدير كشف الحساب المالي كملف Excel احترافي معتمد"
+              :disabled="exportingExcel"
+              @click="exportStatementExcel"
             >
-              <svg class="btn-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4H7v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
-              </svg>
-              <span>طباعة كشف الحساب / PDF</span>
+              <span v-if="exportingExcel" class="mini-spinner"></span>
+              <span v-else class="btn-icon">📊</span>
+              <span>{{ exportingExcel ? 'جارٍ التصدير...' : 'تصدير كشف الحساب (Excel)' }}</span>
             </button>
 
             <button
@@ -268,7 +268,7 @@
                     <svg class="section-heading-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
                     </svg>
-                    <h4>سجل الحركات والمعاملات المالية المسجلة للعميل ({{ transactions.length }})</h4>
+                    <h4>سجل الدفعات والعمليات المالية المعتمدة والمحتسبة للعميل ({{ transactions.length }})</h4>
                   </div>
                   <span class="sub-en">TRANSACTIONS AUDIT LEDGER</span>
                 </div>
@@ -408,11 +408,15 @@
 
         <!-- شريط التحكم السفلي -->
         <div class="modal-footer-bar">
-          <button type="button" class="footer-print-btn" @click="printStatement">
-            <svg class="btn-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4H7v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
-            </svg>
-            <span>طباعة كشف الحساب المعتمد (PDF)</span>
+          <button
+            type="button"
+            class="footer-excel-btn"
+            :disabled="exportingExcel"
+            @click="exportStatementExcel"
+          >
+            <span v-if="exportingExcel" class="mini-spinner"></span>
+            <span v-else class="btn-icon">📊</span>
+            <span>{{ exportingExcel ? 'جارٍ توليد وتصدير ملف Excel...' : 'تصدير كشف الحساب كملف Excel معتمد' }}</span>
           </button>
           <button type="button" class="footer-cancel-btn" @click="$emit('close')">إغلاق النافذة</button>
         </div>
@@ -450,7 +454,11 @@ const clientData = computed(() => statement.value?.client || null)
 const companyInfo = computed(() => statement.value?.company || {})
 const metrics = computed(() => statement.value?.metrics || {})
 const projectsBreakdown = computed(() => statement.value?.projects_breakdown || [])
-const transactions = computed(() => statement.value?.transactions || [])
+const transactions = computed(() => {
+  return (statement.value?.transactions || []).filter(
+    (t) => t.status === 'completed' || t.status?.value === 'completed'
+  )
+})
 const statementNumber = computed(() => statement.value?.statement_number || `STM-${props.clientId}`)
 const statementDate = computed(() => statement.value?.issue_date || new Date().toISOString().substring(0, 16).replace('T', ' '))
 const totalPaidInWords = computed(() => statement.value?.total_paid_in_words || 'فقط لا غير')
@@ -537,6 +545,52 @@ const copyStatementSummary = async () => {
   } catch (err) {
     console.error(err)
     alertService.toast('تعذر نسخ الملخص تلقائياً', 'error')
+  }
+}
+
+// تصدير كشف الحساب المالي الرسمي كملف Excel احترافي معتمد
+const exportingExcel = ref(false)
+
+const exportStatementExcel = async () => {
+  if (!props.clientId) return
+  exportingExcel.value = true
+  try {
+    const response = await api.get(`/finance/clients/${props.clientId}/statement/export-excel`, {
+      responseType: 'blob',
+    })
+
+    const cleanName = (clientData.value?.name || 'العميل').replace(/[\\/:*?"<>|\s]+/g, '_')
+    let fileName = `كشف_حساب_${cleanName}_${new Date().toISOString().slice(0, 10).replace(/-/g, '_')}.xlsx`
+    const disposition = response.headers['content-disposition']
+    if (disposition && disposition.indexOf('filename=') !== -1) {
+      const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
+      if (match && match[1]) {
+        try {
+          fileName = decodeURIComponent(match[1].replace(/['"]/g, ''))
+        } catch {
+          fileName = match[1].replace(/['"]/g, '')
+        }
+      }
+    }
+
+    const blob = new Blob([response.data], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+
+    alertService.toast(`✅ تم تصدير كشف حساب (${clientData.value?.name || 'العميل'}) كملف Excel بنجاح!`, 'success')
+  } catch (err) {
+    console.error('Client statement Excel export error:', err)
+    alertService.error('فشل تصدير كشف الحساب كملف Excel، يرجى المحاولة لاحقاً.')
+  } finally {
+    exportingExcel.value = false
   }
 }
 
@@ -1202,25 +1256,31 @@ const printStatement = () => {
   gap: 10px;
 }
 
-.action-btn-print {
+.action-btn-excel {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   padding: 8px 16px;
-  background: #2563eb;
+  background: linear-gradient(135deg, #10b981, #059669);
   color: #ffffff;
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 700;
   border: none;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
 }
 
-.action-btn-print:hover {
-  background: #1d4ed8;
+.action-btn-excel:hover:not(:disabled) {
+  background: linear-gradient(135deg, #059669, #047857);
   transform: translateY(-1px);
+}
+
+.action-btn-excel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .action-btn-copy {
@@ -1976,25 +2036,45 @@ const printStatement = () => {
   background: #1e293b;
 }
 
-.footer-print-btn {
+.footer-excel-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 9px 18px;
+  padding: 9px 20px;
   border-radius: 8px;
-  background: #2563eb;
+  background: linear-gradient(135deg, #10b981, #059669);
   color: #ffffff;
   font-size: 13px;
   font-weight: 700;
   border: none;
   cursor: pointer;
   transition: all 0.2s;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
 }
 
-.footer-print-btn:hover {
-  background: #1d4ed8;
+.footer-excel-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #059669, #047857);
   transform: translateY(-1px);
+}
+
+.footer-excel-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.mini-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spinMini 0.7s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spinMini {
+  to { transform: rotate(360deg); }
 }
 
 .footer-cancel-btn {

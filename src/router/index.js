@@ -138,6 +138,17 @@ const router = createRouter({
           },
         },
         {
+          path: '/settings/notification-templates',
+          alias: '/notification-templates',
+          name: 'NotificationTemplates',
+          component: () => import('@/views/NotificationTemplatesManager.vue'),
+          meta: {
+            requiresAuth: true,
+            role: 'manager',
+            title: 'قوالب الرسائل والواتساب',
+          },
+        },
+        {
           path: '/trash',
           name: 'TrashBin',
           component: () => import('@/views/TrashBin.vue'),

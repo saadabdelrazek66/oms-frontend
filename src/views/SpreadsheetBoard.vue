@@ -1271,6 +1271,9 @@ import '@vuepic/vue-datepicker/dist/main.css';
 import CustomMultiSelect from '../components/CustomMultiSelect.vue';
 import SmartDeadlinePicker from '../components/SmartDeadlinePicker.vue';
 import alertService from '../services/alertService';
+import { useNotificationTemplates } from '@/composables/useNotificationTemplates';
+
+const { formatPhone: formatWaPhone, fetchTemplates: fetchNotificationTemplates } = useNotificationTemplates();
 
 // استيراد المحرك الذكي
 import { getDeadlineStatus } from '../utils/timeHelper';
@@ -1960,13 +1963,8 @@ const sendWhatsApp = (phone, customMessage) => {
     return;
   }
   const text = encodeURIComponent(customMessage || waMessage.value);
-  
-  let cleanPhone = phone.replace(/[^0-9]/g, '');
-  if (cleanPhone.startsWith('01') && cleanPhone.length === 11) {
-    cleanPhone = '2' + cleanPhone;
-  }
-  
-  window.open(`https://api.whatsapp.com/send/?phone=${cleanPhone}&text=${text}`, '_blank');
+  const cleanPhone = formatWaPhone(phone);
+  window.open(`https://wa.me/${cleanPhone}?text=${text}`, '_blank');
 };
 
 const showToast = (message, type = 'info') => {
@@ -2884,6 +2882,7 @@ const addNewRow = async () => {
 onMounted(async () => {
   fetchCurrentUser(); 
   fetchUsers();
+  fetchNotificationTemplates(true);
   await Promise.allSettled([
     fetchPlanCategories(),
     fetchCurrentPlan(),

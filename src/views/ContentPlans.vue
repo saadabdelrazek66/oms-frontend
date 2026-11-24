@@ -550,6 +550,16 @@
                           >
                             <span>💬</span> إخطار العميل
                           </button>
+                          <button 
+                            v-if="canNotifyClient(plan) && getClientGroupLinks(plan).length > 0"
+                            class="drawer-action-btn notify-client-group-pill-btn" 
+                            type="button" 
+                            @click="openClientGroupNotifyModal(plan, 'review_done')"
+                            :title="`إبلاغ جروبات العميل (${getClientGroupLinks(plan).length} جروب متاح)`"
+                          >
+                            <span>👥</span> إبلاغ جروب العميل
+                            <span class="group-count-badge" v-if="getClientGroupLinks(plan).length > 1">{{ getClientGroupLinks(plan).length }}</span>
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -640,6 +650,16 @@
                           <span>💬</span> إخطار العميل بانتهاء المراجعة (واتساب)
                         </button>
                         <button 
+                          v-if="canNotifyClient(plan) && getClientGroupLinks(plan).length > 0"
+                          class="drawer-action-btn notify-client-group-btn" 
+                          type="button" 
+                          @click="openClientGroupNotifyModal(plan, 'review_done')"
+                          :title="`إبلاغ جروبات العميل (${getClientGroupLinks(plan).length} جروب متاح)`"
+                        >
+                          <span>👥</span> إبلاغ جروبات العميل
+                          <span class="group-count-badge" v-if="getClientGroupLinks(plan).length > 1">{{ getClientGroupLinks(plan).length }}</span>
+                        </button>
+                        <button 
                           class="drawer-action-btn followup-btn" 
                           type="button" 
                           :disabled="plan.requires_review && !['reviewed', 'completed'].includes(plan.status) && getFollowUps(plan).length === 0"
@@ -651,16 +671,18 @@
 
                         <!-- روابط جروبات العميل (واتساب، تليجرام، إلخ) -->
                         <a
-                          v-for="(grp, gIdx) in (plan.client?.group_links || [])"
+                          v-for="(grp, gIdx) in getClientGroupLinks(plan)"
                           :key="'cg' + gIdx"
                           :href="grp.url"
                           target="_blank"
                           rel="noopener noreferrer"
                           class="drawer-action-btn client-group-pill"
-                          :title="grp.title ? `فتح ${grp.title}` : 'فتح جروب العميل'"
+                          :class="`platform-${grp.platform || 'other'}`"
+                          :title="grp.title ? `إبلاغ ${grp.title} (نسخ نص الخطة وفتح الرابط)` : 'إبلاغ جروب العميل'"
+                          @click.prevent="notifyClientGroup(grp, plan, 'review_done')"
                         >
-                          <span>{{ (grp.platform || '').toLowerCase().includes('telegram') ? '✈️' : '💬' }}</span>
-                          <span>{{ grp.title || (grp.platform === 'telegram' ? 'جروب تليجرام' : 'جروب واتساب') }} ↗</span>
+                          <span>{{ getGroupPlatformIcon(grp.platform) }}</span>
+                          <span>{{ grp.title || getGroupPlatformLabel(grp.platform) }} ↗</span>
                         </a>
                       </div>
                     </div>
@@ -1123,6 +1145,18 @@
                 <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/>
               </svg>
             </a>
+
+            <!-- زر إضافي لإبلاغ جروب العميل بالتسليم إن وجد -->
+            <button 
+              v-if="getClientGroupLinks(deliveredPlan).length > 0"
+              type="button" 
+              class="wa-btn-large group-delivery-btn"
+              style="margin-top: 8px; border: none; cursor: pointer; text-decoration: none;"
+              @click="openClientGroupNotifyModal(deliveredPlan, 'delivery')"
+            >
+              <span>👥 إبلاغ جروب العميل بالتسليم ({{ getClientGroupLinks(deliveredPlan).length }})</span>
+              <span style="font-size: 14px;">↗</span>
+            </button>
 
             <!-- 2. إبلاغ المدير بالتسليم النهائي -->
             <div v-if="getManagers().length > 0" class="managers-list mt-3">
@@ -1889,6 +1923,55 @@
             </div>
           </div>
 
+          <!-- قسم إبلاغ مجموعات وجروبات العميل إن وجدت -->
+          <div v-if="getClientGroupLinks(selectedNotifyPlan).length > 0" class="client-groups-section" style="margin-top: 18px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <h4 style="font-size: 13px; font-weight: 700; color: #e2e8f0; margin: 0; display: flex; align-items: center; gap: 6px;">
+                <span>👥</span> جروبات ومجموعات العمل مع العميل
+                <span style="font-size: 11px; background: rgba(14, 165, 233, 0.15); color: #38bdf8; padding: 2px 7px; border-radius: 9999px;">
+                  {{ getClientGroupLinks(selectedNotifyPlan).length }}
+                </span>
+              </h4>
+              <small style="color: #94a3b8; font-size: 11px;">(يتم نسخ نص الرسالة فوراً عند الضغط)</small>
+            </div>
+
+            <div class="groups-grid" style="display: flex; flex-direction: column; gap: 8px;">
+              <div 
+                v-for="(grp, gIdx) in getClientGroupLinks(selectedNotifyPlan)" 
+                :key="'cg_' + gIdx"
+                class="group-card-row"
+                style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 10px;"
+              >
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(15, 23, 42, 0.7); display: grid; place-items: center; font-size: 18px; border: 1px solid rgba(148, 163, 184, 0.2);">
+                    {{ getGroupPlatformIcon(grp.platform) }}
+                  </div>
+                  <div>
+                    <div style="font-size: 13px; font-weight: 600; color: #f8fafc; display: flex; align-items: center; gap: 6px;">
+                      {{ grp.title || getGroupPlatformLabel(grp.platform) }}
+                      <span style="font-size: 10.5px; padding: 1px 6px; border-radius: 4px; font-weight: 600;" :class="`platform-badge-${grp.platform || 'other'}`">
+                        {{ getGroupPlatformLabel(grp.platform) }}
+                      </span>
+                    </div>
+                    <div style="font-size: 11px; color: #94a3b8; margin-top: 2px; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" dir="ltr">
+                      {{ grp.url }}
+                    </div>
+                  </div>
+                </div>
+
+                <button 
+                  type="button" 
+                  class="direct-group-btn"
+                  @click="notifyClientGroup(grp, selectedNotifyPlan, 'review_done')"
+                  title="نسخ نص الرسالة وفتح الجروب مباشرة"
+                >
+                  <span>إبلاغ هذا الجروب</span>
+                  <span>↗</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
           <!-- قائمة جهات الاتصال وممثلي العميل -->
           <div class="client-contacts-section" style="margin-top: 20px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
@@ -1973,6 +2056,110 @@
 
           <div class="modal-actions" style="margin-top: 22px; display: flex; justify-content: flex-end;">
             <button type="button" class="secondary-btn" @click="closeClientNotificationModal">إغلاق</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- نافذة إبلاغ جروبات ومجموعات العميل -->
+    <Teleport to="body">
+      <div v-if="showClientGroupNotifyModal" class="modal-overlay" role="presentation" @click.self="closeClientGroupNotifyModal">
+        <div class="modal-content client-notify-modal group-notify-modal" role="dialog" style="width: min(620px, 100%) !important;">
+          <button class="modal-close" type="button" @click="closeClientGroupNotifyModal">×</button>
+
+          <div class="modal-icon" style="background: linear-gradient(145deg, #0ea5e9, #0284c7); color: #fff;">
+            👥
+          </div>
+
+          <span class="eyebrow" style="color: #38bdf8;">إبلاغ جروبات ومجموعات العمل</span>
+          <h3 style="color: #7dd3fc;">
+            {{ groupNotifyType === 'delivery' ? 'إبلاغ جروب العميل بالتسليم النهائي 🎉' : 'إبلاغ جروب العميل باكتمال المراجعة 📋' }}
+          </h3>
+
+          <p style="color: #94a3b8; font-size: 13px; margin-top: 4px; line-height: 1.5;">
+            خطة العميل: <strong style="color: #f1f5f9;">{{ selectedGroupNotifyPlan?.client?.name || 'غير محدد' }}</strong>
+            <span v-if="selectedGroupNotifyPlan" style="margin-right: 6px; color: #cbd5e1;">({{ getPlanDisplayName(selectedGroupNotifyPlan) }})</span>
+          </p>
+
+          <!-- معاينة الرسالة المجهزة للجروب -->
+          <div class="wa-msg-preview-card" style="margin-top: 16px; background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 10px; padding: 12px 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 12px; font-weight: 700; color: #38bdf8; display: flex; align-items: center; gap: 6px;">
+                <span>📋</span> نص الرسالة المجهزة لنشرها في الجروب:
+              </span>
+              <button 
+                type="button" 
+                @click="copyGroupNotificationMessage"
+                style="background: rgba(14, 165, 233, 0.15); border: 1px solid rgba(14, 165, 233, 0.35); color: #38bdf8; border-radius: 6px; padding: 3px 9px; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 4px;"
+                title="نسخ نص الرسالة"
+              >
+                <span>{{ copiedGroupMsgToast ? '✓ تم النسخ' : 'نسخ النص' }}</span>
+              </button>
+            </div>
+            <div style="font-size: 12px; color: #cbd5e1; white-space: pre-wrap; line-height: 1.6; max-height: 120px; overflow-y: auto; padding-right: 4px;" dir="rtl">
+              {{ groupNotifyType === 'delivery' ? getClientDeliveryMessage(selectedGroupNotifyPlan) : getClientReviewMessage(selectedGroupNotifyPlan) }}
+            </div>
+          </div>
+
+          <!-- قائمة الجروبات المتاحة -->
+          <div class="client-contacts-section" style="margin-top: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              <h4 style="font-size: 13px; font-weight: 700; color: #e2e8f0; margin: 0; display: flex; align-items: center; gap: 6px;">
+                <span>👥</span> اختر الجروب المراد إبلاغه
+                <span style="font-size: 11px; background: rgba(14, 165, 233, 0.15); color: #38bdf8; padding: 2px 7px; border-radius: 9999px;">
+                  {{ getClientGroupLinks(selectedGroupNotifyPlan).length }} جروب متاح
+                </span>
+              </h4>
+            </div>
+
+            <div v-if="getClientGroupLinks(selectedGroupNotifyPlan).length > 0" class="groups-grid" style="display: flex; flex-direction: column; gap: 10px; max-height: 250px; overflow-y: auto;">
+              <div 
+                v-for="(grp, gIdx) in getClientGroupLinks(selectedGroupNotifyPlan)" 
+                :key="'gnm_' + gIdx"
+                class="group-card-row"
+                style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 10px; transition: all 0.2s ease;"
+              >
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <div style="width: 38px; height: 38px; border-radius: 10px; background: rgba(15, 23, 42, 0.7); display: grid; place-items: center; font-size: 20px; border: 1px solid rgba(148, 163, 184, 0.2);">
+                    {{ getGroupPlatformIcon(grp.platform) }}
+                  </div>
+                  <div>
+                    <div style="font-size: 13px; font-weight: 700; color: #f8fafc; display: flex; align-items: center; gap: 6px;">
+                      {{ grp.title || getGroupPlatformLabel(grp.platform) }}
+                      <span style="font-size: 10.5px; padding: 1px 7px; border-radius: 4px; font-weight: 600;" :class="`platform-badge-${grp.platform || 'other'}`">
+                        {{ getGroupPlatformLabel(grp.platform) }}
+                      </span>
+                    </div>
+                    <div style="font-size: 11px; color: #94a3b8; margin-top: 2px; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" dir="ltr">
+                      {{ grp.url }}
+                    </div>
+                  </div>
+                </div>
+
+                <button 
+                  type="button" 
+                  class="direct-group-btn"
+                  @click="notifyClientGroup(grp, selectedGroupNotifyPlan, groupNotifyType)"
+                  title="نسخ نص الرسالة وفتح الجروب مباشرة"
+                >
+                  <span>إبلاغ ونشر بالجروب</span>
+                  <span>↗</span>
+                </button>
+              </div>
+            </div>
+
+            <div v-else style="padding: 16px; background: rgba(30, 41, 59, 0.4); border: 1px dashed rgba(148, 163, 184, 0.2); border-radius: 10px; text-align: center; color: #94a3b8; font-size: 12.5px;">
+              <span>⚠️ لا توجد جروبات مسجلة لهذا العميل. يمكنك إضافة روابط مجموعات العمل من صفحة إدارة العملاء.</span>
+            </div>
+
+            <div class="group-notify-hint-box" style="margin-top: 14px; padding: 10px 14px; background: rgba(14, 165, 233, 0.08); border: 1px solid rgba(14, 165, 233, 0.2); border-radius: 8px; color: #94a3b8; font-size: 11.5px; display: flex; align-items: center; gap: 8px;">
+              <span>ℹ️</span>
+              <span>عند الضغط على "إبلاغ ونشر بالجروب"، يتم نسخ الرسالة المجهزة تلقائياً وفتح رابط الجروب في تبويب جديد للصقها فوراً.</span>
+            </div>
+          </div>
+
+          <div class="modal-actions" style="margin-top: 22px; display: flex; justify-content: flex-end;">
+            <button type="button" class="secondary-btn" @click="closeClientGroupNotifyModal">إغلاق</button>
           </div>
         </div>
       </div>
@@ -2069,6 +2256,7 @@ import alertService from '../services/alertService';
 import AutoRecurrenceToggle from '../components/AutoRecurrenceToggle.vue';
 import EmployeeClientNotifyToggle from '../components/EmployeeClientNotifyToggle.vue';
 import ClientAvatar from '@/components/ClientAvatar.vue';
+import { useNotificationTemplates } from '@/composables/useNotificationTemplates';
 
 // استيراد المحرك الذكي للتواريخ
 import { getDeadlineStatus } from '../utils/timeHelper';
@@ -2099,6 +2287,8 @@ const isManager = computed(() => userRole.value === 'manager' || user.value?.rol
 const user = ref(currentUser);
 const route = useRoute();
 const router = useRouter();
+
+const { fetchTemplates: fetchNotificationTemplates, renderTemplate, formatPhone: formatPhoneUtil } = useNotificationTemplates();
 
 const isUserResponsible = (plan) => { 
   if (isManager.value || user.value?.role === 'manager' || user.value?.job_title === 'Account Manager') return true; 
@@ -3128,61 +3318,113 @@ const formatPhone = (phone) => {
   return cleaned;
 };
 
+const getPlanTemplatePayload = (plan, targetUser = null, extra = {}) => {
+  const clientName = plan?.client?.name || '';
+  const planName = getPlanDisplayName(plan);
+  const targetUserName = targetUser?.name || '';
+  const finalLink = plan?.final_link || plan?.plan_file_link || '';
+  const sysLink = plan?.id ? `${window.location.origin}/content-plans?plan=${plan.id}` : window.location.href;
+  const currentUserName = user.value?.name || '';
+  const notesText = plan?.notes || extra.notes || '';
+
+  return {
+    // أسماء الموظف أو المستهدف بجميع الصيغ
+    employee_name: targetUserName,
+    assignee_name: targetUserName,
+    user_name: targetUserName,
+    target_user: targetUserName,
+    contact_name: targetUserName,
+
+    // أسماء المراجع والمشرف والمدير
+    reviewer_name: targetUserName,
+    submitter_name: currentUserName,
+    manager_name: currentUserName || 'الإدارة',
+    executor_name: targetUserName || 'فريق العمل',
+
+    // بيانات العميل والخطة
+    client_name: clientName || 'عميلنا العزيز',
+    plan_name: planName,
+
+    // التواريخ
+    start_date: plan?.start_date || '',
+    delivery_date: plan?.planned_delivery_date || '',
+    delay_duration: extra.delay_duration || 'مستحق الآن',
+
+    // الروابط بجميع أسمائها
+    link: sysLink,
+    plan_link: sysLink,
+    system_link: sysLink,
+    final_link: finalLink || sysLink,
+    drive_link: finalLink || sysLink,
+    file_link: finalLink || sysLink,
+
+    // الملاحظات وأسباب الرفض
+    notes: notesText,
+    rejection_notes: notesText || 'يرجى مراجعة الملاحظات بالنظام',
+    rejection_reason: notesText || 'يرجى مراجعة الملاحظات بالنظام',
+
+    ...extra,
+  };
+};
+
 const generateWaLink = (type, plan, specificUser = null) => {
   if (!plan) return '#';
-  const systemPrefix = "-- *تنبيه آلي من نظام Octo Space*\n\n";
   let phone = '';
   let message = '';
   let targetUser = specificUser;
+  const planName = getPlanDisplayName(plan);
+  const clientName = plan.client?.name || '';
+  const finalLink = plan.final_link || plan.plan_file_link || '';
 
   switch (type) {
     case 'plan_assigned':
       targetUser = targetUser || plan.users?.find(u => u.pivot?.task_role === 'responsible');
-      message = `${systemPrefix}مرحباً ${targetUser?.name || ''}،\nتم إسناد خطة جديدة لك لعميل (*${plan.client?.name || ''}*).\nيرجى الدخول للنظام والبدء في الإنجاز.`;
+      message = renderTemplate('plan_assigned', getPlanTemplatePayload(plan, targetUser), () => `مرحباً ${targetUser?.name || ''}،\nتم إسناد خطة جديدة لك لعميل (*${clientName}*).\n📌 الخطة: ${planName}\nيرجى الدخول للنظام والبدء في الإنجاز.`);
       break;
+
     case 'review_needed':
       targetUser = targetUser || plan.users?.find(u => u.pivot?.task_role === 'reviewer');
-      message = `${systemPrefix}مرحباً ${targetUser?.name || ''}،\nيوجد خطة لعميل (*${plan.client?.name || ''}*) بانتظار مراجعتك الداخلية الآن.\nيرجى الدخول للنظام.`;
+      message = renderTemplate('plan_review_needed', getPlanTemplatePayload(plan, targetUser), () => `مرحباً ${targetUser?.name || ''}،\nيوجد خطة لعميل (*${clientName}*) بانتظار مراجعتك الداخلية الآن.\n📌 الخطة: ${planName}\n🔗 الرابط: ${finalLink}`);
       break;
+
     case 'plan_rejected':
       targetUser = targetUser || plan.users?.find(u => u.pivot?.task_role === 'responsible');
-      message = `${systemPrefix}مرحباً ${targetUser?.name || ''}،\nتم رفض خطة العميل (*${plan.client?.name || ''}*).\nيرجى الدخول للنظام لقراءة الملاحظات وتعديلها.`;
+      message = renderTemplate('plan_rejected', getPlanTemplatePayload(plan, targetUser), () => `مرحباً ${targetUser?.name || ''}،\nتم رفض خطة العميل (*${clientName}*).\n📌 الخطة: ${planName}\nيرجى الدخول للنظام لقراءة الملاحظات وتعديلها.`);
       break;
+
     case 'plan_approved':
       targetUser = targetUser || plan.users?.find(u => u.pivot?.task_role === 'responsible');
-      message = `${systemPrefix}مرحباً ${targetUser?.name || ''}،\nتمت الموافقة على خطة العميل (*${plan.client?.name || ''}*).\nالخطة جاهزة الآن للتسليم النهائي، يرجى المتابعة وتسليمها.`;
+      message = renderTemplate('plan_approved_internal', getPlanTemplatePayload(plan, targetUser), () => `مرحباً ${targetUser?.name || ''}،\nتمت الموافقة على خطة العميل (*${clientName}*).\n📌 الخطة: ${planName}\nالخطة جاهزة الآن للتسليم النهائي، يرجى المتابعة وتسليمها.`);
       break;
+
     case 'plan_delayed':
       const roleToBlame = plan.status === 'under_review' ? 'reviewer' : 'responsible';
       targetUser = targetUser || plan.users?.find(u => u.pivot?.task_role === roleToBlame);
-      message = `${systemPrefix}مرحباً ${targetUser?.name || ''}،\n-- تنبيه بتأخير إنجاز خطة العميل (*${plan.client?.name || ''}*) عن الموعد المحدد.\nيرجى سرعة الإنجاز لتجنب تعطيل العمل.`;
+      message = renderTemplate('plan_delayed_alert', getPlanTemplatePayload(plan, targetUser, { delay_duration: 'مستحق الآن' }), () => `مرحباً ${targetUser?.name || ''}،\n-- تنبيه بتأخير إنجاز خطة العميل (*${clientName}*) عن الموعد المحدد.\nيرجى سرعة الإنجاز لتجنب تعطيل العمل.`);
       break;
+
     case 'client_delivery':
       phone = plan.client?.phone;
-      message = `${systemPrefix}مرحباً بك عميلنا العزيز (*${plan.client?.name || ''}*)،\nتم اعتماد خطة العمل الخاصة بك بنجاح.\nيمكنك الاطلاع عليها من الرابط التالي:\n${plan.final_link || '---'}\n\nنسعد بخدمتكم.`;
+      message = renderTemplate('client_final_delivery', getPlanTemplatePayload(plan, null, {
+        client_name: clientName || 'عميلنا العزيز',
+        notes: plan.notes ? `\n📝 ملاحظات: ${plan.notes}` : '',
+      }), () => `مرحباً بك عميلنا العزيز (*${clientName}*)،\nتم اعتماد خطة العمل الخاصة بك بنجاح.\nيمكنك الاطلاع عليها من الرابط التالي:\n${finalLink}\n\nنسعد بخدمتكم.`);
       break;
+
     case 'manager_delivery':
-      targetUser = targetUser || getManagers()[0];
-      const deliveryPlanName = getPlanDisplayName(plan);
-      message = `${systemPrefix}مرحباً ${targetUser?.name || 'يا مدير'}،\n` +
-                `✅ تم التسليم النهائي لخطة العميل (*${plan.client?.name || ''}*) بنجاح.\n\n` +
-                `📌 *اسم الخطة:* ${deliveryPlanName}\n` +
-                `🔗 *رابط التسليم النهائي:* ${plan.final_link || 'لم يُحدد'}\n` +
-                (plan.notes ? `📝 *الملاحظات:* ${plan.notes}\n` : '') +
-                `\nتم اعتماد الخطة وتسليمها للعميل بنجاح.`;
-      break;
     case 'manager_details_updated':
       targetUser = targetUser || getManagers()[0];
-      const updatePlanName = getPlanDisplayName(plan);
-      message = `${systemPrefix}مرحباً ${targetUser?.name || 'يا مدير'}،\n` +
-                `📢 تم تحديث تفاصيل التسليم لخطة العميل (*${plan.client?.name || ''}*):\n\n` +
-                `📌 *اسم الخطة:* ${updatePlanName}\n` +
-                `🔗 *رابط البلان المحدث:* ${plan.final_link || 'لم يُحدد'}\n` +
-                `📝 *الملاحظات المحدثة:* ${plan.notes || 'لا توجد'}\n\n` +
-                `يرجى الاطلاع على التحديث عبر النظام.`;
+      message = renderTemplate('manager_delivery', getPlanTemplatePayload(plan, targetUser, {
+        manager_name: targetUser?.name || 'يا مدير',
+        notes: plan.notes ? `📝 الملاحظات: ${plan.notes}` : '',
+      }), () => `مرحباً ${targetUser?.name || 'يا مدير'}،\n✅ تم التسليم النهائي لخطة العميل (*${clientName}*) بنجاح.\n\n📌 *اسم الخطة:* ${planName}\n🔗 *رابط التسليم النهائي:* ${finalLink || 'لم يُحدد'}\n` + (plan.notes ? `📝 *الملاحظات:* ${plan.notes}\n` : '') + `\nتم اعتماد الخطة وتسليمها للعميل بنجاح.`);
       break;
+
     case 'executors_start':
-      message = `${systemPrefix}مرحباً ${targetUser?.name || ''}،\nتم اعتماد وتسليم خطة العميل (*${plan.client?.name || ''}*).\nيرجى البدء في مهام التنفيذ الخاصة بك.\nرابط الخطة: ${plan.final_link || '---'}`;
+      targetUser = targetUser || (typeof getExecutors === 'function' ? (getExecutors(plan)[0] ?? null) : null);
+      message = renderTemplate('executors_start', getPlanTemplatePayload(plan, targetUser, {
+        executor_name: targetUser?.name || 'فريق العمل',
+      }), () => `مرحباً ${targetUser?.name || ''}،\nتم اعتماد وتسليم خطة العميل (*${clientName}*).\nيرجى البدء في مهام التنفيذ الخاصة بك.\nرابط الخطة: ${finalLink}`);
       break;
   }
 
@@ -3212,6 +3454,7 @@ const closeWaPrompt = () => {
 };
 
 const smartNotify = (plan) => {
+  fetchNotificationTemplates(true);
   if (plan.status === 'pending' || plan.status === 'rejected') { triggerWaPrompt('تنبيه بالتأخير', 'تنبيه المسؤول عن الخطة بضرورة الإنجاز.', 'plan_delayed', plan); } 
   else if (plan.status === 'under_review') { triggerWaPrompt('تنبيه بالتأخير', 'تنبيه المراجع الداخلي لإنهاء المراجعة.', 'plan_delayed', plan); } 
   else if (plan.status === 'reviewed') { triggerWaPrompt('الخطة جاهزة', 'تنبيه المسؤول لتسليم الخطة للعميل.', 'plan_approved', plan); } 
@@ -3745,6 +3988,133 @@ const selectedNotifyPlan = ref(null);
 const copiedMessageToast = ref(false);
 const customDirectPhone = ref('');
 
+// إدارة نوافذ وإجراءات إبلاغ جروبات العميل (واتساب، تليجرام، إلخ)
+const showClientGroupNotifyModal = ref(false);
+const selectedGroupNotifyPlan = ref(null);
+const groupNotifyType = ref('review_done'); // 'review_done' | 'delivery'
+const copiedGroupMsgToast = ref(false);
+
+const getClientGroupLinks = (plan) => {
+  if (!plan) return [];
+  if (plan.client?.group_links && Array.isArray(plan.client.group_links) && plan.client.group_links.length > 0) {
+    return plan.client.group_links;
+  }
+  const clientId = plan.client_id || plan.client?.id;
+  if (clientId && allClients.value && allClients.value.length > 0) {
+    const found = allClients.value.find(c => c.id === clientId);
+    if (found?.group_links && Array.isArray(found.group_links)) {
+      return found.group_links;
+    }
+  }
+  return [];
+};
+
+const getGroupPlatformIcon = (platform) => {
+  const p = (platform || '').toLowerCase();
+  if (p.includes('whatsapp') || p.includes('واتس')) return '💬';
+  if (p.includes('telegram') || p.includes('تليجرام') || p.includes('تيليجرام')) return '✈️';
+  if (p.includes('facebook') || p.includes('فيسبوك')) return '👥';
+  if (p.includes('discord') || p.includes('ديسكورد')) return '🎮';
+  if (p.includes('slack') || p.includes('سلاك')) return '💼';
+  if (p.includes('teams') || p.includes('تيمز')) return '👥';
+  return '🔗';
+};
+
+const getGroupPlatformLabel = (platform) => {
+  const p = (platform || '').toLowerCase();
+  if (p.includes('whatsapp')) return 'واتساب';
+  if (p.includes('telegram')) return 'تليجرام';
+  if (p.includes('facebook')) return 'فيسبوك';
+  if (p.includes('discord')) return 'ديسكورد';
+  if (p.includes('slack')) return 'سلاك';
+  if (p.includes('teams')) return 'مايكروسوفت تيمز';
+  return 'مجموعة عمل';
+};
+
+const getClientDeliveryMessage = (plan) => {
+  if (!plan) return '';
+  const clientName = plan.client?.name || '';
+  const planName = getPlanDisplayName(plan);
+  const finalLink = plan.final_link || plan.plan_file_link || '';
+  const notes = plan.notes || '';
+  const sysLink = plan.id ? `${window.location.origin}/content-plans?plan=${plan.id}` : '';
+
+  const fallback = () => {
+    const systemPrefix = "-- *تنبيه من فريق العمل - نظام Octo Space*\n\n";
+    let msg = `${systemPrefix}مرحباً بكم فريق عمل (*${clientName || 'عميلنا العزيز'}*)،\n`;
+    msg += `يسعدنا إبلاغكم بأنه قد تم الاعتماد والتسليم النهائي لخطة العمل (*${planName}*) بنجاح 🎉✅.\n\n`;
+    if (finalLink) {
+      msg += `🔗 *رابط الاطلاع على الخطة المعتمدة:* ${finalLink}\n`;
+    }
+    if (notes) {
+      msg += `📝 *ملاحظات مرفقة:* ${notes}\n`;
+    }
+    msg += `\nجاهزون للبدء والتنفيذ ونسعد بتواصلكم دائماً. 🙏`;
+    return msg;
+  };
+
+  return renderTemplate(
+    'client_final_delivery',
+    {
+      client_name: clientName || 'العميل',
+      plan_name: planName,
+      final_link: finalLink || 'رابط الخطة المعتمدة',
+      drive_link: finalLink || '',
+      file_link: finalLink || '',
+      link: finalLink || sysLink,
+      notes: notes || 'لا توجد ملاحظات إضافية'
+    },
+    fallback,
+    false
+  );
+};
+
+const notifyClientGroup = async (grp, plan, type = 'review_done') => {
+  if (!grp || !grp.url) {
+    showToast('رابط الجروب غير متاح');
+    return;
+  }
+  const message = type === 'delivery' ? getClientDeliveryMessage(plan) : getClientReviewMessage(plan);
+  try {
+    if (navigator?.clipboard?.writeText) {
+      await navigator.clipboard.writeText(message);
+      showToast(`تم نسخ رسالة ${type === 'delivery' ? 'التسليم' : 'المراجعة'} بنجاح! جاري فتح الجروب للصقها 📋✅`);
+    } else {
+      showToast('جاري فتح الجروب...');
+    }
+  } catch (err) {
+    showToast('جاري فتح الجروب...');
+  }
+  window.open(grp.url, '_blank', 'noopener,noreferrer');
+};
+
+const openClientGroupNotifyModal = (plan, type = 'review_done') => {
+  selectedGroupNotifyPlan.value = plan;
+  groupNotifyType.value = type;
+  showClientGroupNotifyModal.value = true;
+  fetchNotificationTemplates(true);
+};
+
+const closeClientGroupNotifyModal = () => {
+  showClientGroupNotifyModal.value = false;
+  selectedGroupNotifyPlan.value = null;
+};
+
+const copyGroupNotificationMessage = async () => {
+  if (!selectedGroupNotifyPlan.value) return;
+  const message = groupNotifyType.value === 'delivery' 
+    ? getClientDeliveryMessage(selectedGroupNotifyPlan.value) 
+    : getClientReviewMessage(selectedGroupNotifyPlan.value);
+  try {
+    await navigator.clipboard.writeText(message);
+    copiedGroupMsgToast.value = true;
+    showToast('تم نسخ نص الرسالة بنجاح 📋');
+    setTimeout(() => { copiedGroupMsgToast.value = false; }, 2500);
+  } catch (e) {
+    showToast('تعذر النسخ تلقائياً');
+  }
+};
+
 const canNotifyClient = (plan) => {
   if (!plan) return false;
   const isReviewDone = ['reviewed', 'completed'].includes(plan.status);
@@ -3759,6 +4129,7 @@ const openClientNotificationModal = (plan) => {
   selectedNotifyPlan.value = plan;
   customDirectPhone.value = '';
   showClientNotificationModal.value = true;
+  fetchNotificationTemplates(true);
 };
 
 const closeClientNotificationModal = () => {
@@ -3770,21 +4141,43 @@ const getClientReviewMessage = (plan, contactName = '') => {
   if (!plan) return '';
   const clientName = plan.client?.name || '';
   const planName = getPlanDisplayName(plan);
-  const fileLink = getPlanFileLink(plan);
+  const fileLink = getPlanFileLink(plan) || plan.final_link || '';
   const namePart = contactName ? `أستاذ/ة ${contactName}` : (clientName ? `فريق عمل ${clientName}` : 'عميلنا العزيز');
+  const notes = plan.notes || '';
+  const sysLink = plan.id ? `${window.location.origin}/content-plans?plan=${plan.id}` : '';
 
-  let msg = `-- *تنبيه من فريق العمل - نظام Octo Space*\n\n`;
-  msg += `مرحباً ${namePart}،\n`;
-  msg += `يسعدنا إبلاغكم بأنه قد تمت المراجعة الداخلية لخطة العمل (*${planName}*) بنجاح ✅.\n\n`;
-  msg += `الخطة الآن جاهزة وبانتظار مراجعتكم الكريمة وملاحظاتكم للبدء في النشر أو التعديل حسب توجيهاتكم.\n`;
-  if (fileLink) {
-    msg += `\n🔗 *رابط الاطلاع على الخطة:* ${fileLink}\n`;
-  }
-  if (plan.notes) {
-    msg += `📝 *ملاحظات مرفقة:* ${plan.notes}\n`;
-  }
-  msg += `\nنسعد بملاحظاتكم وتواصلكم دائماً. 🙏`;
-  return msg;
+  const fallback = () => {
+    let msg = `-- *تنبيه من فريق العمل - نظام Octo Space*\n\n`;
+    msg += `مرحباً ${namePart}،\n`;
+    msg += `يسعدنا إبلاغكم بأنه قد تمت المراجعة الداخلية لخطة العمل (*${planName}*) بنجاح ✅.\n\n`;
+    msg += `الخطة الآن جاهزة وبانتظار مراجعتكم الكريمة وملاحظاتكم للبدء في النشر أو التعديل حسب توجيهاتكم.\n`;
+    if (fileLink) {
+      msg += `\n🔗 *رابط الاطلاع على الخطة:* ${fileLink}\n`;
+    }
+    if (notes) {
+      msg += `📝 *ملاحظات مرفقة:* ${notes}\n`;
+    }
+    msg += `\nنسعد بملاحظاتكم وتواصلكم دائماً. 🙏`;
+    return msg;
+  };
+
+  return renderTemplate(
+    'client_review_done',
+    {
+      contact_name: namePart,
+      employee_name: namePart,
+      user_name: namePart,
+      client_name: clientName || 'العميل',
+      plan_name: planName,
+      file_link: fileLink || 'رابط الخطة غير متاح',
+      drive_link: fileLink || 'رابط الخطة غير متاح',
+      final_link: fileLink || 'رابط الخطة غير متاح',
+      link: fileLink || sysLink,
+      notes: notes || 'لا توجد ملاحظات إضافية'
+    },
+    fallback,
+    false
+  );
 };
 
 const getClientContactWaLink = (plan, phone, contactName = '') => {
@@ -4000,6 +4393,7 @@ const calculateItemsHours = (items) => {
 onMounted(() => {
   fetchPlans();
   fetchResources();
+  fetchNotificationTemplates(true);
 
   // تشغيل المؤقت الحي كل 30 ثانية لتحديث العداد التنازلي
   countdownInterval = setInterval(() => {
@@ -5627,6 +6021,91 @@ onBeforeUnmount(() => {
   color: #ffffff;
 }
 
+.drawer-action-btn.notify-client-group-btn {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.2), rgba(2, 132, 199, 0.3));
+  border-color: rgba(14, 165, 233, 0.4);
+  color: #7dd3fc;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.drawer-action-btn.notify-client-group-btn:hover {
+  background: linear-gradient(135deg, #0ea5e9, #0284c7);
+  color: #ffffff;
+  border-color: #0ea5e9;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.28);
+}
+
+.drawer-action-btn.notify-client-group-pill-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  background: rgba(14, 165, 233, 0.15);
+  border-color: rgba(14, 165, 233, 0.35);
+  color: #38bdf8;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.drawer-action-btn.notify-client-group-pill-btn:hover {
+  background: #0ea5e9;
+  color: #ffffff;
+}
+
+.group-count-badge {
+  font-size: 10px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  padding: 1px 5px;
+  border-radius: 9999px;
+  font-weight: 800;
+}
+
+.direct-group-btn {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, #0ea5e9, #0284c7);
+  color: #fff;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(14, 165, 233, 0.25);
+}
+.direct-group-btn:hover {
+  background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(14, 165, 233, 0.4);
+}
+
+.group-delivery-btn {
+  background: linear-gradient(135deg, #0ea5e9, #0284c7) !important;
+  color: #ffffff !important;
+  border: none !important;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.35);
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.group-delivery-btn:hover {
+  background: linear-gradient(135deg, #38bdf8, #0ea5e9) !important;
+  box-shadow: 0 6px 16px rgba(14, 165, 233, 0.45);
+}
+
+.platform-badge-whatsapp { background: rgba(37, 211, 102, 0.18); color: #4ade80; }
+.platform-badge-telegram { background: rgba(0, 136, 204, 0.18); color: #38bdf8; }
+.platform-badge-facebook { background: rgba(24, 119, 242, 0.18); color: #60a5fa; }
+.platform-badge-discord  { background: rgba(88, 101, 242, 0.18); color: #c084fc; }
+.platform-badge-slack    { background: rgba(234, 179, 8, 0.18); color: #facc15; }
+.platform-badge-teams    { background: rgba(98, 100, 167, 0.2); color: #a5b4fc; }
+.platform-badge-other    { background: rgba(125, 232, 220, 0.18); color: #7de8dc; }
+
 .compact-notify-toggle {
   margin-top: 6px;
 }
@@ -7190,6 +7669,37 @@ button:disabled, .primary-btn:disabled, .confirm-btn:disabled {
   border-color: #25d366;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(37, 211, 102, 0.25);
+}
+
+.drawer-action-btn.client-group-pill.platform-telegram {
+  background: rgba(0, 136, 204, 0.1);
+  border-color: rgba(0, 136, 204, 0.3);
+  color: #38bdf8;
+}
+.drawer-action-btn.client-group-pill.platform-telegram:hover {
+  background: rgba(0, 136, 204, 0.22);
+  border-color: #38bdf8;
+  color: #ffffff;
+}
+.drawer-action-btn.client-group-pill.platform-facebook {
+  background: rgba(24, 119, 242, 0.1);
+  border-color: rgba(24, 119, 242, 0.3);
+  color: #60a5fa;
+}
+.drawer-action-btn.client-group-pill.platform-discord {
+  background: rgba(88, 101, 242, 0.1);
+  border-color: rgba(88, 101, 242, 0.3);
+  color: #c084fc;
+}
+.drawer-action-btn.client-group-pill.platform-slack {
+  background: rgba(234, 179, 8, 0.1);
+  border-color: rgba(234, 179, 8, 0.3);
+  color: #facc15;
+}
+.drawer-action-btn.client-group-pill.platform-teams {
+  background: rgba(98, 100, 167, 0.12);
+  border-color: rgba(98, 100, 167, 0.35);
+  color: #a5b4fc;
 }
 
 /* إشعار المرحلة المقفلة */

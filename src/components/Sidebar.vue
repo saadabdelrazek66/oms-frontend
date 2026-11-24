@@ -320,6 +320,17 @@
                 <span class="nav-label">إعدادات النظام</span>
                 <em class="nav-shortcut">S</em>
               </router-link>
+
+              <!-- قوالب الرسائل والواتساب -->
+              <router-link v-if="role === 'manager'" class="nav-item" to="/settings/notification-templates">
+                <span class="nav-icon-box">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                  </svg>
+                </span>
+                <span class="nav-label">قوالب الرسائل والواتساب</span>
+                <em class="nav-shortcut">M</em>
+              </router-link>
             </div>
           </div>
         </template>

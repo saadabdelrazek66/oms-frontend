@@ -1195,6 +1195,9 @@ import { useRouter } from 'vue-router';
 import api from '../axios';
 import alertService from '@/services/alertService';
 import AudioVoicePlayer from '@/components/AudioVoicePlayer.vue';
+import { useNotificationTemplates } from '@/composables/useNotificationTemplates';
+
+const { fetchTemplates: fetchNotificationTemplates, renderTemplate, getTemplate, formatPhone } = useNotificationTemplates();
 
 const router = useRouter();
 const loading = ref(true);
@@ -1334,22 +1337,57 @@ const getRowClass = (status) => {
 
 // واتساب
 
-
 const sendGeneralMessage = (user) => {
+  const phone = formatPhone(user.phone);
   const message = `مرحباً ${user.name}،\n`;
-  window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+  const url = phone 
+    ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}` 
+    : `https://wa.me/?text=${encodeURIComponent(message)}`;
+  window.open(url, '_blank');
 };
 
 const sendWhatsAppWarning = (user) => {
-  if (user.metrics.overdue.overall === 0) return;
-  
-  let message = `مرحباً ${user.name}،\n\nيرجى الانتباه، لديك أعمال متأخرة عن موعد التسليم في النظام:\n`;
-  if (user.metrics.overdue.tasks > 0) message += `- مهام مشاريع: ${user.metrics.overdue.tasks} متأخرة\n`;
-  if (user.metrics.overdue.exec_posts > 0) message += `- منشورات خطط (كتنفيذ): ${user.metrics.overdue.exec_posts} متأخرة\n`;
-  if (user.metrics.overdue.rev_posts > 0) message += `- منشورات خطط (كمراجعة): ${user.metrics.overdue.rev_posts} متأخرة\n`;
-  
-  message += `\nيرجى سرعة الإنجاز. بالتوفيق!`;
-  window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+  if (user.metrics?.overdue?.overall === 0) return;
+
+  const tplKey = 'overdue_summary_warning';
+  const tpl = getTemplate(tplKey);
+
+  if (tpl && tpl.is_enabled === false) {
+    alertService.warning('قالب تنبيه المتأخرات معطل حالياً من إعدادات القوالب.');
+    return;
+  }
+
+  const tasksCount = user.metrics?.overdue?.tasks ?? 0;
+  const execPostsCount = user.metrics?.overdue?.exec_posts ?? 0;
+  const revPostsCount = user.metrics?.overdue?.rev_posts ?? 0;
+  const totalOverdue = user.metrics?.overdue?.overall ?? 0;
+
+  const templateData = {
+    employee_name: user.name,
+    user_name: user.name,
+    assignee_name: user.name,
+    tasks_count: tasksCount,
+    exec_posts_count: execPostsCount,
+    rev_posts_count: revPostsCount,
+    total_overdue: totalOverdue,
+    overdue_count: totalOverdue,
+  };
+
+  const fallback = `مرحباً ${user.name}،\n\nيرجى الانتباه، لديك أعمال متأخرة عن موعد التسليم في النظام:\n` +
+    (tasksCount > 0 ? `- مهام مشاريع: ${tasksCount} متأخرة\n` : '') +
+    (execPostsCount > 0 ? `- منشورات خطط (كتنفيذ): ${execPostsCount} متأخرة\n` : '') +
+    (revPostsCount > 0 ? `- منشورات خطط (كمراجعة): ${revPostsCount} متأخرة\n` : '') +
+    `\nيرجى سرعة الإنجاز والمتابعة. بالتوفيق!`;
+
+  const rendered = renderTemplate(tplKey, templateData, fallback, true);
+  if (!rendered) return;
+
+  const phone = formatPhone(user.phone);
+  const url = phone 
+    ? `https://wa.me/${phone}?text=${encodeURIComponent(rendered)}` 
+    : `https://wa.me/?text=${encodeURIComponent(rendered)}`;
+
+  window.open(url, '_blank');
 };
 
 // ==========================================
@@ -1630,6 +1668,7 @@ const handleGlobalKeydown = (e) => {
 };
 
 onMounted(() => {
+  fetchNotificationTemplates(true);
   fetchDashboardData(selectedHorizon.value);
   fetchLeaderboard(1, selectedHorizon.value);
   window.addEventListener('keydown', handleGlobalKeydown);

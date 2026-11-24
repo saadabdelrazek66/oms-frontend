@@ -2,7 +2,7 @@
   <Teleport to="body">
     <Transition name="modal-fade">
       <div
-        v-if="isOpen"
+        v-if="isOpen && !payload?.disabled"
         class="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-[#080d26]/85 backdrop-blur-md"
         @click.self="closeModal"
         dir="rtl"
@@ -115,9 +115,16 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { getWhatsAppPayload, formatWhatsAppPhone } from '../utils/quickTaskWhatsApp';
 import alertService from '../services/alertService';
+import { useNotificationTemplates } from '../composables/useNotificationTemplates';
+
+const { fetchTemplates: fetchNotificationTemplates } = useNotificationTemplates();
+
+onMounted(() => {
+  fetchNotificationTemplates();
+});
 
 const props = defineProps({
   isOpen: {
@@ -185,9 +192,15 @@ const payload = computed(() => {
 watch(
   () => [props.isOpen, props.event, props.task],
   ([open]) => {
-    if (open && payload.value) {
-      editableMessage.value = payload.value.message || '';
-      editablePhone.value = payload.value.phone || '';
+    if (open) {
+      if (payload.value?.disabled) {
+        closeModal();
+        return;
+      }
+      if (payload.value) {
+        editableMessage.value = payload.value.message || '';
+        editablePhone.value = payload.value.phone || '';
+      }
     }
   },
   { immediate: true, deep: true }

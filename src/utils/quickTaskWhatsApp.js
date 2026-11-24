@@ -1,6 +1,7 @@
 /**
- * أدوات مساعدة وتجهيز رسائل وإشعارات الواتساب للمهام السريعة
+ * أدوات مساعدة وتجهيز رسائل وإشعارات الواتساب للمهام السريعة مع دعم القوالب الديناميكية
  */
+import { useNotificationTemplates } from '../composables/useNotificationTemplates';
 
 /**
  * تحويل رقم الهاتف إلى الصيغة الدولية القياسية بدون أي رموز أو أصفار بادئة
@@ -9,29 +10,23 @@
  */
 export const formatWhatsAppPhone = (rawPhone) => {
   if (!rawPhone) return '';
-  let cleaned = String(rawPhone).replace(/\D/g, ''); // الاحتفاظ بالأرقام فقط
+  const { formatPhone } = useNotificationTemplates();
+  const formatted = formatPhone(rawPhone);
+  if (formatted) return formatted;
+
+  let cleaned = String(rawPhone).replace(/\D/g, '');
   if (!cleaned) return '';
 
-  // إزالة الأصفار الدولية 00 في البداية
   if (cleaned.startsWith('00')) {
     cleaned = cleaned.slice(2);
   }
-
-  // معالجة الأرقام المصرية الشائعة:
-  // إذا كان يبدأ بـ 01 وطوله 11 رقم -> نحذف الصفر ونضيف كود مصر 20 (أي 201...)
   if (cleaned.startsWith('01') && cleaned.length === 11) {
     cleaned = '2' + cleaned;
-  }
-  // إذا كان يبدأ بـ 1 وطوله 10 أرقام (بدون الصفر) -> نضيف 20
-  else if (cleaned.startsWith('1') && cleaned.length === 10) {
+  } else if (cleaned.startsWith('1') && cleaned.length === 10) {
     cleaned = '20' + cleaned;
-  }
-  // معالجة الأرقام السعودية:
-  else if (cleaned.startsWith('05') && cleaned.length === 10) {
+  } else if (cleaned.startsWith('05') && cleaned.length === 10) {
     cleaned = '966' + cleaned.slice(1);
-  }
-  // إزالة أي أصفار بادئة أخرى لضمان الصيغة الدولية
-  else if (cleaned.startsWith('0')) {
+  } else if (cleaned.startsWith('0')) {
     cleaned = cleaned.replace(/^0+/, '');
   }
 
@@ -77,66 +72,109 @@ export const formatDeadlineForMessage = (val) => {
 };
 
 /**
- * توليد تفاصيل ورسالة الواتساب بناءً على نوع الحدث
+ * توليد تفاصيل ورسالة الواتساب ديناميكياً من قوالب النظام بناءً على نوع الحدث
  * @param {'created'|'submitted'|'approved'|'rejected'} event 
  * @param {Object} task 
- * @returns {Object} { phone, recipientName, recipientRole, message, title }
+ * @returns {Object} { event, disabled, phone, recipientName, recipientRole, message, title }
  */
 export const getWhatsAppPayload = (event, task = {}) => {
+  const { renderTemplate, renderTitle, getTemplate } = useNotificationTemplates();
+
   const taskTitle = task.title || 'توجيه سريع';
   const deadlineStr = formatDeadlineForMessage(task.deadline);
   const assigneeName = task.assignee_name || task.assignee?.name || 'الموظف';
   const creatorName = task.creator_name || task.creator?.name || 'المدير';
+  const reviewerName = task.reviewer_name || task.feedbackLogs?.[0]?.reviewer?.name || creatorName;
+  const rejectionNotes = task.rejection_notes || task.feedback_text || task.feedbackLogs?.[0]?.feedback_text || '';
 
-  switch (event) {
-    case 'created':
-      return {
-        event: 'created',
-        title: 'تنبيه عبر واتساب',
-        recipientRole: 'الموظف المُكلَّف',
-        recipientName: assigneeName,
-        phone: task.assignee_phone || task.assignee?.phone || '',
-        message: `مرحباً ${assigneeName} 👋، تم إسناد مهمة سريعة جديدة لك بعنوان: ${taskTitle}.\nالديدلاين: ${deadlineStr}.\nيرجى الدخول للنظام لمراجعتها.`
-      };
+  const templateData = {
+    // الوسوم الأساسية
+    task_title: taskTitle,
+    deadline: deadlineStr,
+    assignee_name: assigneeName,
+    creator_name: creatorName,
+    reviewer_name: reviewerName,
+    rejection_notes: rejectionNotes,
+    rejection_reason: rejectionNotes,
+    feedback_text: rejectionNotes,
+    // أسماء بديلة شائعة لتوافق كامل
+    employee_name: assigneeName,
+    user_name: assigneeName,
+    manager_name: creatorName,
+  };
 
-    case 'submitted':
-      return {
-        event: 'submitted',
-        title: 'تنبيه عبر واتساب',
-        recipientRole: 'المدير / المشرف',
-        recipientName: creatorName,
-        phone: task.creator_phone || task.creator?.phone || '',
-        message: `مرحباً ${creatorName} 👋، قام ${assigneeName} للتو بتسليم المهمة السريعة: ${taskTitle} للمراجعة.\nيرجى الدخول للنظام لاعتمادها.`
-      };
+  const eventMap = {
+    created: {
+      key: 'quick_task_created',
+      role: 'الموظف المُكلَّف',
+      recipientName: assigneeName,
+      phone: task.assignee_phone || task.assignee?.phone || '',
+      defaultTitle: 'مهمة سريعة جديدة ⚡',
+      fallback: `مرحباً ${assigneeName} 👋،\nتم إسناد مهمة سريعة جديدة لك بعنوان: *${taskTitle}*.\n⏰ *الديدلاين:* ${deadlineStr}\nيرجى الدخول للنظام لمراجعتها.`
+    },
+    submitted: {
+      key: 'quick_task_submitted',
+      role: 'المدير / المشرف',
+      recipientName: creatorName,
+      phone: task.creator_phone || task.creator?.phone || '',
+      defaultTitle: 'تسليم مهمة سريعة للمراجعة 🚀',
+      fallback: `مرحباً ${creatorName} 👋،\nقام ${assigneeName} للتو بتسليم المهمة السريعة: *${taskTitle}* للمراجعة.\nيرجى الدخول للنظام لاعتمادها.`
+    },
+    approved: {
+      key: 'quick_task_approved',
+      role: 'الموظف المنفذ',
+      recipientName: assigneeName,
+      phone: task.assignee_phone || task.assignee?.phone || '',
+      defaultTitle: 'اعتماد مهمة سريعة ✅',
+      fallback: `عاش يا ${assigneeName} 👏،\nتم اعتماد وتسلم المهمة السريعة: *${taskTitle}* بنجاح.\nشكراً لمجهودك!`
+    },
+    rejected: {
+      key: 'quick_task_rejected',
+      role: 'الموظف المنفذ',
+      recipientName: assigneeName,
+      phone: task.assignee_phone || task.assignee?.phone || '',
+      defaultTitle: 'ملاحظات على المهمة السريعة ⚠️',
+      fallback: `مرحباً ${assigneeName} ⚠️،\nتم ترك ملاحظات ورفض المهمة السريعة: *${taskTitle}*.\nيرجى الدخول للنظام والاستماع للملاحظات للتعديل.`
+    }
+  };
 
-    case 'approved':
-      return {
-        event: 'approved',
-        title: 'تنبيه عبر واتساب',
-        recipientRole: 'الموظف المنفذ',
-        recipientName: assigneeName,
-        phone: task.assignee_phone || task.assignee?.phone || '',
-        message: `عاش يا ${assigneeName} 👏، تم اعتماد وتسلم المهمة السريعة: ${taskTitle} بنجاح. شكراً لمجهودك!`
-      };
-
-    case 'rejected':
-      return {
-        event: 'rejected',
-        title: 'تنبيه عبر واتساب',
-        recipientRole: 'الموظف المنفذ',
-        recipientName: assigneeName,
-        phone: task.assignee_phone || task.assignee?.phone || '',
-        message: `مرحباً ${assigneeName} ⚠️، تم ترك ملاحظات ورفض المهمة السريعة: ${taskTitle}.\nيرجى الدخول للنظام والاستماع للملاحظات للتعديل.`
-      };
-
-    default:
-      return {
-        event,
-        title: 'تنبيه عبر واتساب',
-        recipientRole: 'المستلم',
-        recipientName: assigneeName,
-        phone: task.assignee_phone || '',
-        message: `مرحباً بك، لديك تحديث جديد بخصوص المهمة السريعة: ${taskTitle}.`
-      };
+  const cfg = eventMap[event];
+  if (!cfg) {
+    return {
+      event,
+      disabled: false,
+      title: 'تنبيه عبر واتساب',
+      recipientRole: 'المستلم',
+      recipientName: assigneeName,
+      phone: task.assignee_phone || '',
+      message: `مرحباً بك، لديك تحديث جديد بخصوص المهمة السريعة: ${taskTitle}.`
+    };
   }
+
+  // فحص ما إذا كان القالب معطلاً من إعدادات الإدارة
+  const tpl = getTemplate(cfg.key);
+  if (tpl && tpl.is_enabled === false) {
+    return {
+      event,
+      disabled: true,
+      title: '',
+      recipientRole: cfg.role,
+      recipientName: cfg.recipientName,
+      phone: cfg.phone,
+      message: ''
+    };
+  }
+
+  const title = renderTitle(cfg.key, templateData, cfg.defaultTitle);
+  const message = renderTemplate(cfg.key, templateData, cfg.fallback, true);
+
+  return {
+    event,
+    disabled: false,
+    title,
+    recipientRole: cfg.role,
+    recipientName: cfg.recipientName,
+    phone: cfg.phone,
+    message
+  };
 };

@@ -809,6 +809,10 @@ import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import api from '@/axios';
 import WhatsAppNotificationModal from '@/components/WhatsAppNotificationModal.vue';
 import AudioVoicePlayer from '@/components/AudioVoicePlayer.vue';
+import { getWhatsAppPayload } from '@/utils/quickTaskWhatsApp';
+import { useNotificationTemplates } from '@/composables/useNotificationTemplates';
+
+const { fetchTemplates: fetchNotificationTemplates } = useNotificationTemplates();
 
 const props = defineProps({
   task: { type: Object, required: true },
@@ -825,6 +829,10 @@ const waModalTask = ref(null);
 
 const triggerWhatsApp = (event, task) => {
   if (!task) return;
+  const p = getWhatsAppPayload(event, task);
+  if (p?.disabled) {
+    return; // القالب معطل من الإدارة
+  }
   waModalTask.value = task;
   waModalEvent.value = event;
   showWaModal.value = true;
@@ -1495,6 +1503,7 @@ const scrollToBottom = (smooth = true) => {
 };
 
 onMounted(() => {
+  fetchNotificationTemplates(true);
   scrollToBottom(false);
 });
 

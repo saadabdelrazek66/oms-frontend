@@ -363,6 +363,9 @@ import alertService from '../services/alertService';
 
 // استيراد المحرك الذكي
 import { getDeadlineStatus } from '../utils/timeHelper';
+import { useNotificationTemplates } from '../composables/useNotificationTemplates';
+
+const { fetchTemplates: fetchNotificationTemplates } = useNotificationTemplates();
 
 // توقيت مرجعي مركزي يتحدث كل دقيقة للعداد التنازلي
 const currentTime = ref(new Date().getTime());
@@ -776,6 +779,7 @@ const deleteTask = async (taskId) => {
 };
 
 onMounted(() => {
+  fetchNotificationTemplates(true);
   fetchProjectData();
   timerInterval = setInterval(() => {
     currentTime.value = new Date().getTime();

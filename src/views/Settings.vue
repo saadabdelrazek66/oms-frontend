@@ -792,6 +792,17 @@
                   </div>
                 </div>
               </div>
+
+              <!-- بطاقة توجيه سريعة لصفحة قوالب رسائل التنبيهات المنفصلة -->
+              <div class="setting-card full-span flex-card templates-cta-card">
+                <div class="toggle-info">
+                  <strong class="toggle-title">💬 قوالب رسائل التنبيهات والواتساب الموحدة (25 قالب)</strong>
+                  <p class="toggle-desc">تخصيص صياغة ومحتوى جميع الرسائل والتنبيهات التلقائية المرسلة للموظفين والعملاء والإدارة في صفحة مستقلة مع فحص الصياغة والمعاينة الحية.</p>
+                </div>
+                <router-link to="/settings/notification-templates" class="btn btn-primary">
+                  <span>فتح صفحة قوالب الرسائل ↗</span>
+                </router-link>
+              </div>
             </div>
           </div>
 
@@ -1661,6 +1672,11 @@ onBeforeUnmount(() => {
   width: 100%;
   max-width: 100%;
   overflow-x: clip;
+}
+
+.templates-cta-card {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(5, 150, 105, 0.2)) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
 }
 
 /* زر التسميات التكيفية */

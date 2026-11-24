@@ -623,6 +623,7 @@
                   class="platform-select"
                   required
                   style="flex: 1; min-width: 140px"
+                  @change="handleGroupPlatformChange(grp)"
                 >
                   <option value="" disabled>اختر المنصة...</option>
                   <option
@@ -642,10 +643,14 @@
                 <input
                   v-model="grp.url"
                   type="url"
-                  placeholder="رابط الجروب (https://chat.whatsapp.com/... أو https://t.me/...)"
+                  :placeholder="getGroupPlatformPlaceholder(grp.platform)"
                   required
                   dir="ltr"
                   style="flex: 2"
+                  :class="{
+                    'input-error': grp.url && getGroupUrlValidationError(grp),
+                    'input-success': grp.url && !getGroupUrlValidationError(grp)
+                  }"
                   @blur="handleGroupUrlBlur(grp)"
                 />
                 <button
@@ -656,6 +661,19 @@
                 >
                   🗑️
                 </button>
+              </div>
+
+              <!-- Real-time Validation Feedback & Hint -->
+              <div class="group-validation-feedback">
+                <span v-if="grp.url && getGroupUrlValidationError(grp)" class="val-error-text">
+                  ⚠️ {{ getGroupUrlValidationError(grp) }}
+                </span>
+                <span v-else-if="grp.url" class="val-success-text">
+                  ✅ رابط جروب {{ getGroupPlatformLabel(grp.platform) }} صحيح ومعتمد
+                </span>
+                <span v-else class="val-hint-text">
+                  ℹ️ {{ getGroupPlatformHint(grp.platform) }}
+                </span>
               </div>
             </div>
             <span v-if="!form.group_links.length" class="empty-hint"
@@ -1324,6 +1342,7 @@ const groupPlatformOptions = [
   { value: 'facebook', label: 'فيسبوك (Facebook Group)', icon: '👥' },
   { value: 'discord', label: 'ديسكورد (Discord Server)', icon: '🎮' },
   { value: 'slack', label: 'سلاك (Slack Workspace)', icon: '💼' },
+  { value: 'teams', label: 'مايكروسوفت تيمز (MS Teams)', icon: '👥' },
   { value: 'other', label: 'منصة أخرى (Other)', icon: '🔗' },
 ]
 
@@ -1334,12 +1353,132 @@ const getGroupPlatformIcon = (platform) => {
   if (p.includes('facebook') || p.includes('فيسبوك')) return '👥'
   if (p.includes('discord') || p.includes('ديسكورد')) return '🎮'
   if (p.includes('slack') || p.includes('سلاك')) return '💼'
+  if (p.includes('teams') || p.includes('تيمز')) return '👥'
   return '🔗'
 }
 
 const getGroupPlatformLabel = (platform) => {
   const match = groupPlatformOptions.find((o) => o.value === platform || o.label === platform)
   return match ? match.label.split(' ')[0] : (platform || 'جروب')
+}
+
+const getGroupPlatformPlaceholder = (platform) => {
+  switch (platform) {
+    case 'whatsapp':
+      return 'https://chat.whatsapp.com/AbCdEf12345...'
+    case 'telegram':
+      return 'https://t.me/+AbCdEf... أو https://t.me/group_name'
+    case 'facebook':
+      return 'https://www.facebook.com/groups/group_name...'
+    case 'discord':
+      return 'https://discord.gg/inviteCode أو discord.com/invite/...'
+    case 'slack':
+      return 'https://workspace.slack.com أو https://join.slack.com/t/...'
+    case 'teams':
+      return 'https://teams.microsoft.com/l/meetup-join/...'
+    default:
+      return 'https://example.com/group-or-workspace'
+  }
+}
+
+const getGroupPlatformHint = (platform) => {
+  switch (platform) {
+    case 'whatsapp':
+      return 'يجب أن يكون رابط دعوة لجروب (chat.whatsapp.com) وليس رابط رقم شخصي (wa.me).'
+    case 'telegram':
+      return 'يجب أن يكون رابط دعوة لمجموعة تليجرام (t.me/+ أو t.me/joinchat أو اسم الجروب).'
+    case 'facebook':
+      return 'يجب أن يكون رابط مجموعة فيسبوك يحتوي على (/groups/) وليس صفحة أو بروفايل شخصي أو فيديو.'
+    case 'discord':
+      return 'يجب أن يكون رابط دعوة لسيرفر ديسكورد (discord.gg أو discord.com/invite).'
+    case 'slack':
+      return 'يجب أن يكون رابط مساحة عمل أو دعوة سلاك (slack.com).'
+    case 'teams':
+      return 'يجب أن يكون رابط فريق أو اجتماع مايكروسوفت تيمز (teams.microsoft.com).'
+    default:
+      return 'أدخل رابط مجموعة العمل أو مساحة التعاون (يُمنع روابط منصات الفيديو مثل يوتيوب وتيك توك).'
+  }
+}
+
+const getGroupUrlValidationError = (grp) => {
+  if (!grp || !grp.url || !grp.url.trim()) return null
+  const url = grp.url.trim()
+  const platform = grp.platform || 'other'
+
+  if (!/^https?:\/\//i.test(url)) {
+    return 'الرابط يجب أن يبدأ بـ http:// أو https://'
+  }
+
+  // Common blacklisted video/media platforms
+  const videoMediaRegex = /^https?:\/\/(www\.)?(youtube\.com|youtu\.be|tiktok\.com|vimeo\.com|dailymotion\.com|twitch\.tv|instagram\.com|twitter\.com|x\.com|pinterest\.com)/i
+
+  switch (platform) {
+    case 'whatsapp': {
+      if (/^https?:\/\/(wa\.me|api\.whatsapp\.com|web\.whatsapp\.com)/i.test(url)) {
+        return 'هذا الرابط خاص بمحادثة رقم شخصي (wa.me) وليس رابط دعوة لجروب واتساب. يجب أن يبدأ بـ https://chat.whatsapp.com/'
+      }
+      const waRegex = /^https?:\/\/chat\.whatsapp\.com\/(invite\/)?[A-Za-z0-9_-]{10,}\/?(?:\?.*)?$/i
+      if (!waRegex.test(url)) {
+        return 'رابط جروب واتساب غير صحيح. يجب أن يكون رابط دعوة ويبدأ بـ https://chat.whatsapp.com/'
+      }
+      break
+    }
+    case 'telegram': {
+      const tgRegex = /^https?:\/\/(www\.)?(t\.me|telegram\.me|telegram\.dog)\/(\+[a-zA-Z0-9_-]{6,}|joinchat\/[a-zA-Z0-9_-]{6,}|[a-zA-Z0-9_]{4,})\/?(?:\?.*)?$/i
+      if (!tgRegex.test(url)) {
+        return 'رابط تليجرام غير صحيح. يجب أن يكون رابط دعوة لمجموعة (مثال: https://t.me/+... أو https://t.me/group_name)'
+      }
+      break
+    }
+    case 'facebook': {
+      const fbGroupRegex = /^https?:\/\/(www\.|m\.)?(facebook\.com|fb\.com)\/groups\/[a-zA-Z0-9._-]{2,}\/?(?:\?.*)?$/i
+      if (!fbGroupRegex.test(url)) {
+        return 'رابط فيسبوك غير صحيح. يجب أن يكون رابط مجموعة جروب (facebook.com/groups/...) وليس صفحة شخصية أو فيديو.'
+      }
+      break
+    }
+    case 'discord': {
+      const discordRegex = /^https?:\/\/((www\.)?discord\.gg\/[a-zA-Z0-9_-]{2,}|(www\.)?(discord\.com|discordapp\.com)\/invite\/[a-zA-Z0-9_-]{2,}|(www\.)?(discord\.me|discord\.io)\/[a-zA-Z0-9_-]{2,})\/?(?:\?.*)?$/i
+      if (!discordRegex.test(url)) {
+        return 'رابط ديسكورد غير صحيح. يجب أن يكون رابط دعوة لسيرفر (discord.gg/... أو discord.com/invite/...)'
+      }
+      break
+    }
+    case 'slack': {
+      const slackRegex = /^https?:\/\/(join\.slack\.com\/t\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_./-]+|[a-zA-Z0-9_-]+\.slack\.com(\/[a-zA-Z0-9_./-]*)?)\/?(?:\?.*)?$/i
+      if (!slackRegex.test(url)) {
+        return 'رابط سلاك غير صحيح. يجب أن يكون رابط مساحة عمل أو دعوة (مثال: workspace.slack.com أو join.slack.com)'
+      }
+      break
+    }
+    case 'teams': {
+      const teamsRegex = /^https?:\/\/teams\.(microsoft\.com|live\.com)\/[a-zA-Z0-9_./%?=&:@-]+\/?$/i
+      if (!teamsRegex.test(url)) {
+        return 'رابط مايكروسوفت تيمز غير صحيح. يجب أن يبدأ بـ https://teams.microsoft.com/'
+      }
+      break
+    }
+    case 'other':
+    default: {
+      if (videoMediaRegex.test(url)) {
+        return 'عذراً، لا يمكن استخدام روابط منصات الفيديو والوسائط (يوتيوب، تيك توك، إلخ) كرابط لمجموعة عمل.'
+      }
+      try {
+        new URL(url)
+      } catch (e) {
+        return 'الرابط المدخل غير صالح، يرجى كتابة رابط إنترنت صحيح.'
+      }
+      break
+    }
+  }
+
+  return null
+}
+
+const handleGroupPlatformChange = (grp) => {
+  if (grp && grp.url) {
+    handleGroupUrlBlur(grp)
+  }
 }
 
 const handleGroupUrlBlur = (grp) => {
@@ -1517,6 +1656,22 @@ const saveClient = async () => {
       formData.append(`social_links[${index}][url]`, link.url || '')
     })
 
+    // التحقق من صحة روابط الجروبات قبل الإرسال
+    for (let i = 0; i < form.group_links.length; i++) {
+      const grp = form.group_links[i]
+      if (!grp.url || !grp.url.trim()) {
+        showToast(`يرجى إدخال رابط الجروب رقم ${i + 1}`)
+        saving.value = false
+        return
+      }
+      const errorMsg = getGroupUrlValidationError(grp)
+      if (errorMsg) {
+        showToast(`خطأ في رابط الجروب (${getGroupPlatformLabel(grp.platform)}): ${errorMsg}`)
+        saving.value = false
+        return
+      }
+    }
+
     // روابط جروبات العميل (واتساب، تليجرام، إلخ)
     form.group_links.forEach((group, index) => {
       formData.append(`group_links[${index}][platform]`, group.platform || 'other')
@@ -1553,7 +1708,15 @@ const saveClient = async () => {
     showToast(isEditing.value ? 'تم تحديث بيانات العميل بنجاح' : 'تم إنشاء العميل بنجاح')
     await fetchClients()
   } catch (error) {
-    showToast(error.response?.data?.message || 'تأكد من إدخال البيانات بشكل صحيح')
+    const backendErrors = error.response?.data?.errors
+    let errorMsg = error.response?.data?.message
+    if (backendErrors && typeof backendErrors === 'object') {
+      const firstKey = Object.keys(backendErrors)[0]
+      if (firstKey && backendErrors[firstKey] && backendErrors[firstKey].length) {
+        errorMsg = backendErrors[firstKey][0]
+      }
+    }
+    showToast(errorMsg || 'تأكد من إدخال البيانات بشكل صحيح')
   } finally {
     saving.value = false
   }
@@ -3102,6 +3265,18 @@ onBeforeUnmount(() => {
   color: #ffffff;
 }
 
+.group-badge-pill.platform-teams {
+  background: rgba(98, 100, 167, 0.15);
+  color: #8b8de3;
+  border: 1px solid rgba(98, 100, 167, 0.35);
+}
+.group-badge-pill.platform-teams:hover {
+  background: rgba(98, 100, 167, 0.3);
+  color: #ffffff;
+  border-color: #8b8de3;
+  box-shadow: 0 0 10px rgba(98, 100, 167, 0.4);
+}
+
 .group-badge-pill.platform-other {
   background: rgba(125, 232, 220, 0.12);
   color: #7de8dc;
@@ -3167,8 +3342,46 @@ onBeforeUnmount(() => {
 .group-detail-card.platform-slack {
   border-right: 3px solid #eab308;
 }
+.group-detail-card.platform-teams {
+  border-right: 3px solid #6264a7;
+}
 .group-detail-card.platform-other {
   border-right: 3px solid #7de8dc;
+}
+
+.group-validation-feedback {
+  margin-top: 5px;
+  font-size: 11px;
+  line-height: 1.4;
+  padding: 0 4px;
+}
+
+.val-error-text {
+  color: #f87171;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.val-success-text {
+  color: #4ade80;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.val-hint-text {
+  color: #94a3b8;
+  font-size: 11px;
+  display: inline-block;
+}
+
+.dynamic-row input.input-error {
+  border-color: #ef4444 !important;
+  background-color: rgba(239, 68, 68, 0.08) !important;
+}
+
+.dynamic-row input.input-success {
+  border-color: #22c55e !important;
+  background-color: rgba(34, 197, 94, 0.05) !important;
 }
 
 .group-detail-left {

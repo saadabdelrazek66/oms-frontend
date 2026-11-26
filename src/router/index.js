@@ -12,6 +12,7 @@ import PlanBoardsList from '../views/PlanBoardsList.vue'
 import SpreadsheetBoard from '../views/SpreadsheetBoard.vue'
 import SystemLogs from '../views/SystemLogs.vue'
 import { canManageAccounts, canManagePlans, can } from '../utils/permissions'
+import { useAuthStore } from '../stores/authStore'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -30,7 +31,7 @@ const router = createRouter({
           path: '/manager/dashboard',
           name: 'manager-dashboard',
           component: ManagerDashboard,
-          meta: { role: 'manager' },
+          meta: { role: 'manager', title: 'الرئيسية' },
         },
         {
           path: '/manager/departments',
@@ -48,7 +49,7 @@ const router = createRouter({
           path: '/employee/dashboard',
           name: 'employee-dashboard',
           component: EmployeeDashboard,
-          meta: { role: 'employee' },
+          meta: { role: 'employee', title: 'الرئيسية' },
         },
         {
           path: '/manager/clients',
@@ -91,13 +92,13 @@ const router = createRouter({
           path: '/today-board',
           name: 'TodayBoard',
           component: () => import('@/views/TodayBoard.vue'),
-          meta: { title: 'لوحة اليوم / الشريط الزمني', permission: 'workload.view' },
+          meta: { title: 'خطة اليوم (الساعات)', permission: 'workload.view' },
         },
         {
           path: '/my-tasks',
           name: 'EmployeeTasks',
           component: () => import('@/views/EmployeeTasks.vue'),
-          meta: { title: 'مهامي / مساحة العمل' },
+          meta: { title: 'تسليمات الخطط' },
         },
         {
           path: '/projects',
@@ -149,6 +150,16 @@ const router = createRouter({
           },
         },
         {
+          path: '/subscriptions',
+          name: 'Subscriptions',
+          component: () => import('@/modules/subscriptions/views/SubscriptionsDashboard.vue'),
+          meta: {
+            requiresAuth: true,
+            permission: 'subscriptions.view',
+            title: 'اشتراكات الشركة والتجديدات',
+          },
+        },
+        {
           path: '/trash',
           name: 'TrashBin',
           component: () => import('@/views/TrashBin.vue'),
@@ -159,16 +170,21 @@ const router = createRouter({
           },
         },
         {
+          path: '/archive',
+          name: 'ArchiveDrive',
+          component: () => import('@/modules/archive/views/ArchiveDrive.vue'),
+          meta: {
+            requiresAuth: true,
+            permission: 'archive.view',
+            title: 'الأرشيف المركزي',
+          },
+        },
+        {
           path: '/content-plans/:id',
           name: 'ContentPlanRedirect',
           redirect: (to) => {
-            const role = localStorage.getItem('role')
-            let user = null
-            try {
-              user = JSON.parse(localStorage.getItem('user') || 'null')
-            } catch (e) {}
-            const isManagerOrAM = role === 'manager' || user?.role === 'manager' || user?.job_title === 'Account Manager'
-            if (isManagerOrAM) {
+            const authStore = useAuthStore()
+            if (authStore.isManagerOrAM) {
               return { path: '/content-plans', query: { plan_id: to.params.id } }
             }
             return { path: `/plan-board/${to.params.id}` }
@@ -178,13 +194,8 @@ const router = createRouter({
           path: '/plans/:id',
           name: 'PlanLegacyRedirect',
           redirect: (to) => {
-            const role = localStorage.getItem('role')
-            let user = null
-            try {
-              user = JSON.parse(localStorage.getItem('user') || 'null')
-            } catch (e) {}
-            const isManagerOrAM = role === 'manager' || user?.role === 'manager' || user?.job_title === 'Account Manager'
-            if (isManagerOrAM) {
+            const authStore = useAuthStore()
+            if (authStore.isManagerOrAM) {
               return { path: '/content-plans', query: { plan_id: to.params.id } }
             }
             return { path: `/plan-board/${to.params.id}` }
@@ -200,48 +211,30 @@ const router = createRouter({
       path: '/:pathMatch(.*)*',
       name: 'NotFound',
       redirect: () => {
-        const token = localStorage.getItem('token')
-        const role = localStorage.getItem('role')
-        if (!token) return '/'
-        return role === 'manager' ? '/manager/dashboard' : '/employee/dashboard'
+        const authStore = useAuthStore()
+        return authStore.isAuthenticated ? authStore.defaultDashboard : '/'
       },
     },
   ],
 })
 
 // Navigation Guard
-router.beforeEach((to, from) => {
-  const token = localStorage.getItem('token')
-  let role = localStorage.getItem('role')
+router.beforeEach((to) => {
+  const authStore = useAuthStore()
+  authStore.syncFromStorage()
 
-  let user = null
-  try {
-    const storedUser = localStorage.getItem('user')
-    if (storedUser) {
-      user = JSON.parse(storedUser)
-    }
-  } catch (e) {
-    console.error('Error parsing stored user in router:', e)
-  }
-
-  // مزامنة الدور إذا كان موجوداً داخل كائن المستخدم
-  if (!role && user?.role) {
-    role = user.role
-  }
-  if (!user && role) {
-    user = { role }
-  }
+  const token = authStore.token
+  const role = authStore.role
+  const user = authStore.user
 
   // إذا كان هناك توكن لكن بيانات المستخدم والدور غير صالحة إطلاقاً
   if (token && !role) {
-    localStorage.removeItem('token')
-    localStorage.removeItem('role')
-    localStorage.removeItem('user')
+    authStore.clearSession()
     if (to.path !== '/') return '/'
     return
   }
 
-  const defaultDashboard = role === 'manager' ? '/manager/dashboard' : '/employee/dashboard'
+  const defaultDashboard = authStore.defaultDashboard
 
   // التحقق إذا كان المسار أو أي من آبائه يحتاج تسجيل دخول
   if (to.matched.some((record) => record.meta.requiresAuth)) {
@@ -252,7 +245,7 @@ router.beforeEach((to, from) => {
 
     // فحص مسار العملاء: السماح للمدير أو Account Manager أو Sales
     if (to.matched.some((record) => record.meta.canManageAccounts) || to.path === '/manager/clients' || to.path === '/clients') {
-      const allowed = canManageAccounts(user) || (user && (user.role === 'manager' || user.job_title === 'Account Manager' || user.job_title === 'Sales'))
+      const allowed = canManageAccounts(user) || authStore.isManagerOrAM || authStore.isSales
       if (allowed) {
         return
       } else {
@@ -263,7 +256,7 @@ router.beforeEach((to, from) => {
 
     // فحص مسار الخطط: السماح فقط للمدير أو Account Manager
     if (to.matched.some((record) => record.meta.canManagePlans) || to.path === '/content-plans') {
-      const allowed = canManagePlans(user) || (user && (user.role === 'manager' || user.job_title === 'Account Manager'))
+      const allowed = canManagePlans(user) || authStore.isManagerOrAM
       if (allowed) {
         return
       } else {

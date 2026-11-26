@@ -1,8 +1,19 @@
 /**
  * نظام الصلاحيات المتقدم (RBAC Permission Engine)
  */
+import { getActivePinia } from 'pinia';
+import { useAuthStore } from '../stores/authStore';
 
 export const getCurrentUser = () => {
+  try {
+    if (getActivePinia()) {
+      const storeUser = useAuthStore().user;
+      if (storeUser) return storeUser;
+    }
+  } catch {
+    // Fallback to localStorage if invoked before Pinia initialization
+  }
+
   try {
     const raw = localStorage.getItem('user');
     return raw ? JSON.parse(raw) : null;

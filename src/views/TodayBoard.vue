@@ -10,19 +10,19 @@
         <div class="title-group">
           <div class="eyebrow-wrap">
             <span class="live-pulse" aria-hidden="true"></span>
-            <span class="eyebrow-text">لوحة اليوم التفاعلية • Daily Timeline Stream</span>
+            <span class="eyebrow-text">العمل اليومي</span>
           </div>
           <h1 class="page-title">
-            لوحة اليوم
+            خطة اليوم (الساعات)
             <span class="date-chip">{{ boardData.date_formatted || 'اليوم' }}</span>
           </h1>
-          <p class="page-subtitle">
-            عرض استعراضي زمني أفقي لمهام وساعات العمل مع التتبع اللحظي لحالات التشفيت والإنجاز.
-          </p>
         </div>
 
         <!-- أزرار الإجراءات السريعة -->
         <div class="header-actions">
+          <router-link to="/my-tasks" class="header-secondary-link">
+            <span>📋 تسليمات الخطط ↗</span>
+          </router-link>
           <button 
             type="button" 
             class="refresh-btn" 
@@ -40,7 +40,7 @@
       <div v-if="isManagerUser && employees.length > 0" class="employee-selector-strip">
         <div class="strip-label">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-          <span>استعراض جدول الموظف:</span>
+          <span>الموظف:</span>
         </div>
 
         <div class="employee-pills-scroll">
@@ -69,7 +69,7 @@
             type="date" 
             v-model="selectedDate" 
             class="board-date-input" 
-            @change="fetchBoardData" 
+            @change="onDateChange" 
           />
         </div>
       </div>
@@ -78,15 +78,15 @@
       <div v-else class="employee-welcome-banner">
         <div class="welcome-avatar">{{ getInitials(currentUser.name || 'أنا') }}</div>
         <div class="welcome-info">
-          <h3>مرحباً، {{ currentUser.name || 'عزيزي الموظف' }} 👋</h3>
-          <p>إليك توزيع ساعاتك التشغيلية ومسار مهامك لليوم. ركّز على مهمة تلو الأخرى لتحقيق أقصى إنتاجية.</p>
+          <h3>{{ currentUser.name || 'جدولي اليومي' }}</h3>
+          <p>{{ currentUser.job_title || 'جدول الساعات اليومية' }}</p>
         </div>
         <div class="date-picker-wrap">
           <input 
             type="date" 
             v-model="selectedDate" 
             class="board-date-input" 
-            @change="fetchBoardData" 
+            @change="onDateChange" 
           />
         </div>
       </div>
@@ -156,18 +156,18 @@
       <div v-if="stats.is_working_day_today === false" class="weekend-alert-strip">
         <span class="weekend-icon">🌴</span>
         <div class="weekend-copy">
-          <strong>تنبيه: هذا اليوم يعتبر عطلة أسبوعية للموظف.</strong>
-          <span>أيام العمل المعتمدة له هي {{ formatDaysRange(boardData.user?.work_start_day, boardData.user?.work_end_day) }}. أي مهام مسجلة اليوم تقع خارج أوقات العمل الرسمية.</span>
+          <strong>عطلة أسبوعية للموظف</strong>
+          <span>— أيام العمل المعتمدة: {{ formatDaysRange(boardData.user?.work_start_day, boardData.user?.work_end_day) }}.</span>
         </div>
       </div>
     </header>
 
-    <!-- ================= مركز تنبيهات التشفيت (Shift Alerts Center) ================= -->
-    <section class="shifts-alert-section" aria-label="تنبيهات التشفيت">
-      <div v-if="shiftsAlerts.length > 0" class="shifts-alerts-container">
+    <!-- ================= تنبيهات الساعات المرحّلة ================= -->
+    <section v-if="shiftsAlerts.length > 0" class="shifts-alert-section" aria-label="ساعات مرحلة">
+      <div class="shifts-alerts-container">
         <div class="section-badge">
           <span class="badge-icon">⚠️</span>
-          <span>مركز تنبيهات التشفيتات لهذا اليوم ({{ shiftsAlerts.length }})</span>
+          <span>ساعات مُرحّلة لهذا اليوم ({{ shiftsAlerts.length }})</span>
         </div>
 
         <div class="alerts-grid">
@@ -184,14 +184,14 @@
             <div class="alert-body">
               <div class="alert-topline">
                 <span class="alert-type-tag">
-                  {{ alert.type === 'shifted_in' ? 'ساعات مرحلة إلى اليوم' : 'ساعات مشفتة إلى الغد' }}
+                  {{ alert.type === 'shifted_in' ? 'ساعات مرحّلة إلى اليوم' : 'ساعات مرحّلة ليوم لاحق' }}
                 </span>
-                <span class="alert-hours-tag">{{ alert.hours }} ساعة</span>
+                <span class="alert-hours-tag">{{ alert.hours }} س</span>
               </div>
               <h4 class="alert-title">{{ alert.title }}</h4>
               <p class="alert-reason">
                 <span class="lbl">السبب:</span> {{ alert.reason }}
-                <span v-if="alert.from_date" class="from-date">(مرحلة من: {{ alert.from_date }})</span>
+                <span v-if="alert.from_date" class="from-date">(من: {{ alert.from_date }})</span>
               </p>
             </div>
             <div class="alert-action">
@@ -199,30 +199,24 @@
                 type="button" 
                 class="restore-btn"
                 @click="restoreShift(alert)"
-                :title="'استرجاع الساعات المشفتة ليومها الأساسي'"
+                :title="'استرجاع الساعات ليومها الأساسي'"
               >
-                ↩️ استرجاع الساعات
+                ↩️ استرجاع
               </button>
             </div>
           </article>
         </div>
       </div>
-
-      <div v-else class="balanced-state-chip">
-        <span class="check-icon">✨</span>
-        <span>توزيع الساعات لليوم متزن وطبيعي، ولم يطرأ أي ترحيل أو تشفيت حتى الآن.</span>
-      </div>
     </section>
 
-    <!-- ================= الشريط الزمني الاستعراضي الأفقي (Presentation Timeline) ================= -->
+    <!-- ================= الشريط الزمني الاستعراضي الأفقي ================= -->
     <main class="timeline-presentation-area">
       <div class="timeline-header-bar">
         <div class="track-info">
           <h3>
             <span class="timeline-dot"></span>
-            مسار اليوم الزمني (Roadmap Flow)
+            جدول الساعات الزمني
           </h3>
-          <p>شريط المحطات التقديرية مرتبة زمنياً من الصباح وحتى نهاية اليوم.</p>
         </div>
 
         <!-- أزرار التمرير الأفقي للأجهزة والشاشات -->
@@ -236,7 +230,7 @@
             ➔
           </button>
           <span class="steps-counter">
-            {{ timelineItems.length > 0 ? `${timelineItems.length} محطات` : '0 مهام' }}
+            {{ timelineItems.length > 0 ? `${timelineItems.length} مهام` : '0 مهام' }}
           </span>
           <button 
             type="button" 
@@ -252,16 +246,15 @@
       <!-- حالة التحميل -->
       <div v-if="isLoading" class="timeline-loading">
         <div class="futuristic-spinner"></div>
-        <span>جارٍ تجهيز شريط مهام اليوم الاستعراضي...</span>
+        <span>جارٍ التحميل...</span>
       </div>
 
       <!-- حالة عدم وجود مهام -->
       <div v-else-if="timelineItems.length === 0" class="empty-timeline-state">
-        <div class="empty-artwork">🎉</div>
-        <h3>لا توجد مهام مجدولة لهذا اليوم!</h3>
-        <p>لا توجد ساعات عمل مسجلة للموظف المختار في تاريخ {{ boardData.date_formatted }}.</p>
+        <div class="empty-artwork">📅</div>
+        <h3>لا توجد ساعات مجدولة لهذا اليوم</h3>
         <button v-if="isManagerUser" type="button" class="btn-create-task" @click="$router.push('/quick-tasks?action=new')">
-          ＋ إضافة مهمة سريعة جديدة
+          ＋ إضافة مهمة سريعة
         </button>
       </div>
 
@@ -408,82 +401,37 @@
       </div>
     </main>
 
-    <!-- ================= مودال تشفيت الساعات بالساعات ================= -->
-    <Teleport to="body">
-      <Transition name="fade">
-        <div v-if="showShiftModal" class="modal-overlay" @click.self="showShiftModal = false">
-          <div class="modal-content shift-modal">
-            <button class="modal-close" type="button" @click="showShiftModal = false">&times;</button>
-            
-            <div class="shift-modal-header">
-              <span class="shift-icon-box">⏱️</span>
-              <div>
-                <h3>تشفيت ساعات العمل</h3>
-                <p>حدد عدد الساعات المراد اقتطاعها وترحيلها ليوم عمل لاحق بدقة.</p>
-              </div>
-            </div>
-
-            <div v-if="targetShiftItem" class="task-summary-box">
-              <span class="type-badge">{{ targetShiftItem.type_label }}</span>
-              <strong class="target-title">{{ targetShiftItem.title }}</strong>
-              <div class="target-hours-info">
-                <span>ساعات اليوم: <strong>{{ targetShiftItem.allocated_hours_today }} س</strong></span>
-                <span>إجمالي الساعات: <strong>{{ targetShiftItem.total_estimated_hours }} س</strong></span>
-              </div>
-            </div>
-
-            <form @submit.prevent="submitShiftHours" class="shift-form">
-              <div class="form-group">
-                <label>عدد الساعات المراد تشفيتها: <span class="hours-val">{{ shiftForm.hours }} ساعة</span></label>
-                <div class="hours-stepper-wrap">
-                  <button type="button" class="stepper-btn" @click="decrementShiftHours" :disabled="shiftForm.hours <= 0.5">-</button>
-                  <input type="number" v-model.number="shiftForm.hours" step="0.5" min="0.5" :max="targetShiftItem?.allocated_hours_today || 8" class="stepper-val-input" />
-                  <button type="button" class="stepper-btn" @click="incrementShiftHours" :disabled="shiftForm.hours >= (targetShiftItem?.allocated_hours_today || 8)">+</button>
-                </div>
-                <div class="quick-hours-presets">
-                  <button type="button" class="preset-btn" @click="shiftForm.hours = 0.5" :disabled="(targetShiftItem?.allocated_hours_today || 0) < 0.5">نصف ساعة</button>
-                  <button type="button" class="preset-btn" @click="shiftForm.hours = 1.0" :disabled="(targetShiftItem?.allocated_hours_today || 0) < 1.0">ساعة واحدة</button>
-                  <button type="button" class="preset-btn" @click="shiftForm.hours = 2.0" :disabled="(targetShiftItem?.allocated_hours_today || 0) < 2.0">ساعتان</button>
-                  <button type="button" class="preset-btn" @click="shiftForm.hours = (targetShiftItem?.allocated_hours_today || 1.0)">كامل ساعات اليوم</button>
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label>التاريخ المراد التشفيت إليه:</label>
-                <input type="date" v-model="shiftForm.to_date" required class="date-input" />
-              </div>
-
-              <div class="form-group">
-                <label>سبب التشفيت (اختياري):</label>
-                <input type="text" v-model="shiftForm.reason" placeholder="مثال: ضغط عمل، أولوية لمهمة طارئة..." class="text-input" />
-              </div>
-
-              <div class="modal-actions">
-                <button type="button" class="cancel-btn" @click="showShiftModal = false">إلغاء</button>
-                <button type="submit" class="submit-btn" :disabled="isSubmittingShift">
-                  {{ isSubmittingShift ? 'جارٍ التشفيت...' : 'تأكيد تشفيت الساعات ⏱️' }}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
+    <!-- ================= مودال ترحيل ساعات العمل ================= -->
+    <ShiftHoursModal
+      :visible="showShiftModal"
+      :item="targetShiftItem"
+      :default-to-date="shiftDefaultToDate"
+      :submitting="isSubmittingShift"
+      @close="showShiftModal = false"
+      @submit="submitShiftHours"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import api from '@/axios';
 import alertService from '@/services/alertService';
 import AudioVoicePlayer from '@/components/AudioVoicePlayer.vue';
+import ShiftHoursModal from '@/components/ShiftHoursModal.vue';
+import {
+  getInitials as formatUserInitials,
+  formatTime12h as formatTime,
+  formatWorkDaysRange as formatDaysRange,
+  getStoredUser,
+} from '@/utils/workloadHelper';
 
 const route = useRoute();
 const router = useRouter();
 
 // بيانات المستخدم الحالي
-const currentUser = ref(JSON.parse(localStorage.getItem('user') || '{}'));
+const currentUser = ref(getStoredUser());
 const isManagerUser = computed(() => {
   const role = localStorage.getItem('role') || currentUser.value?.role;
   const roleStr = typeof role === 'object' && role?.value ? role.value : String(role || '');
@@ -512,15 +460,32 @@ const timelineItems = computed(() => boardData.value.timeline_items || []);
 // مرجع عنصر التمرير الأفقي
 const timelineScrollContainer = ref(null);
 
-// مودال التشفيت
+// مودال الترحيل
 const showShiftModal = ref(false);
 const isSubmittingShift = ref(false);
 const targetShiftItem = ref(null);
-const shiftForm = ref({
-  hours: 1.0,
-  to_date: '',
-  reason: ''
-});
+const shiftDefaultToDate = ref('');
+
+const isValidDateParam = (val) => typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val);
+
+const syncQueryParams = () => {
+  const nextQuery = { ...route.query };
+  if (selectedDate.value) {
+    nextQuery.date = selectedDate.value;
+  } else {
+    delete nextQuery.date;
+  }
+  if (isManagerUser.value && selectedUserId.value) {
+    nextQuery.user_id = String(selectedUserId.value);
+  } else {
+    delete nextQuery.user_id;
+  }
+  const sameDate = (route.query.date || '') === (nextQuery.date || '');
+  const sameUser = (route.query.user_id || '') === (nextQuery.user_id || '');
+  if (!sameDate || !sameUser) {
+    router.replace({ query: nextQuery });
+  }
+};
 
 // دوال جلب البيانات
 const fetchBoardData = async () => {
@@ -542,7 +507,7 @@ const fetchBoardData = async () => {
     }
   } catch (error) {
     console.error('Error fetching today board:', error);
-    alertService.error('تعذر جلب بيانات لوحة اليوم.');
+    alertService.error('تعذر جلب بيانات خطة اليوم.');
   } finally {
     isLoading.value = false;
   }
@@ -550,6 +515,12 @@ const fetchBoardData = async () => {
 
 const selectEmployee = (empId) => {
   selectedUserId.value = empId;
+  syncQueryParams();
+  fetchBoardData();
+};
+
+const onDateChange = () => {
+  syncQueryParams();
   fetchBoardData();
 };
 
@@ -565,71 +536,27 @@ const scrollTimeline = (direction) => {
   }
 };
 
-const dayLabelsMap = {
-  saturday: 'السبت',
-  sunday: 'الأحد',
-  monday: 'الإثنين',
-  tuesday: 'الثلاثاء',
-  wednesday: 'الأربعاء',
-  thursday: 'الخميس',
-  friday: 'الجمعة'
-};
+// تنسيقات الساعات والأيام عبر workloadHelper.js
 
-const formatDaysRange = (start, end) => {
-  if (!start || !end) return '';
-  const s = dayLabelsMap[String(start).toLowerCase()] || start;
-  const e = dayLabelsMap[String(end).toLowerCase()] || end;
-  return `من ${s} إلى ${e}`;
-};
-
-const formatTime = (timeStr) => {
-  if (!timeStr) return '';
-  const parts = timeStr.slice(0, 5).split(':');
-  let h = parseInt(parts[0], 10);
-  const m = parts[1] || '00';
-  if (isNaN(h)) return timeStr;
-  const ampm = h >= 12 ? 'م' : 'ص';
-  h = h % 12 || 12;
-  return `${h}:${m} ${ampm}`;
-};
-
-// مودال التشفيت
+// مودال ترحيل الساعات
 const openShiftModal = (item) => {
   if (item.is_completed) {
-    alertService.warning('لا يمكن تشفيت مهمة مكتملة بالفعل.');
+    alertService.warning('لا يمكن ترحيل مهمة مكتملة بالفعل.');
     return;
   }
   targetShiftItem.value = item;
-  
+
   // استخدام يوم العمل التالي المعتمد للموظف تلقائياً
-  const nextTargetDate = stats.value?.next_working_day || boardData.value?.user?.next_working_day || (() => {
+  shiftDefaultToDate.value = stats.value?.next_working_day || boardData.value?.user?.next_working_day || (() => {
     const d = new Date(selectedDate.value);
     d.setDate(d.getDate() + 1);
     return d.toISOString().split('T')[0];
   })();
 
-  shiftForm.value = {
-    hours: Math.min(1.0, item.allocated_hours_today || 1.0),
-    to_date: nextTargetDate,
-    reason: ''
-  };
   showShiftModal.value = true;
 };
 
-const incrementShiftHours = () => {
-  const max = targetShiftItem.value?.allocated_hours_today || 8;
-  if (shiftForm.value.hours + 0.5 <= max) {
-    shiftForm.value.hours = Math.round((shiftForm.value.hours + 0.5) * 10) / 10;
-  }
-};
-
-const decrementShiftHours = () => {
-  if (shiftForm.value.hours - 0.5 >= 0.5) {
-    shiftForm.value.hours = Math.round((shiftForm.value.hours - 0.5) * 10) / 10;
-  }
-};
-
-const submitShiftHours = async () => {
+const submitShiftHours = async (payload) => {
   if (!targetShiftItem.value) return;
   const item = targetShiftItem.value;
   const userId = selectedUserId.value || currentUser.value?.id;
@@ -640,20 +567,20 @@ const submitShiftHours = async () => {
       user_id: userId,
       task_type: item.task_type,
       task_id: item.id,
-      hours: Number(shiftForm.value.hours),
+      hours: Number(payload.hours),
       from_date: selectedDate.value,
-      to_date: shiftForm.value.to_date,
-      reason: shiftForm.value.reason || 'تشفيت من لوحة اليوم'
+      to_date: payload.to_date,
+      reason: payload.reason || 'ترحيل من خطة اليوم'
     });
 
-    if (res.data?.status) {
-      alertService.success(res.data.message || 'تم تشفيت الساعات بنجاح! ⏱️');
+    if (res.data?.success || res.data?.status) {
+      alertService.success(res.data.message || 'تم ترحيل الساعات بنجاح! ⏱️');
       showShiftModal.value = false;
       fetchBoardData();
     }
   } catch (error) {
     console.error('Error shifting hours:', error);
-    alertService.error(error.response?.data?.message || 'حدث خطأ أثناء تشفيت الساعات.');
+    alertService.error(error.response?.data?.message || 'حدث خطأ أثناء ترحيل الساعات.');
   } finally {
     isSubmittingShift.value = false;
   }
@@ -663,7 +590,7 @@ const submitShiftHours = async () => {
 const restoreShift = async (alert) => {
   const isConfirmed = await alertService.confirm({
     title: 'تأكيد استرجاع الساعات',
-    message: `هل تريد إلغاء التشفيت وإعادة ${alert.hours} ساعة إلى موعدها الأساسي؟`,
+    message: `هل تريد إلغاء الترحيل وإعادة ${alert.hours} ساعة إلى موعدها الأساسي؟`,
     confirmText: 'نعم، استرجع الساعات',
     type: 'primary'
   });
@@ -671,15 +598,14 @@ const restoreShift = async (alert) => {
   if (!isConfirmed) return;
 
   try {
-    const targetDate = alert.type === 'shifted_in' ? selectedDate.value : selectedDate.value;
     const res = await api.post('/workload/restore-shifted-hours', {
       user_id: selectedUserId.value || currentUser.value?.id,
       task_type: alert.task_type,
       task_id: alert.task_id,
-      target_date: targetDate
+      target_date: selectedDate.value
     });
 
-    if (res.data?.status) {
+    if (res.data?.success || res.data?.status) {
       alertService.success(res.data.message || 'تم استرجاع الساعات بنجاح! ↩️');
       fetchBoardData();
     }
@@ -724,10 +650,7 @@ const getViewButtonTitle = (item) => {
 };
 
 // دوال مساعدة
-const getInitials = (name) => {
-  if (!name) return 'OMS';
-  return name.split(' ').map(n => n[0]).slice(0, 2).join('');
-};
+const getInitials = (name) => formatUserInitials(name, 'OMS');
 
 const getStatusLabel = (status, isCompleted) => {
   if (isCompleted || status === 'completed') return 'منجزة ومكتملة ✅';
@@ -737,11 +660,34 @@ const getStatusLabel = (status, isCompleted) => {
   return 'قيد الانتظار ⏱️';
 };
 
-onMounted(() => {
+const applyQueryAndFetch = () => {
+  if (isValidDateParam(route.query.date)) {
+    selectedDate.value = String(route.query.date);
+  }
   if (route.query.user_id && isManagerUser.value) {
     selectedUserId.value = Number(route.query.user_id);
   }
   fetchBoardData();
+};
+
+watch(
+  () => [route.query.user_id, route.query.date],
+  ([newUserId, newDate]) => {
+    let changed = false;
+    if (isValidDateParam(newDate) && newDate !== selectedDate.value) {
+      selectedDate.value = String(newDate);
+      changed = true;
+    }
+    if (isManagerUser.value && newUserId && Number(newUserId) !== selectedUserId.value) {
+      selectedUserId.value = Number(newUserId);
+      changed = true;
+    }
+    if (changed) fetchBoardData();
+  }
+);
+
+onMounted(() => {
+  applyQueryAndFetch();
 });
 </script>
 
@@ -753,6 +699,7 @@ onMounted(() => {
   padding: 24px 32px 60px;
   background: radial-gradient(circle at 15% 10%, #111a4c 0%, #080d29 55%, #05081b 100%);
   color: #eef2ff;
+  font-family: 'Cairo', sans-serif;
   overflow-x: hidden;
 }
 
@@ -861,7 +808,28 @@ onMounted(() => {
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.header-secondary-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: rgba(125, 232, 220, 0.1);
+  border: 1px solid rgba(125, 232, 220, 0.28);
+  color: #7de8dc;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.header-secondary-link:hover {
+  background: rgba(125, 232, 220, 0.2);
+  border-color: #7de8dc;
 }
 
 .refresh-btn {
@@ -1224,7 +1192,7 @@ onMounted(() => {
 
 .alerts-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr));
   gap: 14px;
 }
 
@@ -1319,19 +1287,6 @@ onMounted(() => {
 .restore-btn:hover {
   background: rgba(168, 85, 247, 0.3);
   transform: translateY(-1px);
-}
-
-.balanced-state-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  background: rgba(16, 185, 129, 0.1);
-  border: 1px solid rgba(16, 185, 129, 0.25);
-  color: #6ee7b7;
-  padding: 8px 18px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 700;
 }
 
 /* ================= الشريط الزمني الأفقي ================= */
@@ -1847,246 +1802,25 @@ onMounted(() => {
   color: #818cf8;
 }
 
-/* ================= المودال ================= */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 99999;
-  background: rgba(4, 7, 27, 0.85);
-  backdrop-filter: blur(8px);
-  display: grid;
-  place-items: center;
-  padding: 16px;
-}
-
-.modal-content.shift-modal {
-  width: 100%;
-  max-width: 480px;
-  background: linear-gradient(145deg, #161e56, #0c133a);
-  border: 1px solid rgba(146, 160, 233, 0.24);
-  border-radius: 24px;
-  padding: 26px 28px;
-  color: #eef0ff;
-  position: relative;
-  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.65);
-}
-
-.modal-close {
-  position: absolute;
-  top: 16px;
-  left: 20px;
-  background: transparent;
-  border: none;
-  color: #8c9ac9;
-  font-size: 26px;
-  cursor: pointer;
-}
-
-.shift-modal-header {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 20px;
-}
-
-.shift-icon-box {
-  width: 46px;
-  height: 46px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, rgba(125, 232, 220, 0.2), rgba(99, 102, 241, 0.2));
-  display: grid;
-  place-items: center;
-  font-size: 22px;
-  border: 1px solid rgba(125, 232, 220, 0.35);
-}
-
-.shift-modal-header h3 {
-  margin: 0;
-  font-size: 18px;
-  color: #ffffff;
-}
-
-.shift-modal-header p {
-  margin: 2px 0 0;
-  font-size: 11px;
-  color: #8da0d2;
-}
-
-.task-summary-box {
-  background: rgba(6, 11, 38, 0.6);
-  border: 1px solid rgba(137, 153, 226, 0.16);
-  border-radius: 14px;
-  padding: 12px 16px;
-  margin-bottom: 18px;
-}
-
-.task-summary-box .type-badge {
-  display: inline-block;
-  font-size: 10px;
-  font-weight: 800;
-  color: #7de8dc;
-  background: rgba(125, 232, 220, 0.12);
-  padding: 2px 8px;
-  border-radius: 6px;
-  margin-bottom: 6px;
-}
-
-.task-summary-box .target-title {
-  display: block;
-  font-size: 13px;
-  color: #ffffff;
-  margin-bottom: 6px;
-}
-
-.target-hours-info {
-  display: flex;
-  gap: 16px;
-  font-size: 11px;
-  color: #8da0d2;
-}
-
-.target-hours-info strong {
-  color: #7de8dc;
-}
-
-.shift-form .form-group {
-  margin-bottom: 16px;
-}
-
-.shift-form label {
-  display: block;
-  font-size: 12px;
-  font-weight: 800;
-  color: #c5d2ff;
-  margin-bottom: 8px;
-}
-
-.shift-form .hours-val {
-  color: #7de8dc;
-}
-
-.hours-stepper-wrap {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  max-width: 220px;
-  margin-bottom: 8px;
-}
-
-.stepper-btn {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: rgba(125, 232, 220, 0.15);
-  border: 1px solid rgba(125, 232, 220, 0.35);
-  color: #7de8dc;
-  font-size: 18px;
-  font-weight: 900;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-}
-
-.stepper-btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-.stepper-val-input {
-  flex: 1;
-  height: 40px;
-  text-align: center;
-  font-size: 15px;
-  font-weight: 800;
-  color: #fff;
-  background: rgba(6, 11, 38, 0.6);
-  border: 1px solid rgba(145, 160, 230, 0.25);
-  border-radius: 10px;
-  outline: none;
-}
-
-.quick-hours-presets {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.preset-btn {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 6px;
-  color: #a7b6ff;
-  padding: 4px 8px;
-  font-size: 10px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.preset-btn:hover:not(:disabled) {
-  background: rgba(125, 232, 220, 0.15);
-  color: #7de8dc;
-}
-
-.preset-btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-.shift-form .date-input,
-.shift-form .text-input {
-  width: 100%;
-  height: 42px;
-  padding: 0 14px;
-  background: rgba(6, 11, 38, 0.6);
-  border: 1px solid rgba(145, 160, 230, 0.25);
-  border-radius: 10px;
-  color: #fff;
-  font-size: 13px;
-  outline: none;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 22px;
-}
-
-.cancel-btn {
-  background: transparent;
-  border: 1px solid rgba(137, 153, 226, 0.2);
-  color: #8da0d2;
-  border-radius: 12px;
-  padding: 10px 18px;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.submit-btn {
-  background: linear-gradient(135deg, #10b981, #059669);
-  border: none;
-  color: #fff;
-  border-radius: 12px;
-  padding: 10px 22px;
-  font-size: 13px;
-  font-weight: 900;
-  cursor: pointer;
-}
-
-.submit-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* Animations */
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.2s ease;
-}
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
+@media (max-width: 900px) {
+  .capacity-overview-card {
+    padding: 16px 18px;
+    gap: 16px;
+  }
+  .gauge-left {
+    min-width: 0;
+    width: 100%;
+  }
+  .metrics-grid {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .metric-box {
+    min-width: 0;
+    padding: 10px 8px;
+  }
 }
 
 @media (max-width: 768px) {
@@ -2096,8 +1830,42 @@ onMounted(() => {
   .page-title {
     font-size: 22px;
   }
+  .date-picker-wrap {
+    margin-right: 0;
+    width: 100%;
+  }
+  .board-date-input {
+    width: 100%;
+  }
+  .timeline-header-bar {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
   .timeline-card {
-    width: 290px;
+    width: min(290px, 82vw);
+  }
+}
+
+@media (max-width: 540px) {
+  .header-actions {
+    width: 100%;
+  }
+  .header-secondary-link,
+  .refresh-btn {
+    flex: 1;
+    justify-content: center;
+  }
+  .metrics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .shift-alert-card {
+    flex-wrap: wrap;
+    padding: 12px 14px;
+  }
+  .alert-action {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
   }
 }
 </style>

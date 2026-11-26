@@ -187,6 +187,27 @@ export const error = (message, duration = 4500) => toast(message, 'error', durat
 export const warning = (message, duration = 4000) => toast(message, 'warning', duration);
 export const info = (message, duration = 3500) => toast(message, 'info', duration);
 
+/**
+ * إشعار ذكي يكتشف النوع تلقائياً من نص الرسالة إن لم يُحدد نوع صريح
+ */
+export const smartToast = (message, explicitType = null, duration = 3500) => {
+  if (!message) return;
+  if (explicitType && explicitType !== 'info') {
+    return toast(message, explicitType, duration);
+  }
+  const msg = typeof message === 'string' ? message : String(message?.message || '');
+  if (/خطأ|تعذر|فشل|عذراً|غير مصرح|لا تملك|لا تمتلك|رفض/.test(msg)) {
+    return error(message, duration);
+  }
+  if (/تنبيه|الحد الأقصى|⚠️|تحذير/.test(msg)) {
+    return warning(message, duration);
+  }
+  if (/تم|نجاح|بنجاح|✅|🚀/.test(msg)) {
+    return success(message, duration);
+  }
+  return toast(message, explicitType || 'info', duration);
+};
+
 // تصدير الحالة الموحدة
 export const alertStateStore = {
   confirmState,
@@ -198,6 +219,7 @@ const alertService = {
   confirm,
   alert,
   toast,
+  smartToast,
   success,
   error,
   warning,

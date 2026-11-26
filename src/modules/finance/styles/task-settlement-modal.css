@@ -1,0 +1,832 @@
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 7, 24, 0.82);
+  backdrop-filter: blur(8px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  direction: rtl;
+}
+
+.task-settlement-modal {
+  width: 100%;
+  max-width: 780px;
+  background: #0b1129;
+  border: 1px solid rgba(135, 155, 230, 0.22);
+  border-radius: 18px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.65);
+  display: flex;
+  flex-direction: column;
+  max-height: 92vh;
+  overflow: hidden;
+  color: #f1f5f9;
+  transition: max-width 0.3s ease;
+}
+
+.task-settlement-modal.voucher-mode-active {
+  max-width: 900px;
+}
+
+/* شريط التحكم العلوي للمودال */
+.modal-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: #0f1638;
+  border-bottom: 1px solid rgba(135, 155, 230, 0.15);
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.bar-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bar-icon-wrap {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(14, 165, 233, 0.12);
+  border: 1px solid rgba(14, 165, 233, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #38bdf8;
+}
+
+.bar-svg {
+  width: 20px;
+  height: 20px;
+}
+
+.bar-title h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #f1f5f9;
+  font-weight: 800;
+}
+
+.bar-title p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.voucher-code-header {
+  color: #38bdf8;
+  font-family: monospace;
+  font-size: 12.5px;
+}
+
+.bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.action-btn-print,
+.action-btn-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  font-family: inherit;
+}
+
+.action-btn-print {
+  background: #0284c7;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+}
+
+.action-btn-print:hover {
+  background: #0369a1;
+  transform: translateY(-1px);
+}
+
+.action-btn-copy {
+  background: rgba(255, 255, 255, 0.06);
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.action-btn-copy:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.btn-svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.close-bar-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.close-bar-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+/* المحتوى القابل للتمرير */
+.modal-scroll-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  background: #080d22;
+}
+
+.voucher-loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: #94a3b8;
+  gap: 16px;
+  text-align: center;
+}
+
+.spinner-ring {
+  width: 44px;
+  height: 44px;
+  border: 3.5px solid rgba(56, 189, 248, 0.2);
+  border-top-color: #38bdf8;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ورقة السند والفاتورة الرسمية المعتمدة */
+.official-voucher-paper {
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 10px;
+  padding: 32px 36px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
+  border: 1.5px solid #cbd5e1;
+  font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif;
+}
+
+/* الترويسة المؤسسية */
+.voucher-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+}
+
+.company-brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.brand-logo-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.company-logo-img {
+  height: 54px;
+  width: auto;
+  max-width: 175px;
+  object-fit: contain;
+  display: block;
+}
+
+.brand-text h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.3;
+}
+
+.company-name-en {
+  display: block;
+  font-size: 11px;
+  color: #475569;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin-top: 1px;
+}
+
+.company-legal-tags {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.dot-separator { color: #cbd5e1; }
+
+.voucher-title-block {
+  text-align: left;
+  direction: ltr;
+}
+
+.voucher-title-badge {
+  background: #0f172a;
+  color: #ffffff;
+  padding: 6px 14px;
+  border-radius: 4px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.voucher-title-ar {
+  font-size: 14px;
+  font-weight: 800;
+  direction: rtl;
+}
+
+.voucher-title-en {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  color: #94a3b8;
+}
+
+.voucher-reference-row {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #334155;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.ref-label { color: #64748b; }
+.ref-code { font-family: monospace; color: #0f172a; font-size: 12px; }
+
+.voucher-status-stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  color: #047857;
+  font-weight: 700;
+  margin-top: 3px;
+  direction: rtl;
+}
+
+.check-svg { width: 13px; height: 13px; }
+
+/* فاصل خطي مؤسسي */
+.voucher-divider-rule {
+  height: 3px;
+  border-top: 2px solid #0f172a;
+  border-bottom: 1px solid #cbd5e1;
+  margin: 16px 0 18px;
+}
+
+/* شريط البيانات الأساسية */
+.voucher-meta-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 9px 16px;
+  margin-bottom: 18px;
+  gap: 12px;
+}
+
+.meta-item { display: flex; flex-direction: column; gap: 2px; }
+.meta-lbl { font-size: 10.5px; color: #64748b; font-weight: 600; }
+.meta-val { font-size: 12.5px; color: #0f172a; font-weight: 700; }
+.meta-val.hash { font-family: monospace; font-size: 11px; color: #475569; }
+
+/* بطاقة بيانات الموظف المستفيد */
+.voucher-section-card {
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 14px 18px;
+  margin-bottom: 18px;
+  background: #ffffff;
+}
+
+.section-card-title {
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.section-title-text { display: flex; align-items: baseline; gap: 8px; }
+.section-title-text h4 { margin: 0; font-size: 13px; font-weight: 800; color: #0f172a; }
+.sub-en { font-size: 9.5px; color: #64748b; font-weight: 700; letter-spacing: 0.5px; }
+
+.tasks-count-pill {
+  background: #0f172a;
+  color: #ffffff;
+  padding: 2px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.employee-details-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px 14px;
+  font-size: 11.5px;
+}
+
+.detail-cell { display: flex; flex-direction: column; gap: 2px; }
+.detail-label { font-size: 10px; color: #64748b; font-weight: 600; }
+.detail-value { font-size: 12px; color: #0f172a; font-weight: 600; }
+.detail-value.emp-name { font-size: 13px; font-weight: 800; }
+.ltr { direction: ltr; text-align: right; }
+
+/* صندوق صافي المبلغ والتفقيط المالي */
+.net-salary-highlight-box {
+  border: 1.5px solid #0f172a;
+  background: #f8fafc;
+  border-radius: 6px;
+  padding: 14px 18px;
+  margin-bottom: 18px;
+}
+
+.highlight-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #cbd5e1;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  gap: 16px;
+}
+
+.amount-title {
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #475569;
+  letter-spacing: 0.5px;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.amount-figure { display: flex; align-items: baseline; gap: 6px; }
+.amount-figure .val { font-size: 26px; font-weight: 900; color: #0f172a; font-variant-numeric: tabular-nums; }
+.amount-figure .currency { font-size: 13px; font-weight: 800; color: #0f172a; }
+
+.tafqeet-side { max-width: 55%; text-align: right; direction: rtl; }
+.tafqeet-title { font-size: 10px; color: #64748b; font-weight: 700; display: block; }
+.tafqeet-text { margin: 2px 0 0; font-size: 12px; font-weight: 800; color: #0f172a; line-height: 1.4; }
+
+.payment-method-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  font-size: 11px;
+}
+
+.pay-method-item { display: flex; flex-direction: column; gap: 2px; }
+.pay-method-item .lbl { font-size: 9.5px; color: #64748b; font-weight: 600; }
+.pay-method-item .val { color: #0f172a; font-size: 11.5px; font-weight: 700; }
+.pay-method-item .val.code { font-family: monospace; }
+.text-green { color: #047857 !important; }
+
+.notes-sub-box {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #cbd5e1;
+  font-size: 11px;
+}
+
+.notes-sub-box .lbl { font-weight: 700; color: #475569; }
+.notes-sub-box p { margin: 2px 0 0; color: #1e293b; }
+
+/* جدول تفاصيل المهام */
+.voucher-table-wrapper {
+  overflow-x: auto;
+}
+
+.official-voucher-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+
+.official-voucher-table th,
+.official-voucher-table td {
+  border: 1px solid #cbd5e1;
+  padding: 8px 12px;
+  text-align: right;
+}
+
+.official-voucher-table th {
+  background: #f1f5f9;
+  color: #0f172a;
+  font-weight: 800;
+  font-size: 11px;
+}
+
+.task-type-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.tag-project { background: #e0f2fe; color: #0369a1; }
+.tag-quick { background: #fef3c7; color: #92400e; }
+
+.total-label-cell {
+  text-align: left !important;
+  font-weight: 800;
+  background: #f8fafc;
+}
+
+.total-val-cell {
+  background: #f8fafc;
+  font-size: 13px;
+  color: #047857;
+}
+
+/* التوقيعات والختم المؤسسي */
+.voucher-signatures-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 18px;
+  padding: 14px 18px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.sig-block { text-align: center; width: 32%; }
+.sig-title { font-size: 11px; font-weight: 800; color: #0f172a; display: block; }
+.sig-sub { font-size: 8px; color: #64748b; font-weight: 700; letter-spacing: 0.5px; display: block; margin-bottom: 4px; }
+
+.sig-space {
+  height: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.sig-signature-name { font-size: 14px; font-weight: 800; color: #0f172a; }
+.sig-date { font-size: 9.5px; color: #64748b; }
+.sig-line { display: block; border-top: 1px solid #cbd5e1; padding-top: 4px; font-size: 10px; color: #64748b; }
+
+.sig-approved-stamp {
+  border: 1.5px solid #047857;
+  color: #047857;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  display: inline-block;
+}
+
+.official-seal-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30%;
+}
+
+.circular-seal {
+  width: 82px;
+  height: 82px;
+  border: 1.5px solid #0f172a;
+  border-radius: 50%;
+  padding: 2.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.seal-inner-circle {
+  width: 100%;
+  height: 100%;
+  border: 1px dashed #334155;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 7.5px;
+  color: #0f172a;
+  line-height: 1.15;
+  padding: 2px;
+}
+
+.seal-company { font-weight: 800; font-size: 7px; letter-spacing: 0.3px; }
+.seal-dots { font-size: 7px; color: #475569; letter-spacing: 1px; line-height: 1; margin: 1px 0; }
+.seal-center { font-size: 9.5px; font-weight: 900; color: #0f172a; margin: 1px 0; }
+.seal-en-center { font-size: 6.5px; font-weight: 700; letter-spacing: 0.5px; display: block; color: #475569; }
+.seal-dept { font-size: 7px; color: #475569; font-weight: 600; }
+
+.voucher-footer {
+  margin-top: 14px;
+  padding-top: 8px;
+  border-top: 1px solid #e2e8f0;
+  text-align: center;
+}
+
+.disclaimer-text { font-size: 9px; color: #64748b; margin: 0 0 4px; line-height: 1.4; }
+.footer-meta-row { display: flex; justify-content: space-between; font-size: 8.5px; color: #94a3b8; }
+
+.modal-footer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  background: #0f1638;
+  border-top: 1px solid rgba(135, 155, 230, 0.15);
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.footer-summary-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #cbd5e1;
+}
+
+.badge-dot { color: #64748b; }
+.footer-actions { display: flex; align-items: center; gap: 10px; }
+
+/* عناصر وضع التسوية واختيار المهام (Payout Mode) */
+.modal-body {
+  padding: 20px 24px;
+  overflow-y: auto;
+}
+
+.loading-state {
+  text-align: center;
+  padding: 40px;
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+.empty-tasks-state {
+  text-align: center;
+  padding: 50px 20px;
+}
+
+.empty-icon {
+  margin-bottom: 12px;
+}
+
+.empty-tasks-state h4 {
+  margin: 0 0 6px;
+  color: #ffffff;
+}
+
+.empty-tasks-state p {
+  color: #94a3b8;
+  font-size: 13px;
+  margin: 0;
+}
+
+.selection-control-strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  margin-bottom: 12px;
+  font-size: 12.5px;
+}
+
+.select-all-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.selection-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.total-selected-badge {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #10b981;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-weight: 700;
+}
+
+.tasks-scroll-table-wrap {
+  max-height: 230px;
+  overflow-y: auto;
+  border: 1px solid rgba(135, 155, 230, 0.15);
+  border-radius: 10px;
+  margin-bottom: 18px;
+}
+
+.compact-tasks-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.compact-tasks-table th,
+.compact-tasks-table td {
+  padding: 10px 12px;
+  text-align: right;
+  border-bottom: 1px solid rgba(135, 155, 230, 0.08);
+}
+
+.compact-tasks-table th {
+  background: rgba(8, 14, 40, 0.7);
+  color: #94a3b8;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.compact-tasks-table tr {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.compact-tasks-table tr:hover {
+  background: rgba(56, 189, 248, 0.06);
+}
+
+.compact-tasks-table tr.row-selected {
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.proj-badge {
+  background: rgba(56, 189, 248, 0.1);
+  color: #38bdf8;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+}
+
+.date-col {
+  color: #94a3b8;
+  font-size: 11.5px;
+}
+
+.cost-text {
+  color: #10b981;
+}
+
+.task-status-pill {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.status-done {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.status-ongoing {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.payout-fields-box {
+  background: rgba(8, 14, 40, 0.5);
+  border: 1px solid rgba(135, 155, 230, 0.15);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 18px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.form-row:last-child {
+  margin-bottom: 0;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-size: 12px;
+  color: #cbd5e1;
+}
+
+.form-label.required::after {
+  content: ' *';
+  color: #f43f5e;
+}
+
+.form-select,
+.form-input {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(135, 155, 230, 0.25);
+  border-radius: 8px;
+  padding: 9px 12px;
+  color: #f8fafc;
+  font-size: 12.5px;
+  outline: none;
+}
+
+.form-select:focus,
+.form-input:focus {
+  border-color: #38bdf8;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 10px;
+}
+
+.cancel-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #cbd5e1;
+  padding: 9px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.save-btn {
+  background: linear-gradient(135deg, #10b981, #059669);
+  border: none;
+  color: #ffffff;
+  padding: 9px 22px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.save-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

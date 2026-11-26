@@ -113,7 +113,13 @@
                   <div style="display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
                     <span :class="['priority-badge', element.priority]">{{ getPriorityLabel(element.priority) }}</span>
                     <span v-if="element.is_urgent" class="urgent-task-badge" title="مهمة طارئة ذات أولوية قصوى">🔥 عاجل</span>
-                    <span v-if="element.is_displaced" class="displaced-task-badge" :title="element.displaced_reason || 'تم الترحيل بقرار إداري'">🔄 مُرحّلة</span>
+                    <span
+                      v-if="element.is_displaced || element.is_partially_shifted"
+                      class="displaced-task-badge"
+                      :title="element.displaced_reason || 'تم ترحيل ساعات العمل من هذه المهمة'"
+                    >
+                      ⏱️ {{ element.shifted_hours_to_future ? `مرحّلة (${element.shifted_hours_to_future} س)` : 'مُرحّلة' }}
+                    </span>
                     <span v-if="element.task_cost" class="task-cost-badge" :title="'أتعاب المهمة: ' + element.task_cost + ' ج.م'">💵 {{ Number(element.task_cost).toLocaleString() }} ج.م</span>
                   </div>
                   <div class="task-actions">
@@ -347,10 +353,6 @@
         </div>
       </div>
     </Teleport>
-
-    <transition name="toast">
-      <div v-if="toastMessage" class="toast-message">{{ toastMessage }}</div>
-    </transition>
   </section>
 </template>
 
@@ -374,8 +376,6 @@ let timerInterval = null;
 const route = useRoute();
 const project = ref(null);
 const loading = ref(true);
-const toastMessage = ref('');
-let toastTimer;
 
 const userRole = ref(localStorage.getItem('role') || 'employee');
 const isManager = computed(() => userRole.value === 'manager');
@@ -534,19 +534,7 @@ const onProjectTaskAssigneeChange = () => {
   }
 };
 
-const showToast = (msg, type = 'info') => { 
-  if (!msg) return;
-  if (msg.includes('خطأ') || msg.includes('فشل') || msg.includes('تعذر') || msg.includes('غير مصرح') || msg.includes('لا تملك')) {
-    alertService.error(msg);
-  } else if (msg.includes('تم') || msg.includes('نجاح')) {
-    alertService.success(msg);
-  } else {
-    alertService.toast(msg, type);
-  }
-  toastMessage.value = msg; 
-  clearTimeout(toastTimer); 
-  toastTimer = setTimeout(() => toastMessage.value = '', 4000); 
-};
+const showToast = (msg, type = 'info') => alertService.smartToast(msg, type);
 const getInitials = (name) => name ? name.trim().split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase() : '';
 const truncate = (text, len) => (text && text.length > len) ? text.substring(0, len) + '...' : (text || '');
 const formatDate = (date) => {
@@ -731,17 +719,23 @@ const saveTask = async () => {
     let res;
     if (isEditingTask.value) {
       res = await api.put(`/tasks/${editTaskId.value}`, payload);
-      if (taskForm.is_urgent) {
-        showToast('تم تحديث المهمة العاجلة وإعادة جدولة الفائض تلقائياً للأيام التالية 🚀', 'success');
+      if (res.data?.cascade_warning) {
+        showToast(res.data.cascade_warning, 'warning');
+      } else if (res.data?.displaced_items?.length > 0) {
+        showToast(`تم التحديث وترحيل ${res.data.displaced_items.length} مهام فائضة تلقائياً 🔄`, 'info');
+      } else if (res.data?.rolled_back_items?.length > 0) {
+        showToast(`تم التحديث وإرجاع ${res.data.rolled_back_items.length} مهام مرحّلة لموعدها ↩️`, 'success');
       } else {
-        showToast('تم التحديث بنجاح');
+        showToast('تم التحديث بنجاح', 'success');
       }
     } else {
       res = await api.post(`/projects/${project.value.id}/tasks`, payload);
-      if (taskForm.is_urgent) {
-        showToast('تم إنشاء المهمة العاجلة وإعادة جدولة الفائض تلقائياً للأيام التالية 🚀', 'success');
+      if (res.data?.cascade_warning) {
+        showToast(res.data.cascade_warning, 'warning');
+      } else if (res.data?.displaced_items?.length > 0) {
+        showToast(`تم إضافة المهمة وترحيل ${res.data.displaced_items.length} مهام فائضة تلقائياً 🔄`, 'info');
       } else {
-        showToast('تمت إضافة المهمة للوحة');
+        showToast('تمت إضافة المهمة للوحة', 'success');
       }
     }
     

@@ -75,7 +75,7 @@
               <em class="nav-shortcut">⌘</em>
             </router-link>
 
-            <!-- لوحة اليوم (الشريط الزمني الاستعراضي) -->
+            <!-- خطة اليوم (توزيع الساعات والتشفيت) -->
             <router-link v-if="can('workload.view')" to="/today-board" class="nav-item">
               <span class="nav-icon-box">
                 <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -83,11 +83,11 @@
                   <polyline points="12 6 12 12 16 14"></polyline>
                 </svg>
               </span>
-              <span class="nav-label">لوحة اليوم (Timeline)</span>
+              <span class="nav-label">خطة اليوم (الساعات)</span>
               <em class="nav-shortcut">T</em>
             </router-link>
 
-            <!-- مساحة العمل / مهامي -->
+            <!-- تسليمات الخطط -->
             <router-link to="/my-tasks" class="nav-item">
               <span class="nav-icon-box">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -95,7 +95,7 @@
                   <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
                 </svg>
               </span>
-              <span class="nav-label">مساحة العمل (مهامي)</span>
+              <span class="nav-label">تسليمات الخطط</span>
             </router-link>
 
             <!-- المهام السريعة -->
@@ -210,17 +210,17 @@
           </div>
         </template>
 
-        <!-- ================= 3.5 مجموعة المالية والخزينة ================= -->
-        <template v-if="can('finance.view')">
+        <!-- ================= 3.5 مجموعة المالية والاشتراكات ================= -->
+        <template v-if="canAny(['finance.view', 'subscriptions.view'])">
           <div class="nav-divider"></div>
           <div class="nav-group">
             <div class="nav-group-header">
               <span class="group-dot dot-emerald"></span>
-              <span class="group-title">المالية والحسابات</span>
+              <span class="group-title">المالية والاشتراكات</span>
             </div>
 
             <div class="nav-group-items">
-              <router-link class="nav-item" to="/finance">
+              <router-link v-if="can('finance.view')" class="nav-item" to="/finance">
                 <span class="nav-icon-box">
                   <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="2" y="4" width="20" height="16" rx="2"></rect>
@@ -230,6 +230,23 @@
                 </span>
                 <span class="nav-label">الخزينة والحسابات</span>
                 <em class="nav-shortcut">F</em>
+              </router-link>
+
+              <router-link v-if="can('subscriptions.view')" class="nav-item" to="/subscriptions">
+                <span class="nav-icon-box">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+                    <line x1="2" y1="10" x2="22" y2="10"></line>
+                  </svg>
+                </span>
+                <span class="nav-label">اشتراكات الشركة</span>
+                <span
+                  v-if="urgentSubscriptionsCount > 0"
+                  class="nav-badge-pill sub-urgent-pill"
+                  title="اشتراكات حرجة أو منتهية تحتاج متابعة"
+                >
+                  {{ urgentSubscriptionsCount }}
+                </span>
               </router-link>
             </div>
           </div>
@@ -276,7 +293,7 @@
         </template>
 
         <!-- ================= 5. مجموعة النظام والمحفوظات ================= -->
-        <template v-if="role === 'manager' || canAny(['logs.view', 'trash.view'])">
+        <template v-if="role === 'manager' || canAny(['archive.view', 'logs.view', 'trash.view'])">
           <div class="nav-divider"></div>
           <div class="nav-group">
             <div class="nav-group-header">
@@ -285,6 +302,19 @@
             </div>
 
             <div class="nav-group-items">
+              <!-- الأرشيف المركزي (Google Drive Style) -->
+              <router-link v-if="can('archive.view')" class="nav-item" to="/archive">
+                <span class="nav-icon-box">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="21 8 21 21 3 21 3 8"></polyline>
+                    <rect x="1" y="3" width="22" height="5"></rect>
+                    <line x1="10" y1="12" x2="14" y2="12"></line>
+                  </svg>
+                </span>
+                <span class="nav-label">الأرشيف المركزي</span>
+                <em class="nav-shortcut">A</em>
+              </router-link>
+
               <!-- سجل النظام -->
               <router-link v-if="can('logs.view')" class="nav-item" to="/system-logs">
                 <span class="nav-icon-box">
@@ -351,71 +381,42 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { canManageAccounts, can, canAny } from '@/utils/permissions'
 import { useSystemSettings } from '@/composables/useSystemSettings'
+import { subscriptionsApi } from '@/modules/subscriptions/api/subscriptionsApi'
+import { useAuthStore } from '@/stores/authStore'
 
 const { agencyName, agencyTagline } = useSystemSettings()
-const role = ref(localStorage.getItem('role') || 'employee')
+const authStore = useAuthStore()
+const role = computed(() => authStore.role || 'employee')
 const router = useRouter()
+const urgentSubscriptionsCount = ref(0)
 
-// كائن المستخدم الحالي لتحديد الصلاحيات
-const currentUser = ref(null)
-try {
-  const storedUser = localStorage.getItem('user')
-  if (storedUser) {
-    currentUser.value = JSON.parse(storedUser)
-  }
-} catch (e) {
-  console.error('خطأ في قراءة بيانات المستخدم:', e)
-}
-if (!currentUser.value && role.value) {
-  currentUser.value = { role: role.value }
-}
+const currentUser = computed(() => authStore.user)
 const user = currentUser
+const userName = computed(() => authStore.displayFirstName)
+const userInitial = computed(() => authStore.initials)
 
-// متغيرات حالة المستخدم
-const userName = ref('جاري التحميل...')
-const userInitial = ref('')
-
-// استخراج بيانات المستخدم عند تحميل المكون
 onMounted(() => {
-  const storedUser = localStorage.getItem('user')
-
-  if (storedUser) {
-    try {
-      const userObj = JSON.parse(storedUser)
-      currentUser.value = userObj
-      if (userObj && userObj.name) {
-        // أخذ الاسم الأول فقط
-        const firstName = userObj.name.split(' ')[0]
-        userName.value = firstName
-        // أخذ أول حرف للأفاتار
-        userInitial.value = firstName.charAt(0).toUpperCase()
-      }
-    } catch (e) {
-      console.error('خطأ في قراءة بيانات المستخدم:', e)
-      setFallbackUser()
-    }
-  } else {
-    setFallbackUser()
+  if (can('subscriptions.view', currentUser.value)) {
+    subscriptionsApi.getStats()
+      .then((res) => {
+        const stats = res.data?.data
+        if (stats) {
+          urgentSubscriptionsCount.value = (stats.expiring_7_days_count || 0) + (stats.expired_count || 0)
+        }
+      })
+      .catch(() => {})
   }
 })
-
-// دالة مساعدة لتعيين القيم الافتراضية
-const setFallbackUser = () => {
-  userName.value = role.value === 'manager' ? 'مساحة المدير' : 'مساحة الموظف'
-  userInitial.value = role.value === 'manager' ? 'م' : 'و'
-}
 
 defineEmits(['close'])
 
 const logout = () => {
-  localStorage.removeItem('token')
-  localStorage.removeItem('role')
-  localStorage.removeItem('user')
-  router.push('/login')
+  authStore.clearSession()
+  router.push('/')
 }
 </script>
 
@@ -881,6 +882,12 @@ const logout = () => {
   background: rgba(16, 185, 129, 0.12);
   color: #34d399;
   border-color: rgba(16, 185, 129, 0.3);
+}
+
+.nav-badge-pill.sub-urgent-pill {
+  background: rgba(239, 68, 68, 0.22);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.45);
 }
 
 /* تأثير خاص لسلة المهملات */

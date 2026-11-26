@@ -176,3 +176,25 @@ export const validateDriveFolderLink = (url) => {
   
   return { valid: true, message: '' };
 };
+
+/**
+ * تنسيق الروابط الخارجية بأمان ومنع بروتوكولات XSS (مثل javascript: / data:)
+ * @param {string} url
+ * @returns {string}
+ */
+export const formatExternalUrl = (url) => {
+  if (!url) return '';
+  const trimmed = String(url).trim();
+  if (!trimmed) return '';
+  if (/^(javascript|data|vbscript):/i.test(trimmed)) return '';
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+};
+
+export const openExternalUrl = (url) => {
+  const safe = formatExternalUrl(url);
+  if (!safe) return false;
+  window.open(safe, '_blank', 'noopener,noreferrer');
+  return true;
+};
+

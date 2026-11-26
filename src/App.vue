@@ -24,22 +24,18 @@ import { onMounted, computed } from 'vue';
 import { RouterView } from 'vue-router';
 import GlobalAlertsProvider from './components/GlobalAlertsProvider.vue';
 import { useSystemSettings } from './composables/useSystemSettings';
+import { useAuthStore } from './stores/authStore';
 import api from './axios';
 
 const { isSystemFrozen, fetchSettings } = useSystemSettings();
+const authStore = useAuthStore();
 
-const userRole = computed(() => {
-  return localStorage.getItem('role') || '';
-});
+const userRole = computed(() => authStore.role);
 
 onMounted(() => {
   fetchSettings();
-  if (localStorage.getItem('token')) {
-    api.get('/user').then((res) => {
-      if (res.data) {
-        localStorage.setItem('user', JSON.stringify(res.data));
-      }
-    }).catch(() => {});
+  if (authStore.isAuthenticated) {
+    authStore.refreshUser(api).catch(() => {});
   }
 });
 </script>

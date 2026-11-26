@@ -150,9 +150,6 @@
       </div>
     </div>
     </Teleport>
-
-
-    <transition name="toast"><div v-if="toastMessage" class="toast-message" role="status" aria-live="polite">{{ toastMessage }}</div></transition>
   </section>
 </template>
 
@@ -179,9 +176,7 @@ const clients = ref([]);
 const loadingStatus = ref(true);
 const loadingAction = ref(false);
 const loadingData = ref(false);
-const toastMessage = ref('');
 const credModalCloseButton = ref(null);
-let toastTimer = null;
 
 const showCredModal = ref(false);
 const isEditing = ref(false);
@@ -235,19 +230,7 @@ const decryptPayload = (encryptedBase64, ivBase64) => {
   }
 };
 
-const showToast = (message) => { 
-  if (!message) return;
-  if (message.includes('خطأ') || message.includes('فشل') || message.includes('تعذر')) {
-    alertService.error(message);
-  } else if (message.includes('تم') || message.includes('بنجاح')) {
-    alertService.success(message);
-  } else {
-    alertService.toast(message);
-  }
-  toastMessage.value = message; 
-  window.clearTimeout(toastTimer); 
-  toastTimer = window.setTimeout(() => { toastMessage.value = ''; }, 3200); 
-};
+const showToast = (message) => alertService.smartToast(message);
 const getInitials = (name = '') => name.trim().split(' ').slice(0, 2).map(word => word[0]).join('').toUpperCase();
 
 const checkVaultStatus = async () => {
@@ -327,7 +310,7 @@ const openCredModal = (clientId, cred = null) => {
     Object.assign(credForm, { platform: '', login_url: '', username: '', password: '', two_factor_notes: '' });
   }
   showCredModal.value = true;
-  resetInactivityTimer(); // إعادة ضبط المؤقت عند النشاط
+  resetInactivityTimer();
 };
 
 const closeCredModal = () => { showCredModal.value = false; resetInactivityTimer(); };
@@ -404,7 +387,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   removeActivityListeners();
-  window.clearTimeout(toastTimer);
   document.body.classList.remove('modal-is-open');
 });
 </script>

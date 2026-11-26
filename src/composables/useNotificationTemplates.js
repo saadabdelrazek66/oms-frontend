@@ -1,6 +1,7 @@
 import { ref, computed } from 'vue';
 import api from '../axios';
 import { useSystemSettings } from './useSystemSettings';
+import { formatWhatsAppPhone, buildWhatsAppUrl } from '@/utils/whatsapp';
 
 const CACHE_KEY = 'oms_notification_templates_cache';
 
@@ -143,40 +144,9 @@ export function useNotificationTemplates() {
     }
   };
 
-  /**
-   * تنظيف وتنسيق رقم الهاتف الدولي لواتساب
-   */
-  const formatPhone = (rawPhone) => {
-    if (!rawPhone) return '';
-    let cleaned = String(rawPhone).replace(/\D/g, '');
-    if (!cleaned) return '';
+  const formatPhone = formatWhatsAppPhone;
 
-    if (cleaned.startsWith('00')) {
-      cleaned = cleaned.slice(2);
-    }
-
-    // الأرقام المصرية (01x) -> (201x)
-    if (cleaned.startsWith('01') && cleaned.length === 11) {
-      cleaned = '2' + cleaned;
-    } else if (cleaned.startsWith('1') && cleaned.length === 10) {
-      cleaned = '20' + cleaned;
-    } else if (cleaned.startsWith('05') && cleaned.length === 10) {
-      cleaned = '966' + cleaned.slice(1);
-    } else if (cleaned.startsWith('0')) {
-      cleaned = cleaned.replace(/^0+/, '');
-    }
-
-    return cleaned;
-  };
-
-  /**
-   * إنشاء رابط محادثة واتساب كامل ومباشر
-   */
-  const getWhatsAppLink = (phone, message) => {
-    const formatted = formatPhone(phone);
-    if (!formatted) return null;
-    return `https://wa.me/${formatted}?text=${encodeURIComponent(message)}`;
-  };
+  const getWhatsAppLink = (phone, message = '') => buildWhatsAppUrl(phone, message);
 
   return {
     templatesMap,

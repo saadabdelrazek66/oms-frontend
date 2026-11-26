@@ -1,11 +1,20 @@
 <template>
   <section class="boards-page" dir="rtl">
-    <div class="page-topline">
+    <div class="page-topline" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
       <div>
         <span class="eyebrow">مساحة العمل / مصنع المحتوى</span>
         <h2>محتويات الخطط (Content Boards)</h2>
         <p>اختر الخطة للبدء في صياغة المحتوى، توزيع المهام، ومتابعة النشر.</p>
       </div>
+      <button
+        v-permission="'archive.view'"
+        type="button"
+        class="primary-btn"
+        style="background: rgba(99,102,241,0.16); border: 1px solid rgba(129,140,248,0.38); color: #c7d2fe;"
+        @click="openArchive('plan_posts')"
+      >
+        🗄️ أرشيف المنشورات
+      </button>
     </div>
 
     <!-- حالة التحميل الأولي -->
@@ -142,35 +151,16 @@
       </div>
 
       <!-- أزرار التصفح (Pagination Controls) -->
-      <div class="pagination-wrapper" v-if="plans && plans.length > 0">
-        <button
-          type="button"
-          class="page-btn prev-btn"
-          :disabled="currentPage === 1 || loading"
-          @click="fetchPlans(currentPage - 1)"
-          aria-label="الصفحة السابقة"
-        >
-          <span>→</span> السابق
-        </button>
-
-        <div class="page-indicator">
-          <span>صفحة</span>
-          <strong>{{ currentPage }}</strong>
-          <span>من</span>
-          <strong>{{ lastPage }}</strong>
-          <span v-if="totalPlans" class="total-count">({{ totalPlans }} خطة)</span>
-        </div>
-
-        <button
-          type="button"
-          class="page-btn next-btn"
-          :disabled="currentPage === lastPage || loading"
-          @click="fetchPlans(currentPage + 1)"
-          aria-label="الصفحة التالية"
-        >
-          التالي <span>←</span>
-        </button>
-      </div>
+      <AppPagination
+        v-if="plans && plans.length > 0"
+        :current-page="currentPage"
+        :last-page="lastPage"
+        :total="totalPlans"
+        item-label="خطة"
+        :disabled="loading"
+        :hide-single-page="false"
+        @change="fetchPlans"
+      />
     </div>
   </section>
 </template>
@@ -181,19 +171,18 @@ import { useRouter } from 'vue-router';
 import api from '../axios';
 import alertService from '../services/alertService';
 import ClientAvatar from '@/components/ClientAvatar.vue';
+import AppPagination from '@/components/ui/AppPagination.vue';
 import { getPlanTypeInfo } from '@/utils/planTheme';
+import { getInitials } from '@/utils/formatters';
+import { useAuthStore } from '@/stores/authStore';
+import { useQuickArchive } from '@/modules/archive/composables/useQuickArchive';
 
 const router = useRouter();
+const authStore = useAuthStore();
+const { openArchive } = useQuickArchive();
 
-const getUserData = () => {
-  try {
-    return JSON.parse(localStorage.getItem('user') || 'null');
-  } catch (e) {
-    return null;
-  }
-};
-const currentUser = ref(getUserData());
-const isManager = computed(() => currentUser.value?.role === 'manager' || localStorage.getItem('role') === 'manager');
+const currentUser = computed(() => authStore.user);
+const isManager = computed(() => authStore.isManager);
 
 const canOpenBoard = (plan) => {
   if (isManager.value) return true;
@@ -208,8 +197,6 @@ const currentPage = ref(1);
 const lastPage = ref(1);
 const totalPlans = ref(0);
 const perPage = ref(10);
-
-const getInitials = (name = '') => name.trim().split(' ').slice(0, 2).map(word => word[0]).join('').toUpperCase();
 
 // دالة ذكية لتنسيق التاريخ وحمايته من مشاكل الـ RTL
 const formatDisplayDate = (s) => {

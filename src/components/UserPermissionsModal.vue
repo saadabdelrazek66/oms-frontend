@@ -189,6 +189,7 @@ const getModuleIcon = (module) => {
     users: '👤',
     logs: '📜',
     trash: '🗑️',
+    archive: '🗄️',
   };
   return icons[module] || '⚙️';
 };

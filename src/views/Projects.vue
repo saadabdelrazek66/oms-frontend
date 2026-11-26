@@ -7,9 +7,20 @@
         <h2>{{ isManager ? 'جميع المشاريع' : 'مشاريعي الحالية' }}</h2>
         <p>نظرة عامة على المشاريع، حالتها، وفرق العمل المسندة إليها.</p>
       </div>
-      <button v-permission="'projects.create'" class="primary-btn" type="button" @click="openModal()">
-        <span>＋</span> مشروع جديد
-      </button>
+      <div class="topline-btns">
+        <button
+          v-permission="'archive.view'"
+          type="button"
+          class="archive-link-btn"
+          title="فتح أرشيف المشاريع"
+          @click="openArchive('projects')"
+        >
+          <span>🗄️</span> أرشيف المشاريع
+        </button>
+        <button v-permission="'projects.create'" class="primary-btn" type="button" @click="openModal()">
+          <span>＋</span> مشروع جديد
+        </button>
+      </div>
     </div>
 
     <!-- شريط الإحصائيات السريع كفلاتر تفاعلية -->
@@ -173,6 +184,16 @@
                 ✎
               </button>
               <button
+                v-permission="'archive.manage'"
+                type="button"
+                class="action archive"
+                @click.stop="archiveProject(project)"
+                title="نقل المشروع إلى الأرشيف"
+                aria-label="أرشفة"
+              >
+                🗄️
+              </button>
+              <button
                 v-permission="'projects.delete'"
                 type="button"
                 class="action delete"
@@ -248,14 +269,14 @@
               class="team-avatars"
               :title="'فريق العمل: ' + project.users.map(u => u.name).join(', ')"
             >
-              <div
+              <UserAvatar
                 v-for="(user, idx) in project.users.slice(0, 3)"
                 :key="user.id"
+                :name="user.name"
+                :size="28"
                 class="avatar"
                 :style="{ zIndex: 5 - idx }"
-              >
-                {{ getInitials(user.name) }}
-              </div>
+              />
               <div v-if="project.users.length > 3" class="avatar more">
                 +{{ project.users.length - 3 }}
               </div>
@@ -357,11 +378,6 @@
       </div>
     </div>
     </Teleport>
-
-    <!-- رسائل التنبيه (Toast) -->
-    <transition name="toast">
-      <div v-if="toastMessage" class="toast-message">{{ toastMessage }}</div>
-    </transition>
   </section>
 </template>
 
@@ -370,20 +386,35 @@ import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import api from '../axios';
 import alertService from '../services/alertService';
+import UserAvatar from '@/components/ui/UserAvatar.vue';
+import { formatDateArabic as formatDate } from '@/utils/formatters';
+import { useAuthStore } from '@/stores/authStore';
+import { useQuickArchive } from '@/modules/archive/composables/useQuickArchive';
 
 const router = useRouter();
 const route = useRoute();
+const authStore = useAuthStore();
+const { archiveItem: quickArchive, openArchive } = useQuickArchive();
 
-const userRole = ref(localStorage.getItem('role') || 'employee');
-const isManager = computed(() => userRole.value === 'manager');
+const archiveProject = (project) => {
+  quickArchive({
+    moduleKey: 'projects',
+    id: project.id,
+    title: project.name,
+    defaultReason: 'أرشفة يدوية من صفحة المشاريع',
+    onSuccess: (archivedId) => {
+      projects.value = projects.value.filter((p) => p.id !== archivedId);
+    },
+  });
+};
+
+const isManager = computed(() => authStore.isManager);
 
 const projects = ref([]);
 const allDepartments = ref([]);
 const allUsers = ref([]);
 const loading = ref(true);
 const saving = ref(false);
-const toastMessage = ref('');
-let toastTimer;
 
 const showModal = ref(false);
 const isEditing = ref(false);
@@ -465,22 +496,7 @@ const filteredProjects = computed(() => {
   });
 });
 
-const showToast = (msg, type = 'info') => {
-  if (!msg) return;
-  if (msg.includes('خطأ') || msg.includes('فشل') || msg.includes('تعذر')) {
-    alertService.error(msg);
-  } else if (msg.includes('تم') || msg.includes('نجاح')) {
-    alertService.success(msg);
-  } else {
-    alertService.toast(msg, type);
-  }
-  toastMessage.value = msg;
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toastMessage.value = '', 3500);
-};
-
-const getInitials = (name = '') => name.trim().split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
-const formatDate = (date) => date ? new Date(date).toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
+const showToast = (msg, type = 'info') => alertService.smartToast(msg, type);
 
 // دالة محدثة لجلب اسم القسم بذكاء
 const getDepartmentName = (user) => {
@@ -549,8 +565,8 @@ const fetchResources = async () => {
   if (isManager.value) {
     try {
       const [resDepts, resUsers] = await Promise.all([
-        api.get('/departments?per_page=100'),
-        api.get('/users?per_page=100')
+        api.get('/departments/list-all'),
+        api.get('/users/options', { params: { with_departments: 1 } })
       ]);
       allDepartments.value = resDepts.data.data || resDepts.data;
       allUsers.value = resUsers.data.data || resUsers.data;
@@ -1018,6 +1034,23 @@ onMounted(() => {
 .action.edit { color: #78e4da; }
 .action.edit:hover { background: rgba(92, 220, 208, 0.18); border-color: #78e4da; transform: scale(1.08); }
 .action.delete { color: #ff94ab; }
+.action.archive { color: #a5b4fc; }
+.action.archive:hover { background: rgba(99, 102, 241, 0.22); border-color: #818cf8; }
+.topline-btns { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.archive-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(129, 140, 248, 0.35);
+  background: rgba(99, 102, 241, 0.14);
+  color: #c7d2fe;
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+.archive-link-btn:hover { background: rgba(99, 102, 241, 0.26); }
 .action.delete:hover { background: rgba(255, 103, 139, 0.18); border-color: #ff94ab; transform: scale(1.08); }
 
 .card-arrow-cue {

@@ -125,6 +125,7 @@ import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../axios'
 import { disconnectEcho } from '../echo'
+import { useAuthStore } from '@/stores/authStore'
 import { useNotifications, formatTimeAgo } from '../composables/useNotifications'
 
 defineProps({
@@ -138,7 +139,8 @@ defineEmits(['toggle-sidebar'])
 
 const router = useRouter()
 const route = useRoute()
-const role = localStorage.getItem('role') || 'employee'
+const authStore = useAuthStore()
+const role = computed(() => authStore.role || 'employee')
 const isLoggingOut = ref(false)
 
 // ريفرنس عنصر غلاف الإشعارات للتعامل مع النقر الخارجي
@@ -171,53 +173,27 @@ const formatNotificationBody = (text) => {
   return text.replace(/\s+00:00:00/g, '')
 }
 
-// متغيرات حالة المستخدم
-const userName = ref('جاري التحميل...')
-const userInitial = ref('')
+// متغيرات حالة المستخدم (تفاعلية من المتجر المركزي)
+const userName = computed(() => authStore.displayFirstName)
+const userInitial = computed(() => authStore.initials)
 
 const pageTitle = computed(() => {
-  if (route.path.includes('dashboard')) return 'نظرة عامة'
+  if (route.meta?.title) return route.meta.title
+  if (route.path.includes('dashboard')) return 'الرئيسية'
   return 'لوحة التحكم'
 })
 
-// استخراج بيانات المستخدم وتحميل الإشعارات والاستماع اللحظي
+// تحميل الإشعارات والاستماع اللحظي
 onMounted(() => {
-  // جلب عداد وقائمة الإشعارات وتهيئة الاستماع اللحظي عبر Laravel Echo
   fetchUnreadCount()
   fetchNotifications()
   initRealtimeListener()
-
-  // مراقبة النقر خارج القائمة المنسدلة لإغلاقها
   document.addEventListener('click', handleClickOutside)
-
-  const storedUser = localStorage.getItem('user')
-  
-  if (storedUser) {
-    try {
-      const userObj = JSON.parse(storedUser)
-      if (userObj && userObj.name) {
-        const firstName = userObj.name.split(' ')[0]
-        userName.value = firstName
-        userInitial.value = firstName.charAt(0).toUpperCase()
-      }
-    } catch (e) {
-      console.error('خطأ في قراءة بيانات المستخدم:', e)
-      setFallbackUser()
-    }
-  } else {
-    setFallbackUser()
-  }
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside)
 })
-
-// دالة مساعدة لتعيين القيم الافتراضية
-const setFallbackUser = () => {
-  userName.value = role === 'manager' ? 'المدير' : 'الموظف'
-  userInitial.value = role === 'manager' ? 'م' : 'و'
-}
 
 const logout = async () => {
   if (isLoggingOut.value) return
@@ -229,10 +205,7 @@ const logout = async () => {
     console.error('حدث خطأ أثناء تسجيل الخروج', error)
   } finally {
     disconnectEcho()
-    localStorage.removeItem('token')
-    localStorage.removeItem('role')
-    localStorage.removeItem('user')
-    localStorage.removeItem('user_id')
+    authStore.clearSession()
     router.push('/')
   }
 }

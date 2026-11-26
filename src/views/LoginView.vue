@@ -87,8 +87,10 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../axios';
+import { useAuthStore } from '../stores/authStore';
 
 const router = useRouter();
+const authStore = useAuthStore();
 const form = ref({ email: '', password: '' });
 const errorMessage = ref('');
 const isLoading = ref(false);
@@ -114,18 +116,13 @@ const handleLogin = async () => {
 
     const response = await api.post('/login', loginPayload);
     const data = response.data.data;
-    
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('role', data.user.role);
-    
-    localStorage.setItem('user_id', data.user.id);
-    localStorage.setItem('user', JSON.stringify(data.user));
 
-    if (data.user.role === 'manager') {
-      router.push('/manager/dashboard');
-    } else {
-      router.push('/employee/dashboard');
-    }
+    authStore.setSession({
+      token: data.token,
+      user: data.user,
+    });
+
+    router.push(authStore.defaultDashboard);
   } catch (error) {
     if (error.response?.data?.errors) {
       const firstError = Object.values(error.response.data.errors)[0];

@@ -1,4 +1,6 @@
 import axios from 'axios'
+import { getActivePinia } from 'pinia'
+import { clearAuthStorage, useAuthStore } from './stores/authStore'
 
 const api = axios.create({
   // baseURL: 'http://127.0.0.1:8000/api',
@@ -32,10 +34,11 @@ api.interceptors.response.use(
     const isLoginRequest = error.config?.url?.includes('/login')
 
     if (error.response && error.response.status === 401 && !isLoginRequest) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('role')
-      localStorage.removeItem('user_id')
-      localStorage.removeItem('user')
+      if (getActivePinia()) {
+        useAuthStore().clearSession()
+      } else {
+        clearAuthStorage()
+      }
 
       if (window.location.pathname !== '/' && window.location.pathname !== '/login') {
         window.location.href = '/'

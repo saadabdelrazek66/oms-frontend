@@ -2,9 +2,16 @@
   <section class="manager-dashboard" dir="rtl">
     <div class="page-topline">
       <div class="topline-info">
-        <span class="eyebrow">{{ currentDate }} | لوحة القيادة الإدارية 👑</span>
-        <h2>مرحباً بك يا مدير، {{ currentUserName }}</h2>
-        <p>إليك النظرة الشاملة لأداء الشركة، حالات الخطط، وفريق العمل.</p>
+        <span class="eyebrow">{{ currentDate }} | الرئيسية</span>
+        <h2>مرحباً، {{ currentUserName }}</h2>
+        <div class="topline-quick-links">
+          <router-link v-if="can('workload.view')" to="/today-board" class="quick-nav-pill">
+            <span>⏱️ خطة اليوم (الساعات) ↗</span>
+          </router-link>
+          <router-link v-if="can('tasks.view')" to="/my-tasks" class="quick-nav-pill secondary">
+            <span>📋 تسليمات الخطط ↗</span>
+          </router-link>
+        </div>
       </div>
 
       <!-- فلتر النطاق الزمني الذكي (Time Horizon Filter) -->
@@ -70,10 +77,10 @@
             @change="changeHorizon($event.target.value)" 
             class="horizon-native-select"
           >
-            <option value="today">⚡ اليوم (للعمليات الفورية)</option>
-            <option value="this_week">🗓️ هذا الأسبوع (للتسليمات والمراجعة)</option>
-            <option value="this_month">📊 هذا الشهر (للتقفيل العام والحرق)</option>
-            <option value="all">🌐 الكل (الوضع التراكمي)</option>
+            <option value="today">⚡ اليوم</option>
+            <option value="this_week">🗓️ هذا الأسبوع</option>
+            <option value="this_month">📊 هذا الشهر</option>
+            <option value="all">🌐 الكل</option>
           </select>
         </div>
       </div>
@@ -86,14 +93,14 @@
 
     <div v-else-if="dashboardData" class="dashboard-content">
       
-      <!-- 1. النظرة العامة للمشاريع -->
+      <!-- 1. المشاريع -->
       <div class="stats-section mb-4">
-        <h3 class="section-title">🏢 النظرة العامة للمشاريع</h3>
+        <h3 class="section-title">🏢 المشاريع</h3>
         <div class="stats-grid">
           <article 
             class="stat-card primary-card clickable-card" 
             @click="navigateTo('/projects')" 
-            title="انقر للانتقال إلى مساحة المشاريع"
+            title="الانتقال إلى مساحة المشاريع"
             tabindex="0"
             role="button"
           >
@@ -102,13 +109,12 @@
               <strong>{{ dashboardData.overview.projects.total }}</strong>
             </div>
             <div class="stat-icon">📁</div>
-            <span class="card-action-chip">عرض الكل ↗</span>
           </article>
 
           <article 
             class="stat-card blue-card clickable-card" 
             @click="navigateTo('/projects?status=جاري التنفيذ')" 
-            title="انقر لتصفية مشاريع جاري التنفيذ"
+            title="تصفية مشاريع جاري التنفيذ"
             tabindex="0"
             role="button"
           >
@@ -117,13 +123,12 @@
               <strong>{{ dashboardData.overview.projects.active }}</strong>
             </div>
             <div class="stat-icon pulse-blue">⚙️</div>
-            <span class="card-action-chip">تصفية القائمة ↗</span>
           </article>
 
           <article 
             class="stat-card green-card clickable-card" 
             @click="navigateTo('/projects?status=مكتمل')" 
-            title="انقر لتصفية المشاريع المكتملة"
+            title="تصفية المشاريع المكتملة"
             tabindex="0"
             role="button"
           >
@@ -132,13 +137,12 @@
               <strong>{{ dashboardData.overview.projects.completed }}</strong>
             </div>
             <div class="stat-icon">✅</div>
-            <span class="card-action-chip">تصفية القائمة ↗</span>
           </article>
 
           <article 
             class="stat-card gray-card clickable-card" 
             @click="navigateTo('/projects?status=متوقف')" 
-            title="انقر لتصفية المشاريع المتوقفة"
+            title="تصفية المشاريع المتوقفة"
             tabindex="0"
             role="button"
           >
@@ -147,19 +151,18 @@
               <strong>{{ dashboardData.overview.projects.stopped }}</strong>
             </div>
             <div class="stat-icon">⏸️</div>
-            <span class="card-action-chip">تصفية القائمة ↗</span>
           </article>
         </div>
       </div>
 
-      <!-- 2. إحصائيات حالات خطط المحتوى -->
+      <!-- 2. حالات خطط المحتوى -->
       <div class="stats-section mb-4">
-        <h3 class="section-title">📝 مسار وحالات خطط المحتوى</h3>
+        <h3 class="section-title">📝 خطط المحتوى</h3>
         <div class="stats-grid grid-6">
           <article 
             class="stat-card outline-card clickable-card" 
             @click="navigateTo('/content-plans')" 
-            title="انقر للانتقال إلى جدول خطط المحتوى"
+            title="الانتقال إلى جدول خطط المحتوى"
             tabindex="0"
             role="button"
           >
@@ -168,28 +171,26 @@
               <strong>{{ dashboardData.plan_stats.total }}</strong>
             </div>
             <div class="stat-icon">📑</div>
-            <span class="card-action-chip">عرض الكل ↗</span>
           </article>
 
           <article 
             class="stat-card gray-card clickable-card" 
             @click="navigateTo('/content-plans?status=pending')" 
-            title="انقر لتصفية الخطط المعلقة وقيد التجهيز"
+            title="تصفية الخطط المعلقة وقيد التجهيز"
             tabindex="0"
             role="button"
           >
             <div class="stat-info">
-              <small>معلقة / قيد التجهيز</small>
+              <small>قيد التجهيز</small>
               <strong>{{ dashboardData.plan_stats.pending }}</strong>
             </div>
             <div class="stat-icon">✍️</div>
-            <span class="card-action-chip">تصفية ↗</span>
           </article>
 
           <article 
             class="stat-card orange-card clickable-card" 
             @click="navigateTo('/content-plans?status=under_review')" 
-            title="انقر لتصفية الخطط قيد المراجعة"
+            title="تصفية الخطط قيد المراجعة"
             tabindex="0"
             role="button"
           >
@@ -198,13 +199,12 @@
               <strong>{{ dashboardData.plan_stats.under_review }}</strong>
             </div>
             <div class="stat-icon">🔎</div>
-            <span class="card-action-chip highlight-chip">تصفية ↗</span>
           </article>
 
           <article 
             class="stat-card purple-card clickable-card" 
             @click="navigateTo('/content-plans?status=reviewed')" 
-            title="انقر لتصفية الخطط المعتمدة / تمت المراجعة"
+            title="تصفية الخطط المعتمدة / تمت المراجعة"
             tabindex="0"
             role="button"
           >
@@ -213,28 +213,26 @@
               <strong>{{ dashboardData.plan_stats.reviewed }}</strong>
             </div>
             <div class="stat-icon">👁️</div>
-            <span class="card-action-chip">تصفية ↗</span>
           </article>
 
           <article 
             class="stat-card green-card clickable-card" 
             @click="navigateTo('/content-plans?status=completed')" 
-            title="انقر لتصفية الخطط المكتملة والمغلقة"
+            title="تصفية الخطط المكتملة والمغلقة"
             tabindex="0"
             role="button"
           >
             <div class="stat-info">
-              <small>مكتملة ومغلقة</small>
+              <small>مكتملة</small>
               <strong>{{ dashboardData.plan_stats.completed }}</strong>
             </div>
             <div class="stat-icon">🎯</div>
-            <span class="card-action-chip">تصفية ↗</span>
           </article>
 
           <article 
             class="stat-card red-card clickable-card" 
             @click="navigateTo('/content-plans?status=rejected')" 
-            title="انقر لتصفية الخطط المرفوضة"
+            title="تصفية الخطط المرفوضة"
             tabindex="0"
             role="button"
           >
@@ -243,19 +241,18 @@
               <strong>{{ dashboardData.plan_stats.rejected }}</strong>
             </div>
             <div class="stat-icon">🛑</div>
-            <span class="card-action-chip">تصفية ↗</span>
           </article>
         </div>
       </div>
 
       <!-- 3. العمليات التشغيلية (مهام ومنشورات) -->
       <div class="stats-section mb-4">
-        <h3 class="section-title">⚡ العمليات التشغيلية ومؤشرات التأخير</h3>
+        <h3 class="section-title">⚡ العمليات التشغيلية والتأخيرات</h3>
         <div class="stats-grid grid-5">
           <article 
             class="stat-card outline-card clickable-card" 
             @click="navigateTo('/projects')" 
-            title="عرض جميع مهام المشاريع"
+            title="عرض مهام المشاريع"
             tabindex="0"
             role="button"
           >
@@ -264,14 +261,13 @@
               <strong>{{ dashboardData.global_stats.tasks.total }}</strong>
             </div>
             <div class="stat-icon text-blue">📋</div>
-            <span class="card-action-chip">المشاريع ↗</span>
           </article>
 
           <article 
             class="stat-card clickable-card drilldown-card" 
             :class="dashboardData.global_stats.tasks.overdue > 0 ? 'red-card pulse-danger' : 'green-card'"
             @click="openDrilldown('overdue_tasks')"
-            title="انقر لفتح درج المهام المتأخرة وإعادة الجدولة والتواصل"
+            title="عرض المهام المتأخرة وإعادة جدولتها"
             tabindex="0"
             role="button"
           >
@@ -280,7 +276,6 @@
               <strong>{{ dashboardData.global_stats.tasks.overdue }}</strong>
             </div>
             <div class="stat-icon">🚨</div>
-            <span class="card-action-chip drawer-chip">فتح الدرج السريع 👈</span>
           </article>
 
           <div class="vertical-divider"></div>
@@ -297,14 +292,13 @@
               <strong>{{ dashboardData.global_stats.posts.total }}</strong>
             </div>
             <div class="stat-icon text-purple">📱</div>
-            <span class="card-action-chip">اللوحات ↗</span>
           </article>
 
           <article 
             class="stat-card clickable-card drilldown-card" 
             :class="dashboardData.global_stats.posts.overdue > 0 ? 'red-card pulse-danger' : 'green-card'"
             @click="openDrilldown('overdue_posts')"
-            title="انقر لفتح درج المنشورات المتأخرة ومراسلة المصممين"
+            title="عرض المنشورات المتأخرة"
             tabindex="0"
             role="button"
           >
@@ -313,13 +307,12 @@
               <strong>{{ dashboardData.global_stats.posts.overdue }}</strong>
             </div>
             <div class="stat-icon">⏳</div>
-            <span class="card-action-chip drawer-chip">فتح الدرج السريع 👈</span>
           </article>
 
           <article 
             class="stat-card dark-red-card clickable-card drilldown-card" 
             @click="openDrilldown('rejected_posts')"
-            title="انقر لفتح درج المنشورات المرفوضة وأسباب الرفض"
+            title="عرض المنشورات المرفوضة"
             tabindex="0"
             role="button"
           >
@@ -328,7 +321,6 @@
               <strong>{{ dashboardData.global_stats.posts.rejected }}</strong>
             </div>
             <div class="stat-icon">❌</div>
-            <span class="card-action-chip drawer-chip">فتح الدرج السريع 👈</span>
           </article>
         </div>
       </div>
@@ -341,23 +333,18 @@
           <div class="hub-header">
             <div class="hub-header-right">
               <div class="hub-badge-wrap">
-                <span class="hub-crown-badge">⭐ أولوية قصوى</span>
                 <span v-if="actionHub.total_pending > 0" class="hub-counter-pulse">
                   <span class="pulse-ring"></span>
                   <span class="pulse-core"></span>
-                  {{ actionHub.total_pending }} يتطلب قرارك الفوري
+                  {{ actionHub.total_pending }} بانتظار الاعتماد
                 </span>
                 <span v-else class="hub-counter-clear">
-                   كل شيء معتمد ومكتمل
+                  لا توجد بنود معلقة
                 </span>
               </div>
               <h3 class="hub-title">
-                مركز قرارات واعتمادات المدير
-                <span class="hub-title-en">Executive Action Hub</span>
+                اعتمادات المدير
               </h3>
-              <p class="hub-subtitle">
-                كل ما يتطلب موافقتك أو مراجعتك الفورية مجمّع هنا في مكان واحد لاتخاذ القرار بضغطة زر.
-              </p>
             </div>
 
             <div class="hub-header-actions">
@@ -408,7 +395,7 @@
               @click="activeHubTab = 'posts'"
             >
               <span class="tab-icon">📱</span>
-              <span>منشورات بانتظار الاعتماد</span>
+              <span>منشورات</span>
               <span class="tab-count" :class="{ highlight: (actionHub.counts?.posts || 0) > 0 }">
                 {{ actionHub.counts?.posts || 0 }}
               </span>
@@ -421,7 +408,7 @@
               @click="activeHubTab = 'quick_tasks'"
             >
               <span class="tab-icon">⚡</span>
-              <span>توجيهات سريعة مسلّمة</span>
+              <span>مهام سريعة</span>
               <span class="tab-count" :class="{ highlight: (actionHub.counts?.quick_tasks || 0) > 0 }">
                 {{ actionHub.counts?.quick_tasks || 0 }}
               </span>
@@ -436,9 +423,7 @@
               <div class="empty-icon-wrap">
                 <span class="empty-emoji">🛡️</span>
               </div>
-              <h4>رائع يا مدير! كل شيء تحت السيطرة</h4>
-              <p>لا توجد خطط محتوى، منشورات، أو مهام سريعة معلقة تنتظر قرارك في الوقت الحالي.</p>
-              <span class="empty-status-tag">النظام يعمل بكفاءة 100% 🚀</span>
+              <h4>لا توجد قرارات معلقة حالياً</h4>
             </div>
 
             <!-- حالة التبويب المحدد فارغ بينما توجد بنود في تبويبات أخرى -->
@@ -499,7 +484,7 @@
                   >
                     <span v-if="approvingKey === 'plan_' + plan.id" class="spinner-btn"></span>
                     <span v-else>✅</span>
-                    <span>اعتماد الخطة فوري</span>
+                    <span>اعتماد</span>
                   </button>
 
                   <button 
@@ -507,7 +492,7 @@
                     class="hub-btn btn-inspect"
                     @click="navigateTo(plan.url)"
                   >
-                    <span>🔎 فحص الخطة</span>
+                    <span>🔎 فتح</span>
                   </button>
                 </div>
               </article>
@@ -567,7 +552,7 @@
                   >
                     <span v-if="approvingKey === 'post_' + post.id" class="spinner-btn"></span>
                     <span v-else>✅</span>
-                    <span>اعتماد فوري</span>
+                    <span>اعتماد</span>
                   </button>
 
                   <button 
@@ -575,7 +560,7 @@
                     class="hub-btn btn-inspect"
                     @click="navigateTo(post.url)"
                   >
-                    <span>🔎 معاينة البوست</span>
+                    <span>🔎 معاينة</span>
                   </button>
                 </div>
               </article>
@@ -649,7 +634,7 @@
                   >
                     <span v-if="approvingKey === 'quick_task_' + qt.id" class="spinner-btn"></span>
                     <span v-else>✅</span>
-                    <span>اعتماد واكتمال</span>
+                    <span>اعتماد</span>
                   </button>
 
                   <button 
@@ -657,7 +642,7 @@
                     class="hub-btn btn-inspect"
                     @click="navigateTo(qt.url)"
                   >
-                    <span>🔎 تفاصيل المهمة</span>
+                    <span>🔎 تفاصيل</span>
                   </button>
                 </div>
               </article>
@@ -673,7 +658,7 @@
       <div class="charts-grid mb-4">
         <!-- مؤشر صحة النظام -->
         <div class="glass-card chart-card text-center">
-          <h3 class="card-title">🩺 صحة النظام (System Health)</h3>
+          <h3 class="card-title">🩺 صحة النظام</h3>
           <div class="circular-progress-wrapper mt-4">
             <svg viewBox="0 0 36 36" class="circular-chart">
               <!-- 🔴 تم إضافة fill="none" هنا مباشرة لمنع ظهور الدائرة السوداء -->
@@ -682,12 +667,11 @@
               <text x="18" y="20.35" class="percentage">{{ systemHealthRate }}%</text>
             </svg>
           </div>
-          <p class="muted text-sm mt-2">نسبة الإنجاز الكلي لجميع المهام والمنشورات.</p>
         </div>
 
-        <!-- معدل الحرق (الإنجاز الفعلي) -->
+        <!-- معدل الإنجاز الفعلي -->
         <div class="glass-card chart-card">
-          <h3 class="card-title">🔥 معدل الحرق (الإنجاز الفعلي)</h3>
+          <h3 class="card-title">🔥 معدل الإنجاز الفعلي</h3>
           <div class="progress-bars-container mt-4">
             
             <div class="progress-item mb-4" style="width: 100%;">
@@ -725,8 +709,8 @@
         </div>
 
         <div class="card-header border-bottom pb-3 mb-3">
-          <h3 class="card-title">👥 لوحة أداء وتأخيرات الفريق التفصيلية</h3>
-          <span class="badge bg-amber">مرتبة من الأكثر تأخيراً</span>
+          <h3 class="card-title">👥 أداء وتأخيرات الفريق</h3>
+          <span class="badge bg-amber">الأكثر تأخيراً أولاً</span>
         </div>
         
         <div class="table-responsive">
@@ -854,349 +838,36 @@
   </section>
 
   <!-- 📂 الدرج الجانبي التفاعلي للبيانات التفصيلية (Offcanvas Drilldown Drawer) -->
-  <Teleport to="body">
-      <div 
-        v-if="drawerOpen" 
-        class="drilldown-drawer-overlay" 
-        @click.self="closeDrawer"
-        role="dialog"
-        aria-modal="true"
-      >
-        <aside class="drilldown-drawer" dir="rtl">
-          
-          <!-- هيدر الدرج الجانبي -->
-          <div class="drawer-header">
-            <div class="drawer-header-info">
-              <div class="drawer-icon-badge">{{ drawerIcon }}</div>
-              <div>
-                <h3 class="drawer-title">{{ drawerTitle }}</h3>
-                <div class="drawer-meta-tags">
-                  <span class="drawer-count-badge">
-                    {{ filteredDrawerItems.length }} {{ drawerType === 'overdue_tasks' ? 'مهمة' : 'منشور' }}
-                  </span>
-                  <span class="drawer-horizon-badge">
-                    📅 النطاق: {{ getHorizonLabel(selectedHorizon) }}
-                  </span>
-                </div>
-              </div>
-            </div>
-            
-            <div class="drawer-header-actions">
-              <button 
-                type="button" 
-                class="drawer-refresh-btn" 
-                @click="openDrilldown(drawerType)" 
-                :disabled="loadingDrawer"
-                title="تحديث القائمة"
-              >
-                <span :class="{ 'is-spinning': loadingDrawer }">🔄</span>
-              </button>
-              <button 
-                type="button" 
-                class="drawer-close-btn" 
-                @click="closeDrawer"
-                title="إغلاق الدرج (Esc)"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-
-          <!-- شريط البحث السريع داخل الدرج -->
-          <div class="drawer-search-bar" v-if="drawerItems.length > 0">
-            <span class="drawer-search-icon">🔍</span>
-            <input 
-              type="text" 
-              v-model="drawerSearch" 
-              placeholder="ابحث بالاسم، المشروع، أو اسم الموظف..."
-              class="drawer-search-input"
-            />
-            <button 
-              v-if="drawerSearch" 
-              type="button" 
-              class="drawer-clear-search" 
-              @click="drawerSearch = ''"
-            >
-              ✕
-            </button>
-          </div>
-
-          <!-- جسم الدرج (قائمة العناصر) -->
-          <div class="drawer-body">
-            
-            <!-- حالة التحميل داخل الدرج -->
-            <div v-if="loadingDrawer" class="drawer-loading-state">
-              <span class="spinner large"></span>
-              <p>جارٍ تحميل التفاصيل التشغيلية...</p>
-            </div>
-
-            <!-- حالة عدم وجود بيانات -->
-            <div v-else-if="filteredDrawerItems.length === 0" class="drawer-empty-state">
-              <div class="drawer-empty-icon">🎉</div>
-              <h4>لا توجد عناصر متأخرة حالياً</h4>
-              <p v-if="drawerSearch">لا توجد نتائج تطابق بحثك "{{ drawerSearch }}".</p>
-              <p v-else>كل العمليات التشغيلية ضمن هذا النطاق منجزة وفي موعدها المحدد.</p>
-            </div>
-
-            <!-- قائمة العناصر المتأخرة -->
-            <div v-else class="drawer-items-list">
-              
-              <!-- كارت مهمة متأخرة -->
-              <template v-if="drawerType === 'overdue_tasks'">
-                <div 
-                  v-for="task in filteredDrawerItems" 
-                  :key="task.id" 
-                  class="drawer-item-card task-card"
-                  :class="{ 'is-urgent': task.is_urgent }"
-                >
-                  <div class="item-card-topline">
-                    <div class="item-badges-row">
-                      <span v-if="task.is_urgent" class="urgent-pill">🚨 عاجل جداً</span>
-                      <span class="overdue-pill pulse-danger">
-                        متأخرة منذ {{ task.days_overdue }} يوم
-                      </span>
-                      <span class="priority-pill" :class="'prio-' + task.priority">
-                        {{ task.priority }}
-                      </span>
-                    </div>
-                    <span class="item-date-text" :title="'تاريخ الاستحقاق: ' + task.due_date">
-                      ⏰ {{ task.due_date || 'غير محدد' }}
-                    </span>
-                  </div>
-
-                  <h4 class="item-title">{{ task.title }}</h4>
-
-                  <div class="item-project-info">
-                    <span class="project-pill">📁 {{ task.project_name }}</span>
-                  </div>
-
-                  <div class="item-person-strip">
-                    <div class="person-avatar-wrap">
-                      <div class="person-avatar">{{ getInitials(task.assignee_name) }}</div>
-                      <div class="person-details">
-                        <strong class="person-name">{{ task.assignee_name }}</strong>
-                        <small class="person-role">{{ task.assignee_job }}</small>
-                      </div>
-                    </div>
-
-                    <div class="item-actions-row">
-                      <!-- زر الواتساب -->
-                      <button 
-                        type="button" 
-                        class="drawer-btn wa-contact-btn"
-                        @click="sendTaskWhatsApp(task)"
-                        :title="task.assignee_phone ? 'مراسلة ' + task.assignee_name + ' عبر واتساب' : 'لا يوجد رقم مسجل'"
-                      >
-                        <span class="wa-icon">💬</span>
-                        <span>واتساب</span>
-                      </button>
-
-                      <!-- زر إعادة الجدولة -->
-                      <button 
-                        type="button" 
-                        class="drawer-btn reschedule-trigger-btn"
-                        @click="startReschedule(task)"
-                        title="إعادة جدولة موعد الاستحقاق"
-                      >
-                        <span>🗓️</span>
-                        <span>إعادة جدولة</span>
-                      </button>
-
-                      <!-- رابط فتح المشروع -->
-                      <button 
-                        type="button" 
-                        class="drawer-btn view-project-btn"
-                        @click="navigateFromDrawer('/projects/' + task.project_id)"
-                        title="الانتقال للمشروع"
-                      >
-                        <span>فتح ↗</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <!-- فورم إعادة الجدولة المباشر السريع -->
-                  <div v-if="activeRescheduleId === task.id" class="inline-reschedule-box">
-                    <div class="reschedule-box-header">
-                      <span>🗓️ تحديد موعد استحقاق جديد للمهمة:</span>
-                    </div>
-                    <div class="reschedule-input-row">
-                      <input 
-                        type="datetime-local" 
-                        v-model="rescheduleDate" 
-                        class="reschedule-native-input"
-                      />
-                      <button 
-                        type="button" 
-                        class="reschedule-submit-btn" 
-                        @click="submitReschedule(task)"
-                        :disabled="savingReschedule"
-                      >
-                        {{ savingReschedule ? 'جارٍ الحفظ...' : 'تأكيد وحفظ' }}
-                      </button>
-                      <button 
-                        type="button" 
-                        class="reschedule-cancel-btn" 
-                        @click="cancelReschedule"
-                      >
-                        إلغاء
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </template>
-
-              <!-- كارت منشور متأخر عن موعد التسليم -->
-              <template v-else-if="drawerType === 'overdue_posts'">
-                <div 
-                  v-for="post in filteredDrawerItems" 
-                  :key="post.id" 
-                  class="drawer-item-card post-card"
-                >
-                  <div class="item-card-topline">
-                    <div class="item-badges-row">
-                      <span class="overdue-pill pulse-danger">
-                        متأخر منذ {{ post.days_overdue }} يوم
-                      </span>
-                      <span class="type-pill">📱 {{ post.post_type }}</span>
-                    </div>
-                    <span class="item-date-text">
-                      ⏰ الديدلاين: {{ post.deadline || 'غير محدد' }}
-                    </span>
-                  </div>
-
-                  <h4 class="item-title">{{ post.title }}</h4>
-
-                  <div class="item-project-info">
-                    <span class="project-pill">📝 {{ post.plan_name }}</span>
-                    <span v-if="post.target_date" class="target-date-pill">
-                      📅 النشر المستهدف: {{ post.target_date }}
-                    </span>
-                  </div>
-
-                  <div class="item-person-strip">
-                    <div class="person-avatar-wrap">
-                      <div class="person-avatar purple-avatar">{{ getInitials(post.designer_name) }}</div>
-                      <div class="person-details">
-                        <strong class="person-name">{{ post.designer_name }}</strong>
-                        <small class="person-role">{{ post.designer_job }}</small>
-                      </div>
-                    </div>
-
-                    <div class="item-actions-row">
-                      <!-- زر الواتساب -->
-                      <button 
-                        type="button" 
-                        class="drawer-btn wa-contact-btn"
-                        @click="sendPostWhatsApp(post)"
-                        :title="post.designer_phone ? 'مراسلة ' + post.designer_name + ' عبر واتساب' : 'لا يوجد رقم مسجل'"
-                      >
-                        <span class="wa-icon">💬</span>
-                        <span>واتساب</span>
-                      </button>
-
-                      <!-- رابط فتح لوحة الخطة -->
-                      <button 
-                        type="button" 
-                        class="drawer-btn view-board-btn"
-                        @click="navigateFromDrawer('/plan-board/' + post.plan_id)"
-                        title="فتح لوحة الخطة"
-                      >
-                        <span>لوحة الخطة ↗</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </template>
-
-              <!-- كارت منشور مرفوض في المراجعة -->
-              <template v-else-if="drawerType === 'rejected_posts'">
-                <div 
-                  v-for="post in filteredDrawerItems" 
-                  :key="post.id" 
-                  class="drawer-item-card rejected-post-card"
-                >
-                  <div class="item-card-topline">
-                    <div class="item-badges-row">
-                      <span class="rejected-pill">❌ مرفوض</span>
-                      <span class="type-pill">📱 {{ post.post_type }}</span>
-                    </div>
-                    <span class="item-date-text" v-if="post.target_date">
-                      📅 النشر: {{ post.target_date }}
-                    </span>
-                  </div>
-
-                  <h4 class="item-title">{{ post.title }}</h4>
-
-                  <div class="item-project-info">
-                    <span class="project-pill">📝 {{ post.plan_name }}</span>
-                    <span class="rejected-by-pill">🔍 الرفض من: {{ post.rejected_by }}</span>
-                  </div>
-
-                  <!-- ملاحظات الرفض -->
-                  <div class="rejection-reason-callout">
-                    <div class="reason-label">⚠️ سبب الرفض والتعديلات المطلوبة:</div>
-                    <p class="reason-text">{{ post.rejection_reason }}</p>
-                  </div>
-
-                  <div class="item-person-strip">
-                    <div class="person-avatar-wrap">
-                      <div class="person-avatar red-avatar">{{ getInitials(post.designer_name) }}</div>
-                      <div class="person-details">
-                        <strong class="person-name">{{ post.designer_name }}</strong>
-                        <small class="person-role">{{ post.designer_job }}</small>
-                      </div>
-                    </div>
-
-                    <div class="item-actions-row">
-                      <!-- زر الواتساب -->
-                      <button 
-                        type="button" 
-                        class="drawer-btn wa-contact-btn"
-                        @click="sendPostWhatsApp(post)"
-                        :title="post.designer_phone ? 'مراسلة ' + post.designer_name + ' عبر واتساب' : 'لا يوجد رقم مسجل'"
-                      >
-                        <span class="wa-icon">💬</span>
-                        <span>تنبيه واتساب</span>
-                      </button>
-
-                      <!-- رابط فتح لوحة الخطة -->
-                      <button 
-                        type="button" 
-                        class="drawer-btn view-board-btn"
-                        @click="navigateFromDrawer('/plan-board/' + post.plan_id)"
-                        title="فتح لوحة الخطة"
-                      >
-                        <span>لوحة الخطة ↗</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </template>
-
-            </div>
-          </div>
-
-          <!-- ذيل الدرج -->
-          <div class="drawer-footer">
-            <button type="button" class="drawer-close-footer-btn" @click="closeDrawer">
-              إغلاق الدرج
-            </button>
-          </div>
-
-        </aside>
-      </div>
-    </Teleport>
-
+  <DrilldownDrawer
+    :open="drawerOpen"
+    :type="drawerType"
+    :title="drawerTitle"
+    :icon="drawerIcon"
+    :items="drawerItems"
+    :loading="loadingDrawer"
+    :horizon-label="getHorizonLabel(selectedHorizon)"
+    :saving-reschedule="savingReschedule"
+    @close="closeDrawer"
+    @refresh="openDrilldown(drawerType)"
+    @navigate="navigateFromDrawer"
+    @whatsapp-task="sendTaskWhatsApp"
+    @whatsapp-post="sendPostWhatsApp"
+    @reschedule="submitReschedule"
+  />
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, computed } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../axios';
 import alertService from '@/services/alertService';
 import AudioVoicePlayer from '@/components/AudioVoicePlayer.vue';
+import DrilldownDrawer from '@/components/DrilldownDrawer.vue';
 import { useNotificationTemplates } from '@/composables/useNotificationTemplates';
+import { usePermissions } from '@/composables/usePermissions';
+import { getInitials, getUserFirstName, formatArabicFullDate } from '@/utils/workloadHelper';
 
+const { can } = usePermissions();
 const { fetchTemplates: fetchNotificationTemplates, renderTemplate, getTemplate, formatPhone } = useNotificationTemplates();
 
 const router = useRouter();
@@ -1215,26 +886,7 @@ const drawerTitle = ref('');
 const drawerIcon = ref('');
 const drawerItems = ref([]);
 const loadingDrawer = ref(false);
-const drawerSearch = ref('');
-const activeRescheduleId = ref(null);
-const rescheduleDate = ref('');
 const savingReschedule = ref(false);
-
-const filteredDrawerItems = computed(() => {
-  if (!drawerSearch.value || !drawerSearch.value.trim()) {
-    return drawerItems.value;
-  }
-  const q = drawerSearch.value.trim().toLowerCase();
-  return drawerItems.value.filter(item => {
-    return (
-      (item.title && item.title.toLowerCase().includes(q)) ||
-      (item.project_name && item.project_name.toLowerCase().includes(q)) ||
-      (item.plan_name && item.plan_name.toLowerCase().includes(q)) ||
-      (item.assignee_name && item.assignee_name.toLowerCase().includes(q)) ||
-      (item.designer_name && item.designer_name.toLowerCase().includes(q))
-    );
-  });
-});
 
 const getHorizonLabel = (range) => {
   if (range === 'today') return 'اليوم';
@@ -1287,18 +939,9 @@ const hasItemsInActiveTab = computed(() => {
   return false;
 });
 
-const currentUserName = computed(() => {
-  try {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    return user.name ? user.name.split(' ')[0] : 'أيها المدير';
-  } catch (e) {
-    return 'أيها المدير';
-  }
-});
+const currentUserName = computed(() => getUserFirstName('أيها المدير'));
 
-const currentDate = computed(() => {
-  return new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-});
+const currentDate = computed(() => formatArabicFullDate());
 
 // الحسابات الذكية
 const tasksCompletionRate = computed(() => {
@@ -1323,7 +966,6 @@ const systemHealthColor = computed(() => {
 });
 
 // دوال مساعدة
-const getInitials = (name) => name ? name.trim().split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase() : '';
 const getHealthLabel = (status) => {
   if (status === 'safe') return '✅ سليم';
   if (status === 'warning') return '⚠️ حذر';
@@ -1543,11 +1185,8 @@ const fetchLeaderboard = async (page = 1, range = selectedHorizon.value) => {
 
 const openDrilldown = async (type) => {
   drawerType.value = type;
-  drawerSearch.value = '';
-  activeRescheduleId.value = null;
   drawerOpen.value = true;
   loadingDrawer.value = true;
-  document.body.classList.add('drawer-open');
 
   if (type === 'overdue_tasks') {
     drawerTitle.value = 'المهام المتأخرة عن موعد التسليم';
@@ -1582,8 +1221,6 @@ const openDrilldown = async (type) => {
 
 const closeDrawer = () => {
   drawerOpen.value = false;
-  activeRescheduleId.value = null;
-  document.body.classList.remove('drawer-open');
 };
 
 const navigateFromDrawer = (url) => {
@@ -1618,27 +1255,14 @@ const sendPostWhatsApp = (post) => {
   window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
 };
 
-const startReschedule = (task) => {
-  activeRescheduleId.value = task.id;
-  const d = new Date();
-  d.setDate(d.getDate() + 2);
-  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-  rescheduleDate.value = d.toISOString().slice(0, 16);
-};
-
-const cancelReschedule = () => {
-  activeRescheduleId.value = null;
-  rescheduleDate.value = '';
-};
-
-const submitReschedule = async (task) => {
-  if (!rescheduleDate.value) {
+const submitReschedule = async ({ task, dueDate }) => {
+  if (!dueDate) {
     alertService.error('يرجى تحديد موعد الاستحقاق الجديد');
     return;
   }
   savingReschedule.value = true;
   try {
-    const formattedDate = rescheduleDate.value.replace('T', ' ') + ':00';
+    const formattedDate = dueDate.replace('T', ' ') + ':00';
     await api.put(`/tasks/${task.id}`, {
       due_date: formattedDate
     });
@@ -1647,7 +1271,6 @@ const submitReschedule = async (task) => {
     
     // إزالة المهمة من قائمة الدرج محلياً
     drawerItems.value = drawerItems.value.filter(t => t.id !== task.id);
-    activeRescheduleId.value = null;
 
     // تحديث إحصائيات الداشبورد الرئيسية أيضاً
     if (dashboardData.value?.global_stats?.tasks?.overdue > 0) {
@@ -1661,22 +1284,10 @@ const submitReschedule = async (task) => {
   }
 };
 
-const handleGlobalKeydown = (e) => {
-  if (e.key === 'Escape' && drawerOpen.value) {
-    closeDrawer();
-  }
-};
-
 onMounted(() => {
   fetchNotificationTemplates(true);
   fetchDashboardData(selectedHorizon.value);
   fetchLeaderboard(1, selectedHorizon.value);
-  window.addEventListener('keydown', handleGlobalKeydown);
-});
-
-onBeforeUnmount(() => {
-  window.removeEventListener('keydown', handleGlobalKeydown);
-  document.body.classList.remove('drawer-open');
 });
 </script>
 
@@ -1687,6 +1298,33 @@ onBeforeUnmount(() => {
 .manager-dashboard { min-height: 100vh; color: #edf0ff; font-family: 'Cairo', sans-serif; padding-bottom: 30px; }
 .page-topline { margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
 .topline-info { flex: 1; min-width: 280px; }
+.topline-quick-links { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.quick-nav-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 10px;
+  background: rgba(125, 232, 220, 0.12);
+  border: 1px solid rgba(125, 232, 220, 0.3);
+  color: #7de8dc;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.quick-nav-pill:hover {
+  background: rgba(125, 232, 220, 0.22);
+  transform: translateY(-1px);
+}
+.quick-nav-pill.secondary {
+  background: rgba(137, 153, 226, 0.12);
+  border-color: rgba(137, 153, 226, 0.28);
+  color: #c5d2ff;
+}
+.quick-nav-pill.secondary:hover {
+  background: rgba(137, 153, 226, 0.22);
+}
 
 /* Time Horizon Filter Card */
 .time-horizon-card {
@@ -1913,6 +1551,9 @@ onBeforeUnmount(() => {
   .page-topline h2 { font-size: 26px; }
 }
 @media (max-width: 540px) {
+  .topline-info { min-width: 0; width: 100%; }
+  .topline-quick-links { width: 100%; }
+  .quick-nav-pill { flex: 1; justify-content: center; }
   .grid-5, .grid-6 { grid-template-columns: 1fr; }
   .page-topline h2 { font-size: 22px; }
   .glass-card { padding: 16px 14px; }
@@ -2564,635 +2205,5 @@ onBeforeUnmount(() => {
   outline-offset: 2px;
 }
 
-.card-action-chip {
-  width: 100%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 4px;
-  font-size: 10px;
-  font-weight: 700;
-  color: #7de8dc;
-  opacity: 0.85;
-  transition: opacity 0.2s, transform 0.2s;
-  padding-top: 6px;
-  border-top: 1px dashed rgba(137, 153, 226, 0.15);
-}
-
-.clickable-card:hover .card-action-chip {
-  opacity: 1;
-  transform: translateX(-3px);
-  color: #a5f3fc;
-}
-
-.card-action-chip.drawer-chip {
-  color: #f87171;
-}
-
-.clickable-card:hover .card-action-chip.drawer-chip {
-  color: #fca5a5;
-}
-
-.card-action-chip.highlight-chip {
-  color: #fbbf24;
-}
-
 /* ========================================================= */
-/* 📂 الدرج الجانبي التفاعلي السريع (Offcanvas Drilldown Drawer) */
-/* ========================================================= */
-.drilldown-drawer-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(3, 6, 23, 0.78);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  z-index: 999999;
-  display: flex;
-  justify-content: flex-end;
-  animation: fadeInDrawerOverlay 0.25s ease-out;
-}
-
-@keyframes fadeInDrawerOverlay {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.drilldown-drawer {
-  width: min(560px, 94vw);
-  height: 100vh;
-  background: linear-gradient(180deg, #10163a 0%, #0b0f2a 100%);
-  border-left: 1px solid rgba(125, 232, 220, 0.25);
-  box-shadow: -15px 0 50px rgba(0, 0, 0, 0.7);
-  display: flex;
-  flex-direction: column;
-  animation: slideInDrawer 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  font-family: 'Cairo', sans-serif;
-  color: #edf0ff;
-}
-
-@keyframes slideInDrawer {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0); }
-}
-
-/* هيدر الدرج */
-.drawer-header {
-  padding: 20px 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  background: rgba(14, 20, 56, 0.85);
-  border-bottom: 1px solid rgba(137, 153, 226, 0.18);
-}
-
-.drawer-header-info {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.drawer-icon-badge {
-  width: 46px;
-  height: 46px;
-  border-radius: 12px;
-  background: rgba(239, 68, 68, 0.15);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  display: grid;
-  place-items: center;
-  font-size: 24px;
-}
-
-.drawer-title {
-  margin: 0 0 6px 0;
-  font-size: 17px;
-  font-weight: 800;
-  color: #fff;
-  line-height: 1.25;
-}
-
-.drawer-meta-tags {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.drawer-count-badge {
-  background: rgba(239, 68, 68, 0.2);
-  color: #fca5a5;
-  border: 1px solid rgba(239, 68, 68, 0.35);
-  padding: 2px 8px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.drawer-horizon-badge {
-  background: rgba(125, 232, 220, 0.12);
-  color: #7de8dc;
-  border: 1px solid rgba(125, 232, 220, 0.25);
-  padding: 2px 8px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.drawer-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.drawer-refresh-btn, .drawer-close-btn {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(137, 153, 226, 0.2);
-  color: #cbd5e1;
-  border-radius: 10px;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  transition: all 0.2s;
-}
-
-.drawer-refresh-btn {
-  width: 38px;
-  height: 38px;
-  font-size: 15px;
-}
-
-.drawer-refresh-btn:hover:not(:disabled) {
-  background: rgba(125, 232, 220, 0.2);
-  color: #7de8dc;
-  border-color: #7de8dc;
-}
-
-.drawer-close-btn {
-  width: 38px;
-  height: 38px;
-  font-size: 16px;
-  font-weight: 800;
-}
-
-.drawer-close-btn:hover {
-  background: rgba(239, 68, 68, 0.2);
-  color: #f87171;
-  border-color: #ef4444;
-}
-
-/* شريط البحث السريع بالدرج */
-.drawer-search-bar {
-  padding: 12px 24px;
-  position: relative;
-  background: rgba(10, 15, 42, 0.6);
-  border-bottom: 1px solid rgba(137, 153, 226, 0.12);
-}
-
-.drawer-search-icon {
-  position: absolute;
-  right: 36px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 13px;
-  color: #818cb9;
-}
-
-.drawer-search-input {
-  width: 100%;
-  padding: 10px 38px 10px 36px;
-  background: rgba(16, 22, 60, 0.7);
-  border: 1px solid rgba(137, 153, 226, 0.2);
-  border-radius: 10px;
-  color: #fff;
-  font-size: 12.5px;
-  font-family: inherit;
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.drawer-search-input:focus {
-  border-color: #7de8dc;
-  box-shadow: 0 0 0 3px rgba(125, 232, 220, 0.15);
-}
-
-.drawer-clear-search {
-  position: absolute;
-  left: 36px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: transparent;
-  border: none;
-  color: #94a3b8;
-  cursor: pointer;
-  font-size: 12px;
-}
-
-/* جسم وقائمة الدرج */
-.drawer-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px 24px;
-}
-
-.drawer-loading-state, .drawer-empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  min-height: 280px;
-  color: #818cb9;
-}
-
-.drawer-empty-icon {
-  font-size: 48px;
-  margin-bottom: 12px;
-}
-
-.drawer-empty-state h4 {
-  color: #fff;
-  margin: 0 0 6px 0;
-  font-size: 17px;
-}
-
-.drawer-empty-state p {
-  margin: 0;
-  font-size: 12.5px;
-  max-width: 320px;
-}
-
-.drawer-items-list {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-/* كروت عناصر الدرج */
-.drawer-item-card {
-  background: rgba(18, 25, 68, 0.85);
-  border: 1px solid rgba(137, 153, 226, 0.2);
-  border-radius: 14px;
-  padding: 16px 18px;
-  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
-}
-
-.drawer-item-card:hover {
-  transform: translateY(-3px);
-  border-color: rgba(125, 232, 220, 0.35);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.3);
-}
-
-.drawer-item-card.is-urgent {
-  border-right: 4px solid #ef4444;
-}
-
-.item-card-topline {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.item-badges-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.urgent-pill {
-  background: rgba(239, 68, 68, 0.25);
-  color: #fca5a5;
-  border: 1px solid rgba(239, 68, 68, 0.45);
-  padding: 2px 7px;
-  border-radius: 6px;
-  font-size: 10px;
-  font-weight: 800;
-}
-
-.overdue-pill {
-  background: rgba(239, 68, 68, 0.15);
-  color: #f87171;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  padding: 2px 8px;
-  border-radius: 6px;
-  font-size: 10.5px;
-  font-weight: 700;
-}
-
-.priority-pill {
-  padding: 2px 7px;
-  border-radius: 6px;
-  font-size: 10px;
-  font-weight: 700;
-  background: rgba(137, 153, 226, 0.15);
-  color: #cbd5e1;
-}
-
-.priority-pill.prio-عالية, .priority-pill.prio-high {
-  background: rgba(245, 158, 11, 0.2);
-  color: #fbbf24;
-}
-
-.type-pill {
-  background: rgba(168, 85, 247, 0.18);
-  color: #d8b4fe;
-  border: 1px solid rgba(168, 85, 247, 0.3);
-  padding: 2px 7px;
-  border-radius: 6px;
-  font-size: 10.5px;
-  font-weight: 700;
-}
-
-.rejected-pill {
-  background: rgba(239, 68, 68, 0.2);
-  color: #fca5a5;
-  border: 1px solid rgba(239, 68, 68, 0.35);
-  padding: 2px 7px;
-  border-radius: 6px;
-  font-size: 10.5px;
-  font-weight: 800;
-}
-
-.item-date-text {
-  font-size: 11px;
-  color: #94a3b8;
-  font-weight: 600;
-}
-
-.item-title {
-  margin: 0 0 10px 0;
-  font-size: 14.5px;
-  font-weight: 800;
-  color: #fff;
-  line-height: 1.4;
-}
-
-.item-project-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-}
-
-.project-pill {
-  background: rgba(59, 130, 246, 0.15);
-  color: #93c5fd;
-  border: 1px solid rgba(59, 130, 246, 0.25);
-  padding: 3px 8px;
-  border-radius: 7px;
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.target-date-pill {
-  background: rgba(137, 153, 226, 0.1);
-  color: #a5b4fc;
-  padding: 3px 8px;
-  border-radius: 7px;
-  font-size: 11px;
-}
-
-.rejected-by-pill {
-  background: rgba(245, 158, 11, 0.15);
-  color: #fcd34d;
-  padding: 3px 8px;
-  border-radius: 7px;
-  font-size: 11px;
-  font-weight: 600;
-}
-
-/* سبب الرفض */
-.rejection-reason-callout {
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px dashed rgba(239, 68, 68, 0.35);
-  border-radius: 10px;
-  padding: 10px 12px;
-  margin-bottom: 12px;
-}
-
-.reason-label {
-  font-size: 11px;
-  font-weight: 800;
-  color: #fca5a5;
-  margin-bottom: 4px;
-}
-
-.reason-text {
-  margin: 0;
-  font-size: 12px;
-  color: #fecaca;
-  line-height: 1.45;
-}
-
-/* شريط الموظف والإجراءات */
-.item-person-strip {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(137, 153, 226, 0.15);
-  flex-wrap: wrap;
-}
-
-.person-avatar-wrap {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.person-avatar {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-  color: #fff;
-  display: grid;
-  place-items: center;
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.person-avatar.purple-avatar {
-  background: linear-gradient(135deg, #a855f7, #6d28d9);
-}
-
-.person-avatar.red-avatar {
-  background: linear-gradient(135deg, #ef4444, #b91c1c);
-}
-
-.person-details {
-  display: flex;
-  flex-direction: column;
-}
-
-.person-name {
-  font-size: 12.5px;
-  color: #fff;
-}
-
-.person-role {
-  font-size: 10.5px;
-  color: #818cb9;
-}
-
-.item-actions-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.drawer-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 11px;
-  border-radius: 8px;
-  font-size: 11.5px;
-  font-weight: 700;
-  font-family: inherit;
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition: all 0.2s;
-}
-
-.wa-contact-btn {
-  background: rgba(37, 211, 102, 0.15);
-  color: #25D366;
-  border-color: rgba(37, 211, 102, 0.35);
-}
-
-.wa-contact-btn:hover {
-  background: #25D366;
-  color: #0b1132;
-  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.35);
-  transform: translateY(-2px);
-}
-
-.reschedule-trigger-btn {
-  background: rgba(168, 85, 247, 0.15);
-  color: #c084fc;
-  border-color: rgba(168, 85, 247, 0.3);
-}
-
-.reschedule-trigger-btn:hover {
-  background: rgba(168, 85, 247, 0.28);
-  color: #fff;
-  border-color: #a855f7;
-  transform: translateY(-2px);
-}
-
-.view-project-btn, .view-board-btn {
-  background: rgba(137, 153, 226, 0.12);
-  color: #7de8dc;
-  border-color: rgba(125, 232, 220, 0.25);
-}
-
-.view-project-btn:hover, .view-board-btn:hover {
-  background: rgba(125, 232, 220, 0.25);
-  color: #fff;
-  border-color: #7de8dc;
-  transform: translateY(-2px);
-}
-
-/* فورم إعادة الجدولة المباشر */
-.inline-reschedule-box {
-  margin-top: 14px;
-  padding: 12px;
-  background: rgba(10, 15, 42, 0.85);
-  border: 1px solid rgba(168, 85, 247, 0.35);
-  border-radius: 10px;
-}
-
-.reschedule-box-header {
-  font-size: 11px;
-  font-weight: 700;
-  color: #c084fc;
-  margin-bottom: 8px;
-}
-
-.reschedule-input-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.reschedule-native-input {
-  flex: 1;
-  min-width: 180px;
-  padding: 6px 10px;
-  background: rgba(16, 22, 60, 0.8);
-  border: 1px solid rgba(137, 153, 226, 0.3);
-  border-radius: 8px;
-  color: #fff;
-  font-size: 12px;
-  font-family: inherit;
-  outline: none;
-}
-
-.reschedule-submit-btn {
-  background: linear-gradient(135deg, #a855f7, #6d28d9);
-  color: #fff;
-  border: none;
-  padding: 7px 12px;
-  border-radius: 8px;
-  font-size: 11px;
-  font-weight: 800;
-  cursor: pointer;
-  transition: transform 0.2s;
-}
-
-.reschedule-submit-btn:hover:not(:disabled) {
-  transform: translateY(-1px);
-  filter: brightness(1.1);
-}
-
-.reschedule-cancel-btn {
-  background: transparent;
-  color: #94a3b8;
-  border: 1px solid rgba(137, 153, 226, 0.2);
-  padding: 7px 10px;
-  border-radius: 8px;
-  font-size: 11px;
-  cursor: pointer;
-}
-
-.reschedule-cancel-btn:hover {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.05);
-}
-
-/* ذيل الدرج */
-.drawer-footer {
-  padding: 16px 24px;
-  background: rgba(14, 20, 56, 0.85);
-  border-top: 1px solid rgba(137, 153, 226, 0.18);
-  display: flex;
-  justify-content: flex-end;
-}
-
-.drawer-close-footer-btn {
-  background: rgba(137, 153, 226, 0.12);
-  border: 1px solid rgba(137, 153, 226, 0.25);
-  color: #cbd5e1;
-  padding: 8px 16px;
-  border-radius: 9px;
-  font-size: 12px;
-  font-weight: 700;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.drawer-close-footer-btn:hover {
-  background: rgba(239, 68, 68, 0.15);
-  color: #f87171;
-  border-color: rgba(239, 68, 68, 0.3);
-}
 </style>

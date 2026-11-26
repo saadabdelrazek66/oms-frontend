@@ -263,27 +263,13 @@
       </div>
 
       <!-- الترقيم (Pagination) -->
-      <div v-if="pagination.last_page > 1" class="pagination-footer d-flex justify-between align-center p-3">
-        <span class="text-sm muted">صفحة {{ pagination.current_page }} من {{ pagination.last_page }}</span>
-        <div class="pagination-buttons d-flex gap-2">
-          <button 
-            type="button" 
-            class="btn-page" 
-            :disabled="pagination.current_page <= 1"
-            @click="fetchItems(pagination.current_page - 1)"
-          >
-            السابق
-          </button>
-          <button 
-            type="button" 
-            class="btn-page" 
-            :disabled="pagination.current_page >= pagination.last_page"
-            @click="fetchItems(pagination.current_page + 1)"
-          >
-            التالي
-          </button>
-        </div>
-      </div>
+      <AppPagination
+        :current-page="pagination.current_page"
+        :last-page="pagination.last_page"
+        :total="pagination.total || 0"
+        item-label="عنصر"
+        @change="fetchItems"
+      />
     </div>
 
     <!-- ================= مودالات التأكيد ================= -->
@@ -404,6 +390,7 @@
 import { ref, computed, onMounted } from 'vue';
 import api from '../axios';
 import alertService from '../services/alertService';
+import AppPagination from '@/components/ui/AppPagination.vue';
 
 // التصنيفات المدعومة
 const categories = [

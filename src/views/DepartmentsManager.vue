@@ -66,7 +66,7 @@
               <td class="text-center" style="font-weight: 700; color: #8792be; width: 50px; vertical-align: middle;">{{ index + 1 }}</td>
               <td>
                 <div class="dept-cell">
-                  <div class="dept-avatar" aria-hidden="true">{{ getInitials(dept.name) }}</div>
+                  <UserAvatar :name="dept.name" :size="36" rounded="10px" />
                   <strong>{{ dept.name }}</strong>
                 </div>
               </td>
@@ -168,13 +168,6 @@
       </div>
     </div>
     </Teleport>
-
-
-    <transition name="toast">
-      <div v-if="toastMessage" class="toast-message" role="status" aria-live="polite">
-        {{ toastMessage }}
-      </div>
-    </transition>
   </section>
 </template>
 
@@ -182,6 +175,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import api from '../axios'
 import alertService from '../services/alertService'
+import UserAvatar from '@/components/ui/UserAvatar.vue'
 
 const departments = ref([])
 const loading = ref(true)
@@ -189,25 +183,15 @@ const saving = ref(false)
 const showModal = ref(false)
 const isEditing = ref(false)
 const editId = ref(null)
-const toastMessage = ref('')
 const modalCloseButton = ref(null)
 const modalContent = ref(null)
-let toastTimer
 
 const form = reactive({
   name: '',
   description: '',
 })
 
-const getInitials = (name = '') => name.trim().split(' ').slice(0, 2).map(word => word[0]).join('').toUpperCase()
-
-const showToast = (message) => {
-  toastMessage.value = message
-  window.clearTimeout(toastTimer)
-  toastTimer = window.setTimeout(() => {
-    toastMessage.value = ''
-  }, 3200)
-}
+const showToast = (message) => alertService.smartToast(message)
 
 // حساب إجمالي الموظفين في كل الأقسام
 const totalAssignedUsers = computed(() => {
@@ -303,7 +287,6 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-  window.clearTimeout(toastTimer)
   document.body.classList.remove('modal-is-open')
 })
 </script>

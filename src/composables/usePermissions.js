@@ -1,17 +1,19 @@
-import { ref, computed } from 'vue';
-import { can, canAny, canAll, isManager, getCurrentUser } from '../utils/permissions';
+import { computed } from 'vue';
+import { can, canAny, canAll } from '../utils/permissions';
+import { useAuthStore } from '../stores/authStore';
 
 export function usePermissions() {
-  const user = ref(getCurrentUser());
+  const authStore = useAuthStore();
+  const user = computed(() => authStore.user);
 
   const refreshUser = () => {
-    user.value = getCurrentUser();
+    authStore.syncFromStorage();
   };
 
   const hasPermission = (code) => can(code, user.value);
   const hasAnyPermission = (codes) => canAny(codes, user.value);
   const hasAllPermissions = (codes) => canAll(codes, user.value);
-  const isUserManager = computed(() => isManager(user.value));
+  const isUserManager = computed(() => authStore.isManager);
 
   return {
     user,

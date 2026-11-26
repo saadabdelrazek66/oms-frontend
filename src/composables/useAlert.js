@@ -1,10 +1,11 @@
-import alertService, { confirm, alert, toast, success, error, warning, info } from '../services/alertService';
+import alertService, { confirm, alert, toast, smartToast, success, error, warning, info } from '../services/alertService';
 
 export function useAlert() {
   return {
     confirm,
     alert,
     toast,
+    smartToast,
     success,
     error,
     warning,

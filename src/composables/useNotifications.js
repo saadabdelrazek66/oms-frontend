@@ -1,6 +1,7 @@
 import { ref, computed } from 'vue'
 import api from '../axios'
 import { getEchoInstance } from '../echo'
+import { useBrowserNotifications } from '../modules/subscriptions/composables/useBrowserNotifications'
 
 // State is kept at module scope so all components share the same notifications state (Singleton Composable)
 const notifications = ref([])
@@ -212,25 +213,41 @@ export function useNotifications() {
 
     const channelName = `App.Models.User.${userId}`
 
+    const { showBrowserNotification } = useBrowserNotifications()
+
     echo
       .private(channelName)
       .notification((notification) => {
-        // 1. زيادة العداد (unreadCount) بمقدار 1
-        unreadCount.value++
+        const data = notification.data || {}
 
-        // 2. تطبيع الإشعار وإضافته في بداية مصفوفة الإشعارات (unshift)
-        const normalizedItem = {
-          id: notification.id || `notif_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
-          type: notification.type || 'App\\Modules\\Notifications\\Notifications\\SystemNotification',
-          data: notification.data || {},
-          read_at: null,
-          created_at: notification.created_at || new Date().toISOString(),
+        // 1. تحديث عداد وقائمة الجرس الداخلي (إلا إذا كان الإشعار مخصصاً للمتصفح فقط)
+        if (data.store_in_bell !== false) {
+          unreadCount.value++
+
+          const normalizedItem = {
+            id: notification.id || `notif_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+            type: notification.type || 'App\\Modules\\Notifications\\Notifications\\SystemNotification',
+            data,
+            read_at: null,
+            created_at: notification.created_at || new Date().toISOString(),
+          }
+
+          notifications.value.unshift(normalizedItem)
         }
 
-        notifications.value.unshift(normalizedItem)
-
-        // 3. تشغيل صوت تنبيه لطيف خفيف
+        // 2. تشغيل صوت تنبيه لطيف خفيف
         playNotificationSound()
+
+        // 3. إطلاق إشعار سطح المكتب/المتصفح الفوري إذا طلب الباك إند ذلك
+        if (data.browser_push) {
+          showBrowserNotification({
+            title: data.title || 'تنبيه من النظام',
+            body: data.body || '',
+            tag: data.subscription_id ? `sub-${data.subscription_id}-${notification.id || ''}` : undefined,
+            url: normalizeNotificationUrl(data.url),
+            requireInteraction: data.urgency === 'critical' || data.urgency === 'overdue',
+          })
+        }
       })
 
     isListening = true

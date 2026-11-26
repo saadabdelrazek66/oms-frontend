@@ -114,11 +114,14 @@
       </div>
 
       <!-- أزرار التنقل (Pagination) -->
-      <div v-if="logsData && logsData.last_page > 1" class="pagination-wrapper mt-3">
-        <button class="page-btn" :disabled="logsData.current_page === 1" @click="fetchLogs(logsData.current_page - 1)">❮</button>
-        <span class="page-info">صفحة <strong>{{ logsData.current_page }}</strong> من {{ logsData.last_page }}</span>
-        <button class="page-btn" :disabled="logsData.current_page === logsData.last_page" @click="fetchLogs(logsData.current_page + 1)">❯</button>
-      </div>
+      <AppPagination
+        v-if="logsData"
+        :current-page="logsData.current_page"
+        :last-page="logsData.last_page"
+        :total="logsData.total || 0"
+        item-label="سجل"
+        @change="fetchLogs"
+      />
     </div>
 
     <!-- نافذة إدارة السجلات (الحذف) المدمجة -->
@@ -216,6 +219,7 @@
 import { ref, onMounted } from 'vue';
 import api from '../axios';
 import alertService from '../services/alertService';
+import AppPagination from '@/components/ui/AppPagination.vue';
 
 // 🔴 تجهيز التواريخ الافتراضية (اليوم و 30 يوم لورا) 🔴
 const getTodayDate = () => new Date().toISOString().split('T')[0];

@@ -1,17 +1,31 @@
 <template>
   <section class="employee-dashboard" dir="rtl">
-    <!-- الترويسة الترحيبية -->
+    <!-- الترويسة وشريط الانتقال السريع -->
     <div class="page-topline">
       <div>
-        <span class="eyebrow">{{ currentDate }}</span>
-        <h2>مرحباً بك، {{ currentUserName }} 👋</h2>
-        <p>إليك نظرة عامة على أدائك ومهامك العاجلة لهذا اليوم.</p>
+        <span class="eyebrow">{{ currentDate }} | الرئيسية</span>
+        <h2>مرحباً، {{ currentUserName }}</h2>
       </div>
+
+      <nav class="quick-jump-bar" aria-label="وصول سريع">
+        <router-link v-if="can('workload.view')" to="/today-board" class="jump-pill primary-pill">
+          ⏱️ خطة اليوم (الساعات) ↗
+        </router-link>
+        <router-link to="/my-tasks" class="jump-pill">
+          📋 تسليمات الخطط ↗
+        </router-link>
+        <router-link to="/projects" class="jump-pill">
+          📁 المشاريع ↗
+        </router-link>
+        <router-link to="/quick-tasks" class="jump-pill">
+          ⚡ المهام السريعة ↗
+        </router-link>
+      </nav>
     </div>
 
     <!-- حالة التحميل -->
     <div v-if="loading" class="state-cell">
-      <span class="spinner large"></span> جارٍ تحميل مساحة العمل...
+      <span class="spinner large"></span> جارٍ تحميل ملخص الأداء...
     </div>
 
     <div v-else-if="dashboardData" class="dashboard-content">
@@ -20,11 +34,11 @@
       <!-- 1. إحصائيات مهام المشاريع (Tasks Stats)      -->
       <!-- ========================================== -->
       <div class="stats-section mb-4">
-        <h3 class="section-title">📊 إحصائيات مهام المشاريع</h3>
+        <h3 class="section-title">📊 مهام المشاريع</h3>
         <div class="stats-grid">
           <article class="stat-card blue-card">
             <div class="stat-info">
-              <small>إجمالي المهام الموكلة</small>
+              <small>الإجمالي</small>
               <strong>{{ dashboardData.stats.tasks.total }}</strong>
             </div>
             <div class="stat-icon">🎯</div>
@@ -32,7 +46,7 @@
           
           <article class="stat-card green-card">
             <div class="stat-info">
-              <small>المهام المكتملة</small>
+              <small>المكتملة</small>
               <strong>{{ dashboardData.stats.tasks.completed }}</strong>
             </div>
             <div class="stat-icon">✅</div>
@@ -40,7 +54,7 @@
           
           <article class="stat-card orange-card">
             <div class="stat-info">
-              <small>قيد العمل والمراجعة</small>
+              <small>قيد العمل</small>
               <strong>{{ dashboardData.stats.tasks.pending }}</strong>
             </div>
             <div class="stat-icon">⏳</div>
@@ -48,7 +62,7 @@
           
           <article class="stat-card" :class="dashboardData.stats.tasks.overdue > 0 ? 'red-card pulse-danger' : 'gray-card'">
             <div class="stat-info">
-              <small>المهام المتأخرة</small>
+              <small>المتأخرة</small>
               <strong>{{ dashboardData.stats.tasks.overdue }}</strong>
             </div>
             <div class="stat-icon">🚨</div>
@@ -60,11 +74,11 @@
       <!-- 2. إحصائيات منشورات الخطط (Posts Stats)    -->
       <!-- ========================================== -->
       <div class="stats-section mb-4">
-        <h3 class="section-title">📝 إحصائيات محتوى الخطط</h3>
+        <h3 class="section-title">📝 منشورات الخطط</h3>
         <div class="stats-grid">
           <article class="stat-card purple-card">
             <div class="stat-info">
-              <small>إجمالي المنشورات الموكلة</small>
+              <small>الإجمالي</small>
               <strong>{{ dashboardData.stats.posts.total }}</strong>
             </div>
             <div class="stat-icon">🎯</div>
@@ -72,7 +86,7 @@
           
           <article class="stat-card green-card">
             <div class="stat-info">
-              <small>المنشورات المسلمة</small>
+              <small>المُسلّمة</small>
               <strong>{{ dashboardData.stats.posts.completed }}</strong>
             </div>
             <div class="stat-icon">✅</div>
@@ -80,7 +94,7 @@
           
           <article class="stat-card orange-card">
             <div class="stat-info">
-              <small>قيد التنفيذ والمراجعة</small>
+              <small>قيد التنفيذ</small>
               <strong>{{ dashboardData.stats.posts.pending }}</strong>
             </div>
             <div class="stat-icon">⏳</div>
@@ -88,7 +102,7 @@
           
           <article class="stat-card" :class="dashboardData.stats.posts.overdue > 0 ? 'red-card pulse-danger' : 'gray-card'">
             <div class="stat-info">
-              <small>المنشورات المتأخرة</small>
+              <small>المتأخرة</small>
               <strong>{{ dashboardData.stats.posts.overdue }}</strong>
             </div>
             <div class="stat-icon">🚨</div>
@@ -101,7 +115,7 @@
       <!-- ========================================== -->
       <div v-if="dashboardData.stats?.quick_tasks" class="stats-section mb-4">
         <div class="d-flex align-items-center justify-content-between mb-2">
-          <h3 class="section-title mb-0">⚡ إحصائيات المهام السريعة</h3>
+          <h3 class="section-title mb-0">⚡ المهام السريعة</h3>
           <router-link to="/quick-tasks" class="view-all-link">
             لوحة المهام السريعة ↗
           </router-link>
@@ -109,7 +123,7 @@
         <div class="stats-grid">
           <article class="stat-card teal-card">
             <div class="stat-info">
-              <small>إجمالي المهام السريعة</small>
+              <small>الإجمالي</small>
               <strong>{{ dashboardData.stats.quick_tasks.total ?? 0 }}</strong>
             </div>
             <div class="stat-icon">⚡</div>
@@ -117,7 +131,7 @@
           
           <article class="stat-card green-card">
             <div class="stat-info">
-              <small>المهام المنجزة</small>
+              <small>المنجزة</small>
               <strong>{{ dashboardData.stats.quick_tasks.completed ?? 0 }}</strong>
             </div>
             <div class="stat-icon">✅</div>
@@ -125,7 +139,7 @@
           
           <article class="stat-card purple-card">
             <div class="stat-info">
-              <small>قيد التنفيذ والمتابعة</small>
+              <small>قيد التنفيذ</small>
               <strong>{{ dashboardData.stats.quick_tasks.pending ?? 0 }}</strong>
             </div>
             <div class="stat-icon">⏳</div>
@@ -133,7 +147,7 @@
           
           <article class="stat-card" :class="(dashboardData.stats.quick_tasks.overdue || 0) > 0 ? 'red-card pulse-danger' : 'gray-card'">
             <div class="stat-info">
-              <small>المهام المتأخرة</small>
+              <small>المتأخرة</small>
               <strong>{{ dashboardData.stats.quick_tasks.overdue ?? 0 }}</strong>
             </div>
             <div class="stat-icon">🚨</div>
@@ -148,7 +162,7 @@
         
         <!-- KPI: مهام المشاريع -->
         <div class="glass-card kpi-section">
-          <h3 class="card-title">📈 أداء المهام (الشهر الحالي)</h3>
+          <h3 class="card-title">📈 مهام المشاريع (الشهر)</h3>
           
           <template v-if="dashboardData.kpi.tasks.total_this_month > 0">
             <div class="circular-progress-wrapper">
@@ -159,21 +173,21 @@
               </svg>
             </div>
             <p class="kpi-desc text-center mt-3">
-              لقد أنجزت <strong class="text-green">{{ dashboardData.kpi.tasks.completion_rate }}%</strong> من المهام المطلوبة منك هذا الشهر.
+              نسبة الإنجاز: <strong class="text-green">{{ dashboardData.kpi.tasks.completion_rate }}%</strong>
               <br>
-              <span class="muted text-sm">(إجمالي مهام الشهر: {{ dashboardData.kpi.tasks.total_this_month }})</span>
+              <span class="muted text-sm">إجمالي الشهر: {{ dashboardData.kpi.tasks.total_this_month }}</span>
             </p>
           </template>
           
           <div v-else class="empty-kpi">
             <div class="empty-icon">🌱</div>
-            <p>لا توجد مهام مشاريع مطلوبة منك هذا الشهر حتى الآن. استمتع بوقتك!</p>
+            <p>لا توجد مهام مشاريع لهذا الشهر.</p>
           </div>
         </div>
 
         <!-- KPI: منشورات الخطط -->
         <div class="glass-card kpi-section">
-          <h3 class="card-title">📈 أداء المنشورات (الشهر الحالي)</h3>
+          <h3 class="card-title">📈 منشورات الخطط (الشهر)</h3>
           
           <template v-if="dashboardData.kpi.posts.total_this_month > 0">
             <div class="circular-progress-wrapper">
@@ -184,21 +198,21 @@
               </svg>
             </div>
             <p class="kpi-desc text-center mt-3">
-              لقد سلمت <strong class="text-purple">{{ dashboardData.kpi.posts.completion_rate }}%</strong> من منشورات الخطط هذا الشهر.
+              نسبة التسليم: <strong class="text-purple">{{ dashboardData.kpi.posts.completion_rate }}%</strong>
               <br>
-              <span class="muted text-sm">(إجمالي منشورات الشهر: {{ dashboardData.kpi.posts.total_this_month }})</span>
+              <span class="muted text-sm">إجمالي الشهر: {{ dashboardData.kpi.posts.total_this_month }}</span>
             </p>
           </template>
           
           <div v-else class="empty-kpi">
             <div class="empty-icon">✨</div>
-            <p>لا توجد منشورات خطط مطلوبة منك هذا الشهر حتى الآن.</p>
+            <p>لا توجد منشورات لهذا الشهر.</p>
           </div>
         </div>
 
         <!-- KPI: المهام السريعة -->
         <div v-if="dashboardData.kpi?.quick_tasks" class="glass-card kpi-section">
-          <h3 class="card-title">⚡ أداء المهام السريعة (الشهر الحالي)</h3>
+          <h3 class="card-title">⚡ المهام السريعة (الشهر)</h3>
           
           <template v-if="dashboardData.kpi.quick_tasks.total_this_month > 0">
             <div class="circular-progress-wrapper">
@@ -209,15 +223,15 @@
               </svg>
             </div>
             <p class="kpi-desc text-center mt-3">
-              لقد أنجزت <strong class="text-teal">{{ dashboardData.kpi.quick_tasks.completion_rate }}%</strong> من المهام السريعة هذا الشهر.
+              نسبة الإنجاز: <strong class="text-teal">{{ dashboardData.kpi.quick_tasks.completion_rate }}%</strong>
               <br>
-              <span class="muted text-sm">(إجمالي مهام هذا الشهر: {{ dashboardData.kpi.quick_tasks.total_this_month }})</span>
+              <span class="muted text-sm">إجمالي الشهر: {{ dashboardData.kpi.quick_tasks.total_this_month }}</span>
             </p>
           </template>
           
           <div v-else class="empty-kpi">
             <div class="empty-icon">⚡</div>
-            <p>لا توجد مهام سريعة مطلوبة منك هذا الشهر حتى الآن.</p>
+            <p>لا توجد مهام سريعة لهذا الشهر.</p>
           </div>
         </div>
 
@@ -233,14 +247,14 @@
           <div class="card-header">
             <div class="d-flex align-items-center gap-2">
               <h3 class="card-title">⚡ مهام المشاريع العاجلة</h3>
-              <span class="badge">{{ dashboardData.priorities.upcoming_tasks.length }} مهام</span>
+              <span class="badge">{{ dashboardData.priorities.upcoming_tasks.length }}</span>
             </div>
             <router-link v-if="dashboardData.stats.tasks.total > 0" to="/projects" class="view-all-link">
-              عرض كل المشاريع ↗
+              كل المشاريع ↗
             </router-link>
           </div>
           <div class="items-list">
-            <div v-if="dashboardData.priorities.upcoming_tasks.length === 0" class="muted text-center py-4">لا توجد مهام عاجلة حالياً. عمل رائع! 🎉</div>
+            <div v-if="dashboardData.priorities.upcoming_tasks.length === 0" class="muted text-center py-4">لا توجد مهام عاجلة حالياً</div>
             
             <div v-for="task in dashboardData.priorities.upcoming_tasks" :key="task.id" 
                  class="priority-item" 
@@ -260,7 +274,7 @@
                     <div class="sla-progress-fill" :class="getDeadlineStatus(task.created_at, task.due_date, task.status).class + '-bg'" :style="{ width: getDeadlineStatus(task.created_at, task.due_date, task.status).percentage + '%' }"></div>
                   </div>
                 </div>
-                <router-link :to="`/projects/${task.project_id}`" class="action-link">الذهاب للمشروع ↗</router-link>
+                <router-link :to="`/projects/${task.project_id}`" class="action-link">فتح ↗</router-link>
               </div>
             </div>
           </div>
@@ -270,15 +284,15 @@
         <div class="glass-card priorities-section">
           <div class="card-header">
             <div class="d-flex align-items-center gap-2">
-              <h3 class="card-title">📝 منشورات مطلوبة للخطط</h3>
-              <span class="badge">{{ dashboardData.priorities.upcoming_posts.length }} منشورات</span>
+              <h3 class="card-title">📝 منشورات عاجلة</h3>
+              <span class="badge">{{ dashboardData.priorities.upcoming_posts.length }}</span>
             </div>
             <router-link v-if="dashboardData.stats.posts.total > 0 || dashboardData.stats.total_plans > 0" to="/my-tasks" class="view-all-link">
-              عرض كل المهام ↗
+              تسليمات الخطط ↗
             </router-link>
           </div>
           <div class="items-list">
-            <div v-if="dashboardData.priorities.upcoming_posts.length === 0" class="muted text-center py-4">لا يوجد محتوى متأخر. أنت في السليم! 🟢</div>
+            <div v-if="dashboardData.priorities.upcoming_posts.length === 0" class="muted text-center py-4">لا توجد منشورات عاجلة حالياً</div>
             
             <div v-for="post in dashboardData.priorities.upcoming_posts" :key="post.id" 
                  class="priority-item" 
@@ -288,7 +302,7 @@
                 <strong>{{ post.post_type || 'منشور' }} - {{ post.publishing_platform ? parsePlatforms(post.publishing_platform) : 'لم تحدد المنصة' }}</strong>
                 <span class="project-tag client-tag">{{ post.plan?.client?.name }}</span>
               </div>
-              <p class="post-desc muted mt-1">{{ post.detailed_idea || 'لا يوجد تفاصيل إضافية...' }}</p>
+              <p class="post-desc muted mt-1">{{ post.detailed_idea || '—' }}</p>
               
               <div class="item-footer mt-2">
                 <div class="sla-indicator">
@@ -299,7 +313,7 @@
                     <div class="sla-progress-fill" :class="getDeadlineStatus(post.created_at, post.deadline, 'pending').class + '-bg'" :style="{ width: getDeadlineStatus(post.created_at, post.deadline, 'pending').percentage + '%' }"></div>
                   </div>
                 </div>
-                <router-link :to="`/plan-board/${post.content_plan_id}`" class="action-link">الذهاب للوحة ↗</router-link>
+                <router-link :to="`/plan-board/${post.content_plan_id}`" class="action-link">فتح ↗</router-link>
               </div>
             </div>
           </div>
@@ -310,15 +324,15 @@
           <div class="card-header">
             <div class="d-flex align-items-center gap-2">
               <h3 class="card-title">⚡ مهام سريعة عاجلة</h3>
-              <span class="badge badge-teal">{{ (dashboardData.priorities?.upcoming_quick_tasks || []).length }} مهام</span>
+              <span class="badge badge-teal">{{ (dashboardData.priorities?.upcoming_quick_tasks || []).length }}</span>
             </div>
             <router-link to="/quick-tasks" class="view-all-link">
-              عرض كل المهام السريعة ↗
+              كل المهام ↗
             </router-link>
           </div>
           <div class="items-list">
             <div v-if="!dashboardData.priorities?.upcoming_quick_tasks || dashboardData.priorities.upcoming_quick_tasks.length === 0" class="muted text-center py-4">
-              لا توجد مهام سريعة عاجلة حالياً 🎉
+              لا توجد مهام سريعة عاجلة
             </div>
             
             <div v-for="task in dashboardData.priorities.upcoming_quick_tasks" :key="task.id" 
@@ -351,7 +365,7 @@
                     <div class="sla-progress-fill" :class="getDeadlineStatus(task.created_at, task.deadline, task.status).class + '-bg'" :style="{ width: getDeadlineStatus(task.created_at, task.deadline, task.status).percentage + '%' }"></div>
                   </div>
                 </div>
-                <router-link to="/quick-tasks" class="action-link action-teal">عرض المهمة ↗</router-link>
+                <router-link to="/quick-tasks" class="action-link action-teal">فتح ↗</router-link>
               </div>
             </div>
           </div>
@@ -367,34 +381,19 @@ import { ref, onMounted, computed } from 'vue';
 import api from '../axios';
 
 import { getDeadlineStatus } from '../utils/timeHelper';
+import { getUserFirstName, formatArabicFullDate, safeJoinList } from '@/utils/workloadHelper';
+import { usePermissions } from '@/composables/usePermissions';
+
+const { can } = usePermissions();
 
 const loading = ref(true);
 const dashboardData = ref(null);
 
-const currentUserName = computed(() => {
-  try {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    return user.name ? user.name.split(' ')[0] : 'زميلي العزيز';
-  } catch (e) {
-    return 'زميلي العزيز';
-  }
-});
+const currentUserName = computed(() => getUserFirstName('زميلي العزيز'));
 
-const currentDate = computed(() => {
-  const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-  return new Date().toLocaleDateString('ar-EG', options);
-});
+const currentDate = computed(() => formatArabicFullDate());
 
-const parsePlatforms = (platformData) => {
-  if (Array.isArray(platformData)) return platformData.join(', ');
-  try {
-    const parsed = JSON.parse(platformData);
-    if (Array.isArray(parsed)) return parsed.join(', ');
-  } catch (e) {
-    return platformData;
-  }
-  return platformData;
-};
+const parsePlatforms = (platformData) => safeJoinList(platformData, ', ');
 
 const formatQuickTaskDeadline = (deadlineStr) => {
   if (!deadlineStr) return 'بدون موعد محدد';
@@ -467,10 +466,48 @@ onMounted(() => {
 
 :global(*) { box-sizing: border-box; }
 .employee-dashboard { min-height: 100vh; color: #edf0ff; font-family: 'Cairo', sans-serif; padding-bottom: 30px; }
-.page-topline { margin-bottom: 25px; }
+.page-topline {
+  margin-bottom: 25px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
 .eyebrow { color: #7de8dc; font-size: 13px; font-weight: 700; }
-.page-topline h2 { margin: 5px 0; font-size: 32px; font-weight: 800; color: #fff; }
-.page-topline p { color: #9ba3c4; font-size: 14px; margin: 0; }
+.page-topline h2 { margin: 5px 0 0; font-size: 32px; font-weight: 800; color: #fff; }
+
+.quick-jump-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.jump-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 10px;
+  background: rgba(137, 153, 226, 0.12);
+  border: 1px solid rgba(137, 153, 226, 0.28);
+  color: #dce2ff;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.jump-pill:hover {
+  background: rgba(137, 153, 226, 0.22);
+  transform: translateY(-1px);
+}
+.jump-pill.primary-pill {
+  background: rgba(125, 232, 220, 0.14);
+  border-color: rgba(125, 232, 220, 0.35);
+  color: #7de8dc;
+}
+.jump-pill.primary-pill:hover {
+  background: rgba(125, 232, 220, 0.24);
+}
 
 .state-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 50vh; color: #7d89b6; font-size: 16px; }
 .spinner { display: inline-block; border: 3px solid rgba(125, 232, 220, 0.25); border-top-color: #7de8dc; border-radius: 50%; animation: spin 1s linear infinite; }
@@ -638,12 +675,15 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
+  .page-topline { flex-direction: column; align-items: stretch; }
+  .quick-jump-bar { width: 100%; }
   .stats-grid { grid-template-columns: 1fr 1fr; }
   .page-topline h2 { font-size: 24px; }
   .card-header { flex-direction: column; align-items: flex-start; }
 }
 
 @media (max-width: 480px) {
+  .jump-pill { flex: 1 1 calc(50% - 4px); justify-content: center; }
   .stats-grid { grid-template-columns: 1fr; }
   .stat-card { padding: 14px 12px; }
   .glass-card { padding: 16px 12px; }
